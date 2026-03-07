@@ -113,8 +113,8 @@ describe("search page flow", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Filtre")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", {
-        name: /Skontrolujte nový výrok bez otvárania ďalšej stránky/i,
+      screen.getByRole("tab", {
+        name: /Detekcia duplikátov/i,
       }),
     ).toBeInTheDocument();
   });

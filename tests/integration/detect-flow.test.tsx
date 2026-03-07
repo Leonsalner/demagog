@@ -19,6 +19,10 @@ vi.mock("@/hooks/useDetect", () => ({
 const { useDetect } = await import("@/hooks/useDetect");
 const { useSearch } = await import("@/hooks/useSearch");
 
+function openDetectTab() {
+  fireEvent.click(screen.getByRole("tab", { name: "Detekcia duplikátov" }));
+}
+
 function mockUseSearchReturn() {
   vi.mocked(useSearch).mockReturnValue({
     results: null,
@@ -77,6 +81,7 @@ describe("detect page flow", () => {
     mockUseDetectReturn();
 
     render(<Home />);
+    openDetectTab();
 
     expect(
       screen.getByRole("heading", { name: /Skontrolujte nový výrok bez otvárania ďalšej stránky/i }),
@@ -89,6 +94,7 @@ describe("detect page flow", () => {
     const { detect } = mockUseDetectReturn();
 
     render(<Home />);
+    openDetectTab();
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -103,6 +109,7 @@ describe("detect page flow", () => {
     mockUseDetectReturn({ loading: true });
 
     render(<Home />);
+    openDetectTab();
 
     expect(
       screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
@@ -112,10 +119,12 @@ describe("detect page flow", () => {
   it("renders duplicate and related result states", () => {
     mockUseDetectReturn({ result: mockDetectDuplicate });
     const { rerender } = render(<Home />);
+    openDetectTab();
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
 
     mockUseDetectReturn({ result: mockDetectRelated });
     rerender(<Home />);
+    openDetectTab();
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
@@ -123,6 +132,7 @@ describe("detect page flow", () => {
     mockUseDetectReturn({ result: mockDetectNew });
 
     render(<Home />);
+    openDetectTab();
 
     expect(
       screen.getByText(/V databáze sa nenašiel podobný overený nárok\./i),
@@ -133,6 +143,7 @@ describe("detect page flow", () => {
     const { reset } = mockUseDetectReturn({ result: mockDetectDuplicate });
 
     render(<Home />);
+    openDetectTab();
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Upravený výrok na ďalšie porovnanie." },
     });

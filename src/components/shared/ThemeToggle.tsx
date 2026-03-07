@@ -102,7 +102,9 @@ export default function ThemeToggle() {
         <path
           d="M15.5 3.5a8.5 8.5 0 1 0 5 15.6A9.5 9.5 0 0 1 15.5 3.5Z"
           className={`origin-center transition-all duration-300 ${
-            isDark ? "scale-100 opacity-100" : "scale-75 opacity-0"
+            isDark
+              ? "translate-x-[-1px] translate-y-[1px] scale-100 opacity-100"
+              : "translate-x-[-1px] translate-y-[1px] scale-75 opacity-0"
           }`}
         />
       </svg>
