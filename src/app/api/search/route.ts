@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
-import { rerankResults } from "@/lib/gemini";
+import { rerankResults, understandQuery } from "@/lib/gemini";
 import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
-import type { SearchRequest, SearchResponse, Statement, Verdict } from "@/types";
+import type {
+  QueryUnderstanding,
+  SearchRequest,
+  SearchResponse,
+  Statement,
+  Verdict,
+} from "@/types";
 
 const VERDICTS: Verdict[] = [
   "Pravda",
@@ -98,6 +104,112 @@ function buildFilterParams(body: SearchRequest) {
   };
 }
 
+function mergeQueryFilters(
+  body: SearchRequest,
+  extractedFilters: QueryUnderstanding["filters"]
+): SearchRequest {
+  return {
+    ...body,
+    meno: body.meno ?? extractedFilters.meno ?? undefined,
+    strana: body.strana ?? extractedFilters.strana ?? undefined,
+    vyhodnotenie:
+      body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
+    oblast: body.oblast ?? extractedFilters.oblast ?? undefined,
+  };
+}
+
+async function fetchDistinctValues(
+  supabase: ReturnType<typeof getSupabase>,
+  column: "meno" | "strana"
+): Promise<string[]> {
+  const { data, error } = await supabase.from("vyroky").select(column);
+
+  if (error) {
+    return [];
+  }
+
+  const rows = (data ?? []) as Array<{ meno?: string; strana?: string }>;
+
+  return Array.from(
+    new Set(
+      rows
+        .map((row) => (column === "meno" ? row.meno : row.strana))
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "sk"));
+}
+
+function buildRelatedFilterParams(body: SearchRequest, meno: string) {
+  return {
+    filter_strana: null,
+    filter_oblast: body.oblast ?? null,
+    filter_vyhodnotenie: body.vyhodnotenie ?? null,
+    filter_meno: meno,
+    filter_datum_od: body.datum_od ?? null,
+    filter_datum_do: body.datum_do ?? null,
+  };
+}
+
+async function fetchRelatedResults(
+  supabase: ReturnType<typeof getSupabase>,
+  queryEmbedding: number[],
+  body: SearchRequest,
+  relatedPoliticians: QueryUnderstanding["related_politicians"],
+  excludedIds: Set<number>
+): Promise<Statement[]> {
+  if (relatedPoliticians.length === 0) {
+    return [];
+  }
+
+  const searches = await Promise.all(
+    relatedPoliticians.slice(0, 3).map(async (politician) => {
+      const { data, error } = await supabase.rpc("search_statements", {
+        query_embedding: queryEmbedding,
+        match_count: 5,
+        match_offset: 0,
+        ...buildRelatedFilterParams(body, politician.meno),
+      });
+
+      if (error) {
+        return [];
+      }
+
+      return ((data ?? []) as SearchRow[]).map(toStatement);
+    })
+  );
+
+  const relatedResults: Statement[] = [];
+  const seenIds = new Set(excludedIds);
+
+  for (let index = 0; index < 5; index += 1) {
+    let addedThisRound = false;
+
+    for (const candidates of searches) {
+      const candidate = candidates[index];
+
+      if (!candidate || seenIds.has(candidate.id)) {
+        continue;
+      }
+
+      relatedResults.push(candidate);
+      seenIds.add(candidate.id);
+      addedThisRound = true;
+
+      if (relatedResults.length === 5) {
+        return relatedResults;
+      }
+    }
+
+    if (!addedThisRound) {
+      break;
+    }
+  }
+
+  return relatedResults;
+}
+
 export async function POST(request: NextRequest) {
   const start = performance.now();
   const supabaseConfigError = getSupabaseConfigError();
@@ -138,11 +250,21 @@ export async function POST(request: NextRequest) {
   try {
     let results: Statement[] = [];
     let totalCount = 0;
+    let relatedResults: Statement[] | undefined;
+    let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
     if (body.query) {
+      const [allNames, allParties] = await Promise.all([
+        fetchDistinctValues(supabase, "meno"),
+        fetchDistinctValues(supabase, "strana"),
+      ]);
+      const understanding = await understandQuery(body.query, allNames, allParties);
+      const mergedBody = mergeQueryFilters(body, understanding.filters);
+      const semanticQuery = understanding.semantic_query.trim() || body.query;
+
       let embedding: number[];
       try {
-        embedding = await embedText(body.query);
+        embedding = await embedText(semanticQuery);
       } catch {
         return NextResponse.json(
           { error: "Embedding service unavailable" },
@@ -151,7 +273,7 @@ export async function POST(request: NextRequest) {
       }
 
       const limit = body.query && page === 1 ? pageSize : page * pageSize;
-      const filterParams = buildFilterParams(body);
+      const filterParams = buildFilterParams(mergedBody);
       const { data, error } = await supabase.rpc("search_statements", {
         query_embedding: embedding,
         match_count: limit,
@@ -178,10 +300,21 @@ export async function POST(request: NextRequest) {
       }
 
       results = orderedRows.slice(offset, offset + pageSize);
+      relatedResults = await fetchRelatedResults(
+        supabase,
+        embedding,
+        mergedBody,
+        understanding.related_politicians,
+        new Set(results.map((statement) => statement.id))
+      );
+      queryUnderstanding = {
+        extracted_filters: understanding.filters,
+        related_politicians: understanding.related_politicians,
+      };
 
       const { data: countData, error: countError } = await supabase.rpc(
         "count_statements",
-        buildFilterParams(body)
+        buildFilterParams(mergedBody)
       );
 
       if (countError) {
@@ -234,6 +367,10 @@ export async function POST(request: NextRequest) {
       page,
       page_size: pageSize,
       query_time_ms: Math.round(performance.now() - start),
+      ...(relatedResults && relatedResults.length > 0
+        ? { related_results: relatedResults }
+        : {}),
+      ...(queryUnderstanding ? { query_understanding: queryUnderstanding } : {}),
     };
 
     return NextResponse.json(response);

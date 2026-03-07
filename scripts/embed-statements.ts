@@ -18,6 +18,11 @@ const BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 30_000;
 const INDEX_SQL =
   "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
+const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
+ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+DROP INDEX IF EXISTS idx_vyroky_embedding;
+
+The script will recreate the HNSW index after re-embedding completes.`;
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
 function getEnv(name: string): string {
@@ -81,9 +86,9 @@ async function requestEmbeddings(inputs: string[], apiKey: string): Promise<numb
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "jina-embeddings-v3",
+        model: "jina-embeddings-v5-text-small",
         input: inputs,
-        dimensions: 768,
+        dimensions: 1024,
         task: "text-matching",
       }),
     });
@@ -140,25 +145,38 @@ async function createIndex(supabase: SupabaseClientAny): Promise<void> {
   const { error } = await (supabase.rpc as any)("exec_sql", { query: INDEX_SQL });
   if (error) {
     throw new Error(
-      "Failed to create HNSW index automatically. Run the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.",
+      "Failed to create the 1024d HNSW index automatically. Run the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.",
     );
+  }
+}
+
+async function clearEmbeddings(supabase: SupabaseClientAny): Promise<void> {
+  const { error } = await (supabase.from("vyroky") as any)
+    .update({ embedding: null })
+    .neq("id", 0);
+
+  if (error) {
+    throw new Error(`Failed to clear existing embeddings: ${error.message}`);
   }
 }
 
 async function main(): Promise<void> {
   const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
   const jinaApiKey = getEnv("JINA_API_KEY");
+  console.log(EMBEDDING_MIGRATION_REMINDER);
   const totalRows = (await countRows(supabase, true)) + (await countRows(supabase, false));
-  const initialPending = await countRows(supabase, false);
   const startedAt = Date.now();
 
-  if (initialPending === 0) {
-    console.log("No pending rows found. Attempting to ensure the HNSW index exists.");
+  if (totalRows === 0) {
+    console.log("No statements found. Attempting to ensure the HNSW index exists.");
     await createIndex(supabase);
     return;
   }
 
-  let processed = totalRows - initialPending;
+  await clearEmbeddings(supabase);
+  console.log("Cleared existing embeddings. Re-embedding all rows with jina-embeddings-v5-text-small (1024d)...");
+
+  let processed = 0;
   let warnedAboutGemini = false;
 
   while (true) {
@@ -179,7 +197,7 @@ async function main(): Promise<void> {
 
     if (!warnedAboutGemini && Date.now() - startedAt > 5 * 60_000 && processed < totalRows) {
       console.warn(
-        "Embedding runtime has exceeded 5 minutes. If rate limiting remains too aggressive, switch manually to Gemini embeddings:\nPOST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=<GEMINI_API_KEY>\nBody: { \"model\": \"models/text-embedding-004\", \"content\": { \"parts\": [{ \"text\": \"...\" }] }, \"outputDimensionality\": 768 }",
+        "Embedding runtime has exceeded 5 minutes. If rate limiting remains too aggressive, switch manually to Gemini embeddings:\nPOST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=<GEMINI_API_KEY>\nBody: { \"model\": \"models/text-embedding-004\", \"content\": { \"parts\": [{ \"text\": \"...\" }] }, \"outputDimensionality\": 1024 }",
       );
       warnedAboutGemini = true;
     }

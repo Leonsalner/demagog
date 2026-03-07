@@ -165,8 +165,9 @@ export default function Home() {
                       Vyhľadávajte vo výrokoch overených Demagog.sk
                     </h2>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Zadajte tému, citáciu alebo meno politika. Filtre môžete meniť
-                      samostatne; samotné písanie do vyhľadávania výsledky nespúšťa.
+                      Zadajte tému, citáciu alebo meno politika — systém
+                      automaticky rozpozná filtre. Výsledky spustíte Enterom alebo
+                      tlačidlom Hľadať.
                     </p>
                   </div>
                 ) : null}
@@ -209,6 +210,8 @@ export default function Home() {
                 {!loading && !error && results?.results.length ? (
                   <SearchResults
                     results={results}
+                    relatedResults={results.related_results}
+                    queryUnderstanding={results.query_understanding}
                     query={query}
                     onPageChange={handlePageChange}
                   />

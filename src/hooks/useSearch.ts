@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState, type SetStateAction } from "react";
 import { mockFilters, mockStatements } from "@/lib/mock-data";
 import type {
   FilterState,
@@ -20,6 +20,32 @@ const emptyFilters: FilterState = {
   datum_od: null,
   datum_do: null,
 };
+
+const extractedFilterKeys = [
+  "strana",
+  "oblast",
+  "vyhodnotenie",
+  "meno",
+] as const satisfies Array<keyof FilterState>;
+
+function clearModelOwnedFilters(
+  currentFilters: FilterState,
+  ownedFields: Set<keyof FilterState>,
+): FilterState {
+  if (ownedFields.size === 0) {
+    return currentFilters;
+  }
+
+  return {
+    ...currentFilters,
+    strana: ownedFields.has("strana") ? null : currentFilters.strana,
+    oblast: ownedFields.has("oblast") ? null : currentFilters.oblast,
+    vyhodnotenie: ownedFields.has("vyhodnotenie")
+      ? null
+      : currentFilters.vyhodnotenie,
+    meno: ownedFields.has("meno") ? null : currentFilters.meno,
+  };
+}
 
 function buildRequestBody(
   query: string,
@@ -123,14 +149,15 @@ function runMockSearch(request: SearchRequest): SearchResponse {
 
 export function useSearch() {
   const [results, setResults] = useState<SearchResponse | null>(null);
-  const [filters, setFilters] = useState<FilterState>(emptyFilters);
-  const [query, setQuery] = useState("");
+  const [filters, setFiltersState] = useState<FilterState>(emptyFilters);
+  const [query, setQueryState] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [availableFilters, setAvailableFilters] =
     useState<FiltersResponse | null>(null);
+  const modelSetFields = useRef<Set<keyof FilterState>>(new Set<keyof FilterState>());
 
   const loadFilters = useCallback(async () => {
     if (availableFilters) {
@@ -185,6 +212,40 @@ export function useSearch() {
 
         const data: SearchResponse = await response.json();
         setResults(data);
+        if (data.query_understanding?.extracted_filters) {
+          const extractedFilters = data.query_understanding.extracted_filters;
+
+          setFiltersState((currentFilters) => {
+            let didChange = false;
+            const nextFilters = { ...currentFilters };
+
+            if (currentFilters.strana === null && extractedFilters.strana !== null) {
+              nextFilters.strana = extractedFilters.strana;
+              modelSetFields.current.add("strana");
+              didChange = true;
+            }
+            if (currentFilters.oblast === null && extractedFilters.oblast !== null) {
+              nextFilters.oblast = extractedFilters.oblast;
+              modelSetFields.current.add("oblast");
+              didChange = true;
+            }
+            if (
+              currentFilters.vyhodnotenie === null &&
+              extractedFilters.vyhodnotenie !== null
+            ) {
+              nextFilters.vyhodnotenie = extractedFilters.vyhodnotenie;
+              modelSetFields.current.add("vyhodnotenie");
+              didChange = true;
+            }
+            if (currentFilters.meno === null && extractedFilters.meno !== null) {
+              nextFilters.meno = extractedFilters.meno;
+              modelSetFields.current.add("meno");
+              didChange = true;
+            }
+
+            return didChange ? nextFilters : currentFilters;
+          });
+        }
       } catch {
         setResults(runMockSearch(request));
       } finally {
@@ -193,6 +254,39 @@ export function useSearch() {
     },
     [filters, page, query],
   );
+
+  const setFilters = useCallback((nextState: SetStateAction<FilterState>) => {
+    setFiltersState((currentFilters) => {
+      const nextFilters =
+        typeof nextState === "function" ? nextState(currentFilters) : nextState;
+
+      extractedFilterKeys.forEach((key) => {
+        if (currentFilters[key] !== nextFilters[key]) {
+          modelSetFields.current.delete(key);
+        }
+      });
+
+      return nextFilters;
+    });
+  }, []);
+
+  const setQuery = useCallback((nextQuery: string) => {
+    setQueryState(nextQuery);
+
+    if (nextQuery !== "") {
+      return;
+    }
+
+    setFiltersState((currentFilters) => {
+      if (modelSetFields.current.size === 0) {
+        return currentFilters;
+      }
+
+      const nextFilters = clearModelOwnedFilters(currentFilters, modelSetFields.current);
+      modelSetFields.current = new Set<keyof FilterState>();
+      return nextFilters;
+    });
+  }, []);
 
   return {
     results,

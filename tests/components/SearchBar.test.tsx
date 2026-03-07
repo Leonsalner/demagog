@@ -56,12 +56,12 @@ describe("SearchBar", () => {
     expect(screen.queryByRole("button", { name: /Vymazať dopyt/i })).toBeNull();
   });
 
-  it("disables controls while loading", () => {
+  it("keeps typing enabled while disabling submit during loading", () => {
     render(
       <SearchBar value="test" onChange={() => {}} onSearch={() => {}} loading />,
     );
 
-    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByRole("textbox")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: /Vyhľadáva sa/i })).toBeDisabled();
   });
 });

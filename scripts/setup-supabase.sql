@@ -1,3 +1,8 @@
+-- Manual migration required before re-running scripts/embed-statements.ts:
+-- ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+-- DROP INDEX IF EXISTS idx_vyroky_embedding;
+-- The embed script recreates the HNSW index after the new jina-embeddings-v5-text-small vectors are stored.
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS vyroky (
@@ -9,7 +14,7 @@ CREATE TABLE IF NOT EXISTS vyroky (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(768)
+  embedding vector(1024)
 );
 
 CREATE TABLE IF NOT EXISTS clanky (
@@ -27,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_vyroky_meno ON vyroky(meno);
 CREATE INDEX IF NOT EXISTS idx_vyroky_datum ON vyroky(datum) WHERE datum IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION search_statements(
-  query_embedding vector(768),
+  query_embedding vector(1024),
   match_count int DEFAULT 20,
   match_offset int DEFAULT 0,
   filter_strana text DEFAULT NULL,
@@ -98,7 +103,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION match_statements(
-  query_embedding vector(768),
+  query_embedding vector(1024),
   match_count int DEFAULT 10
 ) RETURNS TABLE (
   id int,
@@ -140,5 +145,5 @@ BEGIN
 END;
 $$;
 
--- Create this only after embed-statements.ts finishes to avoid a slow rebuild during imports.
+-- Create this 1024d HNSW index only after embed-statements.ts finishes to avoid a slow rebuild during imports.
 -- CREATE INDEX idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);

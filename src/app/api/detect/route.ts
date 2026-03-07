@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
   const rows = (data ?? []) as MatchRow[];
 
-  if (rows.length === 0 || rows.every((row) => row.similarity < 0.3)) {
+  if (rows.length === 0 || rows.every((row) => row.similarity < 0.5)) {
     const response: DetectResponse = {
       input_statement: statement,
       matches: [],
