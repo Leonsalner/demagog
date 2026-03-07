@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
 import { rerankResults } from "@/lib/gemini";
-import { supabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
 import type { SearchRequest, SearchResponse, Statement, Verdict } from "@/types";
 
 const VERDICTS: Verdict[] = [
@@ -100,6 +100,13 @@ function buildFilterParams(body: SearchRequest) {
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
+  const supabaseConfigError = getSupabaseConfigError();
+
+  if (supabaseConfigError) {
+    return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
+  }
+
+  const supabase = getSupabase();
 
   let parsedBody: unknown;
   try {

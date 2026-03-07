@@ -1,9 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { supabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
 
 export async function GET() {
   const start = performance.now();
+  const supabaseConfigError = getSupabaseConfigError();
+
+  if (supabaseConfigError) {
+    return NextResponse.json(
+      {
+        status: "error",
+        db_connected: false,
+        total_statements: 0,
+        embedded_statements: 0,
+        error: supabaseConfigError,
+        timestamp: new Date().toISOString(),
+        query_time_ms: Math.round(performance.now() - start),
+      },
+      { status: 503 }
+    );
+  }
+
+  const supabase = getSupabase();
 
   const [totalResult, embeddedResult] = await Promise.all([
     supabase.from("vyroky").select("*", { count: "exact", head: true }),

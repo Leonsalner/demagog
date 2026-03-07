@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { classifyMatches } from "@/lib/gemini";
 import { embedText } from "@/lib/jina";
-import { supabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
 import type { DetectResponse, DetectionMatch, Statement, Verdict } from "@/types";
 
 interface MatchRow {
@@ -46,6 +46,13 @@ function classificationRank(value: DetectionMatch["classification"]): number {
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
+  const supabaseConfigError = getSupabaseConfigError();
+
+  if (supabaseConfigError) {
+    return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
+  }
+
+  const supabase = getSupabase();
 
   let parsedBody: unknown;
   try {
