@@ -66,12 +66,12 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-slate-950">
         <div className="mb-4 flex flex-col gap-2">
           <span className="text-sm font-medium uppercase tracking-[0.18em] text-blue-600">
             Demagog.sk
           </span>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
             Vyhľadávanie a detekcia výrokov
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
@@ -97,7 +97,7 @@ export default function Home() {
 
         <div className="min-h-[360px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 sm:p-6">
           {!hasSearched && !loading && !error && !results ? (
-            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Vyhľadávajte vo výrokoch overených Demagog.sk
               </h2>
@@ -133,7 +133,7 @@ export default function Home() {
           ) : null}
 
           {!loading && !error && hasSearched && results?.results.length === 0 ? (
-            <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Žiadne výsledky pre zadané kritériá.
               </h2>
@@ -155,7 +155,7 @@ export default function Home() {
 
       <section
         id="detekcia-duplikatov"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 sm:p-8"
+        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-slate-950 sm:p-8"
       >
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="max-w-2xl">
@@ -195,7 +195,7 @@ export default function Home() {
             ) : null}
 
             {!detectLoading && !detectResult ? (
-              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     Výsledky detekcie sa zobrazia tu

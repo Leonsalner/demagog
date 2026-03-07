@@ -24,31 +24,33 @@ export default function Navbar() {
 
         <div className="flex items-center gap-2 sm:gap-4">
           <nav className="flex items-center gap-1 sm:gap-3">
-          {navigation.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === item.href
-                : pathname === "/";
+            {navigation.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === item.href
+                  : pathname === "/";
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                }`}
-              >
-                <span className="relative inline-flex">
-                  {item.label}
-                  {isActive ? (
-                    <span className="absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-blue-600 dark:bg-blue-400" />
-                  ) : null}
-                </span>
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                  }`}
+                >
+                  <span className="relative inline-flex">
+                    {item.label}
+                    <span
+                      className={`absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-blue-600 transition-transform duration-200 dark:bg-blue-400 ${
+                        isActive ? "translate-y-0 scale-x-100" : "translate-y-1 scale-x-0"
+                      }`}
+                    />
+                  </span>
+                </Link>
+              );
+            })}
           </nav>
           <ThemeToggle />
         </div>

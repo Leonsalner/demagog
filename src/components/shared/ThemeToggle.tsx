@@ -63,7 +63,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={() => setMode((current) => (current === "dark" ? "light" : "dark"))}
-      className="group relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300/90 bg-white/90 text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
+      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300/90 bg-white/90 text-slate-600 shadow-sm transition hover:border-slate-400 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white"
       aria-label={isDark ? "Prepnúť na svetlý režim" : "Prepnúť na tmavý režim"}
       title={isDark ? "Svetlý režim" : "Tmavý režim"}
     >
