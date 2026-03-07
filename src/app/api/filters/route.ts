@@ -4,6 +4,7 @@ import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
 import type { FiltersResponse, Verdict } from "@/types";
 
 export const revalidate = 3600;
+const FETCH_BATCH_SIZE = 1_000;
 
 const VERDICTS: Verdict[] = [
   "Pravda",
@@ -19,6 +20,39 @@ function uniqueSorted(values: Array<string | null>): string[] {
     .sort((left, right) => left.localeCompare(right, "sk"));
 }
 
+async function fetchColumnValues(
+  supabase: ReturnType<typeof getSupabase>,
+  column: "strana" | "oblast" | "meno" | "datum",
+): Promise<Array<string | null>> {
+  const values: Array<string | null> = [];
+
+  for (let from = 0; ; from += FETCH_BATCH_SIZE) {
+    let query = supabase
+      .from("vyroky")
+      .select(column)
+      .order(column, { ascending: true })
+      .range(from, from + FETCH_BATCH_SIZE - 1);
+
+    if (column === "oblast" || column === "datum") {
+      query = query.not(column, "is", null);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data ?? []) as Array<Record<string, string | null>>;
+    values.push(...rows.map((row) => row[column] ?? null));
+
+    if (rows.length < FETCH_BATCH_SIZE) {
+      break;
+    }
+  }
+
+  return values;
+}
+
 export async function GET() {
   const start = performance.now();
   const supabaseConfigError = getSupabaseConfigError();
@@ -29,35 +63,28 @@ export async function GET() {
 
   const supabase = getSupabase();
 
-  const [stranyResult, oblastiResult, menaResult, datesResult] =
-    await Promise.all([
-      supabase.from("vyroky").select("strana").order("strana"),
-      supabase.from("vyroky").select("oblast").not("oblast", "is", null).order("oblast"),
-      supabase.from("vyroky").select("meno").order("meno"),
-      supabase
-        .from("vyroky")
-        .select("datum")
-        .not("datum", "is", null)
-        .order("datum", { ascending: true }),
-    ]);
+  let strany: Array<string | null>;
+  let oblasti: Array<string | null>;
+  let mena: Array<string | null>;
+  let dates: string[];
 
-  if (
-    stranyResult.error ||
-    oblastiResult.error ||
-    menaResult.error ||
-    datesResult.error
-  ) {
+  try {
+    [strany, oblasti, mena, dates] = await Promise.all([
+      fetchColumnValues(supabase, "strana"),
+      fetchColumnValues(supabase, "oblast"),
+      fetchColumnValues(supabase, "meno"),
+      fetchColumnValues(supabase, "datum").then((values) =>
+        values.filter((value): value is string => typeof value === "string"),
+      ),
+    ]);
+  } catch {
     return NextResponse.json({ error: "Database error" }, { status: 502 });
   }
 
-  const dates = (datesResult.data ?? [])
-    .map((row) => row.datum)
-    .filter((value): value is string => typeof value === "string");
-
   const response: FiltersResponse & { query_time_ms: number } = {
-    strany: uniqueSorted((stranyResult.data ?? []).map((row) => row.strana)),
-    oblasti: uniqueSorted((oblastiResult.data ?? []).map((row) => row.oblast)),
-    mena: uniqueSorted((menaResult.data ?? []).map((row) => row.meno)),
+    strany: uniqueSorted(strany),
+    oblasti: uniqueSorted(oblasti),
+    mena: uniqueSorted(mena),
     verdicts: VERDICTS,
     date_range: {
       min: dates[0] ?? null,

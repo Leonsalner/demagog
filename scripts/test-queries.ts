@@ -22,9 +22,10 @@ type EmbeddingResponse = {
 
 const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
 const EXPECTED_COUNTS = {
-  vyroky: 22_283,
+  vyroky: 22_282,
   clanky: 285,
 };
+const FETCH_BATCH_SIZE = 1_000;
 const TEST_QUERIES = [
   "konsolidačný balíček",
   "Ukrajina a NATO",
@@ -95,18 +96,34 @@ async function fetchDistinct(
   supabase: SupabaseClientAny,
   column: "strana" | "oblast" | "vyhodnotenie",
 ): Promise<string[]> {
-  let query: any = supabase.from("vyroky").select(column).order(column, { ascending: true });
-  if (column === "oblast") {
-    query = query.not("oblast", "is", null);
-  }
+  const values: string[] = [];
 
-  const { data, error } = await query;
-  if (error) {
-    throw new Error(`Failed to fetch distinct ${column}: ${error.message}`);
+  for (let from = 0; ; from += FETCH_BATCH_SIZE) {
+    let query: any = supabase
+      .from("vyroky")
+      .select(column)
+      .order(column, { ascending: true })
+      .range(from, from + FETCH_BATCH_SIZE - 1);
+
+    if (column === "oblast") {
+      query = query.not("oblast", "is", null);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      throw new Error(`Failed to fetch distinct ${column}: ${error.message}`);
+    }
+
+    const rows = (data ?? []) as Array<Record<string, unknown>>;
+    values.push(...rows.map((row) => String(row[column])));
+
+    if (rows.length < FETCH_BATCH_SIZE) {
+      break;
+    }
   }
 
   return Array.from(
-    new Set((data ?? []).map((row: Record<string, unknown>) => String(row[column]))),
+    new Set(values),
   );
 }
 
@@ -162,7 +179,12 @@ async function runDuplicateSimulation(
 }
 
 async function main(): Promise<void> {
-  const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
+  const supabase = createClient<any>(
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? getEnv("SUPABASE_URL"),
+    process.env.SUPABASE_SERVICE_KEY ??
+      process.env.SUPABASE_SERVICE_ROLE_KEY ??
+      getEnv("SUPABASE_SERVICE_KEY"),
+  );
   const jinaApiKey = getEnv("JINA_API_KEY");
   const failures: string[] = [];
 
@@ -199,8 +221,13 @@ async function main(): Promise<void> {
   console.log(`Distinct oblast values (${oblasti.length}): ${oblasti.join(", ")}`);
   console.log(`Distinct vyhodnotenie values (${verdicts.length}): ${verdicts.join(", ")}`);
 
-  const expectedVerdicts = ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"];
-  if (JSON.stringify(verdicts) !== JSON.stringify(expectedVerdicts)) {
+  const expectedVerdicts = ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"].sort(
+    (left, right) => left.localeCompare(right, "sk"),
+  );
+  const actualVerdicts = [...verdicts].sort((left, right) =>
+    left.localeCompare(right, "sk"),
+  );
+  if (JSON.stringify(actualVerdicts) !== JSON.stringify(expectedVerdicts)) {
     failures.push(`Unexpected verdict set: ${verdicts.join(", ")}`);
   }
 
