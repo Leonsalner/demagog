@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { supabase } from "@/lib/supabase";
+import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
 import type { FiltersResponse, Verdict } from "@/types";
 
 export const revalidate = 3600;
@@ -21,6 +21,13 @@ function uniqueSorted(values: Array<string | null>): string[] {
 
 export async function GET() {
   const start = performance.now();
+  const supabaseConfigError = getSupabaseConfigError();
+
+  if (supabaseConfigError) {
+    return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
+  }
+
+  const supabase = getSupabase();
 
   const [stranyResult, oblastiResult, menaResult, datesResult] =
     await Promise.all([

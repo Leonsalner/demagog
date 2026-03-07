@@ -90,11 +90,53 @@ type Database = {
   };
 };
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-  throw new Error("Missing Supabase environment variables");
+type SupabaseClient = ReturnType<typeof createClient<Database>>;
+
+const SUPABASE_URL_ENV_NAMES = ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const;
+const SUPABASE_SERVICE_KEY_ENV_NAMES = [
+  "SUPABASE_SERVICE_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const;
+
+let supabaseClient: SupabaseClient | null = null;
+
+function readFirstEnv(names: readonly string[]): string | null {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
-export const supabase = createClient<Database>(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+export function getSupabaseConfigError(): string | null {
+  const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
+  const serviceKey = readFirstEnv(SUPABASE_SERVICE_KEY_ENV_NAMES);
+
+  if (url && serviceKey) {
+    return null;
+  }
+
+  return `Missing Supabase environment variables. Set one of ${SUPABASE_URL_ENV_NAMES.join(
+    " or ",
+  )} and one of ${SUPABASE_SERVICE_KEY_ENV_NAMES.join(" or ")}.`;
+}
+
+export function getSupabase(): SupabaseClient {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
+  const serviceKey = readFirstEnv(SUPABASE_SERVICE_KEY_ENV_NAMES);
+
+  if (!url || !serviceKey) {
+    throw new Error(getSupabaseConfigError() ?? "Missing Supabase environment variables");
+  }
+
+  supabaseClient = createClient<Database>(url, serviceKey);
+  return supabaseClient;
+}
