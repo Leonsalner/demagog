@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
 import type { SearchResponse, Statement } from "@/types";
@@ -63,6 +63,10 @@ export default function SearchResults({
 }: SearchResultsProps) {
   const [isRelatedExpanded, setIsRelatedExpanded] = useState(false);
 
+  useEffect(() => {
+    setIsRelatedExpanded(false);
+  }, [results]);
+
   if (!results) {
     return null;
   }
@@ -86,6 +90,12 @@ export default function SearchResults({
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Spracované za {results.query_time_ms} ms
           </p>
+          {results.has_more ? (
+            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+              Zobrazené sú len najrelevantnejšie výsledky. Skúste spresniť dopyt
+              pre ďalšie zhody.
+            </p>
+          ) : null}
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Strana {results.page} z {totalPages}

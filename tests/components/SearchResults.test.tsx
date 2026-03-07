@@ -91,4 +91,52 @@ describe("SearchResults", () => {
     expect(screen.getByRole("button", { name: /Súvisiace výroky od Peter Pellegrini/i }))
       .toHaveAttribute("aria-expanded", "true");
   });
+
+  it("collapses related results when a new results object arrives", () => {
+    const { rerender } = render(
+      <SearchResults
+        results={buildResults()}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Súvisiace výroky od Peter Pellegrini/i }),
+    );
+    expect(screen.getByText("Súvisiaci výsledok")).toBeInTheDocument();
+
+    rerender(
+      <SearchResults
+        results={buildResults({ page: 2 })}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Súvisiace výroky od Peter Pellegrini/i }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Súvisiaci výsledok")).not.toBeInTheDocument();
+  });
+
+  it("shows a notice when semantic results are capped", () => {
+    render(
+      <SearchResults
+        results={buildResults({ has_more: true, total_count: 50 })}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Zobrazené sú len najrelevantnejšie výsledky\./i),
+    ).toBeInTheDocument();
+  });
 });

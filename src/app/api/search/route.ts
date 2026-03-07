@@ -118,6 +118,70 @@ function mergeQueryFilters(
   };
 }
 
+function normalizeValue(value: string): string {
+  return value.trim().toLocaleLowerCase();
+}
+
+function resolveAvailableValue(
+  value: string | null,
+  availableValues: string[]
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalizedValue = normalizeValue(value);
+  const exactMatch = availableValues.find(
+    (candidate) => normalizeValue(candidate) === normalizedValue
+  );
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const fuzzyMatch = availableValues.find((candidate) => {
+    const normalizedCandidate = normalizeValue(candidate);
+    return (
+      normalizedCandidate.startsWith(normalizedValue) ||
+      normalizedCandidate.includes(normalizedValue) ||
+      normalizedValue.includes(normalizedCandidate)
+    );
+  });
+
+  return fuzzyMatch ?? null;
+}
+
+function validateExtractedFilters(
+  filters: QueryUnderstanding["filters"],
+  availableNames: string[],
+  availableParties: string[]
+): QueryUnderstanding["filters"] {
+  return {
+    meno: resolveAvailableValue(filters.meno, availableNames),
+    strana: resolveAvailableValue(filters.strana, availableParties),
+    vyhodnotenie: filters.vyhodnotenie,
+    oblast: null,
+  };
+}
+
+function validateRelatedPoliticians(
+  relatedPoliticians: QueryUnderstanding["related_politicians"],
+  availableNames: string[]
+): QueryUnderstanding["related_politicians"] {
+  const seenNames = new Set<string>();
+
+  return relatedPoliticians.flatMap((politician) => {
+    const meno = resolveAvailableValue(politician.meno, availableNames);
+
+    if (!meno || seenNames.has(meno)) {
+      return [];
+    }
+
+    seenNames.add(meno);
+    return [{ ...politician, meno }];
+  });
+}
+
 async function fetchDistinctValues(
   supabase: ReturnType<typeof getSupabase>,
   column: "meno" | "strana"
@@ -183,26 +247,33 @@ async function fetchRelatedResults(
   const relatedResults: Statement[] = [];
   const seenIds = new Set(excludedIds);
 
-  for (let index = 0; index < 5; index += 1) {
-    let addedThisRound = false;
+  for (const candidates of searches) {
+    const candidate = candidates[0];
 
-    for (const candidates of searches) {
-      const candidate = candidates[index];
-
-      if (!candidate || seenIds.has(candidate.id)) {
-        continue;
-      }
-
-      relatedResults.push(candidate);
-      seenIds.add(candidate.id);
-      addedThisRound = true;
-
-      if (relatedResults.length === 5) {
-        return relatedResults;
-      }
+    if (!candidate || seenIds.has(candidate.id)) {
+      continue;
     }
 
-    if (!addedThisRound) {
+    relatedResults.push(candidate);
+    seenIds.add(candidate.id);
+
+    if (relatedResults.length === 5) {
+      return relatedResults;
+    }
+  }
+
+  const remainingCandidates = searches
+    .flatMap((candidates) => candidates.slice(1))
+    .filter((candidate) => !seenIds.has(candidate.id))
+    .sort(
+      (left, right) => (right.similarity ?? 0) - (left.similarity ?? 0)
+    );
+
+  for (const candidate of remainingCandidates) {
+    relatedResults.push(candidate);
+    seenIds.add(candidate.id);
+
+    if (relatedResults.length === 5) {
       break;
     }
   }
@@ -231,11 +302,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
+  const rawVerdict = parsedBody.vyhodnotenie;
+  const coercedVerdict = coerceOptionalVerdict(rawVerdict);
+  if (
+    typeof rawVerdict === "string" &&
+    rawVerdict.trim().length > 0 &&
+    coercedVerdict === undefined
+  ) {
+    return NextResponse.json(
+      { error: "Invalid verdict value" },
+      { status: 400 }
+    );
+  }
+
   const body: SearchRequest = {
     query: coerceOptionalString(parsedBody.query),
     strana: coerceOptionalString(parsedBody.strana),
     oblast: coerceOptionalString(parsedBody.oblast),
-    vyhodnotenie: coerceOptionalVerdict(parsedBody.vyhodnotenie),
+    vyhodnotenie: coercedVerdict,
     meno: coerceOptionalString(parsedBody.meno),
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
@@ -250,6 +334,7 @@ export async function POST(request: NextRequest) {
   try {
     let results: Statement[] = [];
     let totalCount = 0;
+    let hasMore: boolean | undefined;
     let relatedResults: Statement[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
@@ -259,7 +344,16 @@ export async function POST(request: NextRequest) {
         fetchDistinctValues(supabase, "strana"),
       ]);
       const understanding = await understandQuery(body.query, allNames, allParties);
-      const mergedBody = mergeQueryFilters(body, understanding.filters);
+      const validatedFilters = validateExtractedFilters(
+        understanding.filters,
+        allNames,
+        allParties
+      );
+      const validatedRelatedPoliticians = validateRelatedPoliticians(
+        understanding.related_politicians,
+        allNames
+      );
+      const mergedBody = mergeQueryFilters(body, validatedFilters);
       const semanticQuery = understanding.semantic_query.trim() || body.query;
 
       let embedding: number[];
@@ -272,7 +366,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const limit = body.query && page === 1 ? pageSize : page * pageSize;
+      const limit = Math.min(page * pageSize, 50);
       const filterParams = buildFilterParams(mergedBody);
       const { data, error } = await supabase.rpc("search_statements", {
         query_embedding: embedding,
@@ -300,28 +394,19 @@ export async function POST(request: NextRequest) {
       }
 
       results = orderedRows.slice(offset, offset + pageSize);
+      totalCount = semanticRows.length;
+      hasMore = semanticRows.length === limit;
       relatedResults = await fetchRelatedResults(
         supabase,
         embedding,
         mergedBody,
-        understanding.related_politicians,
+        validatedRelatedPoliticians,
         new Set(results.map((statement) => statement.id))
       );
       queryUnderstanding = {
-        extracted_filters: understanding.filters,
-        related_politicians: understanding.related_politicians,
+        extracted_filters: validatedFilters,
+        related_politicians: validatedRelatedPoliticians,
       };
-
-      const { data: countData, error: countError } = await supabase.rpc(
-        "count_statements",
-        buildFilterParams(mergedBody)
-      );
-
-      if (countError) {
-        return NextResponse.json({ error: "Database error" }, { status: 502 });
-      }
-
-      totalCount = typeof countData === "number" ? countData : 0;
     } else {
       let query = supabase
         .from("vyroky")
@@ -367,6 +452,7 @@ export async function POST(request: NextRequest) {
       page,
       page_size: pageSize,
       query_time_ms: Math.round(performance.now() - start),
+      ...(typeof hasMore === "boolean" ? { has_more: hasMore } : {}),
       ...(relatedResults && relatedResults.length > 0
         ? { related_results: relatedResults }
         : {}),

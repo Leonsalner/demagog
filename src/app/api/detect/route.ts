@@ -44,6 +44,34 @@ function classificationRank(value: DetectionMatch["classification"]): number {
   return 2;
 }
 
+function buildFallbackClassification(row: MatchRow): {
+  id: number;
+  classification: DetectionMatch["classification"];
+  explanation: string;
+} {
+  if (row.similarity >= 0.85) {
+    return {
+      id: row.id,
+      classification: "DUPLICATE",
+      explanation: "Klasifikácia nedostupná - vysoká zhoda.",
+    };
+  }
+
+  if (row.similarity >= 0.5) {
+    return {
+      id: row.id,
+      classification: "RELATED",
+      explanation: "Klasifikácia nedostupná.",
+    };
+  }
+
+  return {
+    id: row.id,
+    classification: "UNRELATED",
+    explanation: "Klasifikácia nedostupná.",
+  };
+}
+
 export async function POST(request: NextRequest) {
   const start = performance.now();
   const supabaseConfigError = getSupabaseConfigError();
@@ -93,9 +121,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const retrievalCount = Math.max(topK, 30);
   const { data, error } = await supabase.rpc("match_statements", {
     query_embedding: embedding,
-    match_count: topK,
+    match_count: retrievalCount,
   });
 
   if (error) {
@@ -117,11 +146,7 @@ export async function POST(request: NextRequest) {
 
   let classifications:
     | Awaited<ReturnType<typeof classifyMatches>>
-    | Array<{
-        id: number;
-        classification: "RELATED";
-        explanation: string;
-      }>;
+    | Array<ReturnType<typeof buildFallbackClassification>>;
 
   try {
     classifications = await classifyMatches(
@@ -133,11 +158,7 @@ export async function POST(request: NextRequest) {
       }))
     );
   } catch {
-    classifications = rows.map((row) => ({
-      id: row.id,
-      classification: "RELATED" as const,
-      explanation: "Klasifikácia nedostupná",
-    }));
+    classifications = rows.map(buildFallbackClassification);
   }
 
   const classificationsById = new Map(
@@ -165,7 +186,8 @@ export async function POST(request: NextRequest) {
       }
 
       return right.similarity - left.similarity;
-    });
+    })
+    .slice(0, topK);
 
   const overallStatus: DetectResponse["overall_status"] = matches.some(
     (match) => match.classification === "DUPLICATE"
