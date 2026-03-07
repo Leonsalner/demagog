@@ -28,6 +28,9 @@ const extractedFilterKeys = [
   "meno",
 ] as const satisfies Array<keyof FilterState>;
 
+type ExtractedFilters =
+  NonNullable<SearchResponse["query_understanding"]>["extracted_filters"];
+
 function clearModelOwnedFilters(
   currentFilters: FilterState,
   ownedFields: Set<keyof FilterState>,
@@ -44,6 +47,44 @@ function clearModelOwnedFilters(
       ? null
       : currentFilters.vyhodnotenie,
     meno: ownedFields.has("meno") ? null : currentFilters.meno,
+  };
+}
+
+function applyExtractedFilters(
+  currentFilters: FilterState,
+  extractedFilters: ExtractedFilters,
+  ownedFields: Set<keyof FilterState>,
+): {
+  filters: FilterState;
+  ownedFields: Set<keyof FilterState>;
+} {
+  const clearedFilters = clearModelOwnedFilters(currentFilters, ownedFields);
+  const nextFilters = { ...clearedFilters };
+  const nextOwnedFields = new Set<keyof FilterState>();
+
+  if (clearedFilters.strana === null && extractedFilters.strana !== null) {
+    nextFilters.strana = extractedFilters.strana;
+    nextOwnedFields.add("strana");
+  }
+  if (clearedFilters.oblast === null && extractedFilters.oblast !== null) {
+    nextFilters.oblast = extractedFilters.oblast;
+    nextOwnedFields.add("oblast");
+  }
+  if (
+    clearedFilters.vyhodnotenie === null &&
+    extractedFilters.vyhodnotenie !== null
+  ) {
+    nextFilters.vyhodnotenie = extractedFilters.vyhodnotenie;
+    nextOwnedFields.add("vyhodnotenie");
+  }
+  if (clearedFilters.meno === null && extractedFilters.meno !== null) {
+    nextFilters.meno = extractedFilters.meno;
+    nextOwnedFields.add("meno");
+  }
+
+  return {
+    filters: nextFilters,
+    ownedFields: nextOwnedFields,
   };
 }
 
@@ -190,7 +231,8 @@ export function useSearch() {
       setError(null);
       setHasSearched(true);
 
-      const request = buildRequestBody(query, filters, nextPage);
+      const cleanedFilters = clearModelOwnedFilters(filters, modelSetFields.current);
+      const request = buildRequestBody(query, cleanedFilters, nextPage);
 
       try {
         if (USE_MOCK) {
@@ -216,38 +258,22 @@ export function useSearch() {
           const extractedFilters = data.query_understanding.extracted_filters;
 
           setFiltersState((currentFilters) => {
-            let didChange = false;
-            const nextFilters = { ...currentFilters };
-
-            if (currentFilters.strana === null && extractedFilters.strana !== null) {
-              nextFilters.strana = extractedFilters.strana;
-              modelSetFields.current.add("strana");
-              didChange = true;
-            }
-            if (currentFilters.oblast === null && extractedFilters.oblast !== null) {
-              nextFilters.oblast = extractedFilters.oblast;
-              modelSetFields.current.add("oblast");
-              didChange = true;
-            }
-            if (
-              currentFilters.vyhodnotenie === null &&
-              extractedFilters.vyhodnotenie !== null
-            ) {
-              nextFilters.vyhodnotenie = extractedFilters.vyhodnotenie;
-              modelSetFields.current.add("vyhodnotenie");
-              didChange = true;
-            }
-            if (currentFilters.meno === null && extractedFilters.meno !== null) {
-              nextFilters.meno = extractedFilters.meno;
-              modelSetFields.current.add("meno");
-              didChange = true;
-            }
-
-            return didChange ? nextFilters : currentFilters;
+            const nextState = applyExtractedFilters(
+              currentFilters,
+              extractedFilters,
+              modelSetFields.current,
+            );
+            modelSetFields.current = nextState.ownedFields;
+            return nextState.filters;
           });
         }
-      } catch {
-        setResults(runMockSearch(request));
+      } catch (caughtError) {
+        setResults(null);
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Nepodarilo sa načítať výsledky vyhľadávania.",
+        );
       } finally {
         setLoading(false);
       }

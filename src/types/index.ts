@@ -48,6 +48,7 @@ export interface SearchResponse {
   page: number;
   page_size: number;
   query_time_ms: number;
+  has_more?: boolean;
   related_results?: Statement[];
   query_understanding?: {
     extracted_filters: QueryUnderstanding["filters"];

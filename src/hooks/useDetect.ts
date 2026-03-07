@@ -142,13 +142,8 @@ export function useDetect() {
       const data: DetectResponse = await response.json();
       setResult(data);
     } catch (error) {
-      if (!USE_MOCK) {
-        await wait(1200);
-        setResult(createMockResponse(statement, 10));
-        setError("API nebolo dostupné, zobrazujem ukážkové výsledky.");
-      } else {
-        setError(error instanceof Error ? error.message : "Neznáma chyba.");
-      }
+      setResult(null);
+      setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
       setLoading(false);
     }
