@@ -61,9 +61,9 @@ async function fetchEmbedding(text: string, apiKey: string): Promise<number[]> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "jina-embeddings-v3",
+      model: "jina-embeddings-v5-text-small",
       input: [text],
-      dimensions: 768,
+      dimensions: 1024,
       task: "text-matching",
     }),
   });

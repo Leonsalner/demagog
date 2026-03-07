@@ -1,7 +1,13 @@
+import type { QueryUnderstanding, Verdict } from "@/types";
+
 type Classification = "DUPLICATE" | "RELATED" | "UNRELATED";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent";
+const GEMINI_RERANK_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
+const GEMINI_CLASSIFY_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent";
+const GEMINI_UNDERSTAND_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent";
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -13,16 +19,16 @@ interface GeminiResponse {
   }>;
 }
 
-function getGeminiUrl(): string {
+function getGeminiUrl(modelUrl: string): string {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Missing Gemini API key");
   }
 
-  return `${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`;
+  return `${modelUrl}?key=${process.env.GEMINI_API_KEY}`;
 }
 
-async function generateJsonText(prompt: string): Promise<string> {
-  const response = await fetch(getGeminiUrl(), {
+async function generateJsonText(prompt: string, modelUrl: string): Promise<string> {
+  const response = await fetch(getGeminiUrl(modelUrl), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -71,6 +77,41 @@ function isClassification(value: unknown): value is Classification {
   return (
     value === "DUPLICATE" || value === "RELATED" || value === "UNRELATED"
   );
+}
+
+function isVerdict(value: unknown): value is Verdict {
+  return (
+    value === "Pravda" ||
+    value === "Nepravda" ||
+    value === "Zavádzajúce" ||
+    value === "Neoveriteľné"
+  );
+}
+
+function fallbackQueryUnderstanding(query: string): QueryUnderstanding {
+  return {
+    semantic_query: query,
+    filters: {
+      meno: null,
+      strana: null,
+      vyhodnotenie: null,
+      oblast: null,
+    },
+    related_politicians: [],
+  };
+}
+
+function toOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export async function classifyMatches(
@@ -123,7 +164,7 @@ Odpovedz VÝHRADNE ako JSON pole. Žiadny iný text:
 
         return { id, classification, explanation };
       });
-  }, () => generateJsonText(prompt));
+  }, () => generateJsonText(prompt, GEMINI_CLASSIFY_URL));
 
   const byId = new Map(parsed.map((item) => [item.id, item]));
 
@@ -165,7 +206,7 @@ Odpovedz VÝHRADNE ako JSON pole ID čísiel zoradených od najrelevantnejšieho
       }
 
       return value as number[];
-    }, () => generateJsonText(prompt));
+    }, () => generateJsonText(prompt, GEMINI_RERANK_URL));
 
     const originalIds = results.map((result) => result.id);
     const validIds = ids.filter((id) => originalIds.includes(id));
@@ -178,5 +219,98 @@ Odpovedz VÝHRADNE ako JSON pole ID čísiel zoradených od najrelevantnejšieho
     return [...validIds, ...missingIds];
   } catch {
     return results.map((result) => result.id);
+  }
+}
+
+export async function understandQuery(
+  query: string,
+  availableNames: string[],
+  availableParties: string[]
+): Promise<QueryUnderstanding> {
+  const prompt = `Si asistent systému Demagog.sk na overovanie faktov.
+Analyzuj vyhľadávací dopyt slovenského používateľa a vráť štruktúrované pochopenie dopytu.
+
+DOPYT: "${query}"
+
+DOSTUPNÉ MENÁ POLITIKOV (presné hodnoty z DB): ${availableNames.join(", ")}
+DOSTUPNÉ STRANY (presné hodnoty z DB): ${availableParties.join(", ")}
+DOSTUPNÉ HODNOTENIA: Pravda, Nepravda, Zavádzajúce, Neoveriteľné
+
+Urč:
+1. semantic_query: vyčistená verzia dopytu pre sémantické vyhľadávanie (odstráň mená, strany, hodnotenia — ponechaj len vecný obsah tvrdenia)
+2. filters.meno: ak dopyt obsahuje meno politika, vyber PRESNÉ meno z dostupných mien, inak null
+3. filters.strana: ak dopyt obsahuje názov strany, vyber PRESNÉ meno strany z dostupných strán, inak null
+4. filters.vyhodnotenie: ak dopyt obsahuje hodnotenie (napr. "nepravda", "zavádzajúce"), vráť presnú hodnotu, inak null
+5. filters.oblast: ak dopyt jasne odkazuje na tematickú oblasť, vráť ju, inak null
+6. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
+
+Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
+{
+  "semantic_query": "...",
+  "filters": {
+    "meno": "..." | null,
+    "strana": "..." | null,
+    "vyhodnotenie": "..." | null,
+    "oblast": "..." | null
+  },
+  "related_politicians": [
+    { "meno": "...", "strana": "...", "topic_relevance": "..." }
+  ]
+}`;
+
+  try {
+    return await parseJsonWithRetry((value) => {
+      if (!isRecord(value) || !isRecord(value.filters)) {
+        throw new Error("Gemini query understanding response is invalid");
+      }
+
+      const semanticQuery = toOptionalString(value.semantic_query);
+      const meno = toOptionalString(value.filters.meno);
+      const strana = toOptionalString(value.filters.strana);
+      const oblast = toOptionalString(value.filters.oblast);
+      const verdict = value.filters.vyhodnotenie;
+
+      if (!semanticQuery) {
+        throw new Error("Gemini query understanding semantic_query is invalid");
+      }
+
+      const relatedPoliticiansRaw = value.related_politicians;
+      if (!Array.isArray(relatedPoliticiansRaw)) {
+        throw new Error("Gemini related politicians response is invalid");
+      }
+
+      const related_politicians = relatedPoliticiansRaw.map((item) => {
+        if (!isRecord(item)) {
+          throw new Error("Gemini related politician item is invalid");
+        }
+
+        const menoValue = toOptionalString(item.meno);
+        const stranaValue = toOptionalString(item.strana);
+        const topicRelevance = toOptionalString(item.topic_relevance);
+
+        if (!menoValue || !stranaValue || !topicRelevance) {
+          throw new Error("Gemini related politician shape is invalid");
+        }
+
+        return {
+          meno: menoValue,
+          strana: stranaValue,
+          topic_relevance: topicRelevance,
+        };
+      });
+
+      return {
+        semantic_query: semanticQuery,
+        filters: {
+          meno,
+          strana,
+          vyhodnotenie: isVerdict(verdict) ? verdict : null,
+          oblast,
+        },
+        related_politicians,
+      };
+    }, () => generateJsonText(prompt, GEMINI_UNDERSTAND_URL));
+  } catch {
+    return fallbackQueryUnderstanding(query);
   }
 }

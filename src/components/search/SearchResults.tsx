@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
+
 import StatementCard from "@/components/shared/StatementCard";
-import type { SearchResponse } from "@/types";
+import type { SearchResponse, Statement } from "@/types";
 
 interface SearchResultsProps {
   results: SearchResponse | null;
+  relatedResults?: Statement[];
+  queryUnderstanding?: SearchResponse["query_understanding"];
   query: string;
   onPageChange: (page: number) => void;
 }
@@ -52,15 +56,25 @@ function buildPagination(currentPage: number, totalPages: number) {
 
 export default function SearchResults({
   results,
+  relatedResults,
+  queryUnderstanding,
   query,
   onPageChange,
 }: SearchResultsProps) {
+  const [isRelatedExpanded, setIsRelatedExpanded] = useState(false);
+
   if (!results) {
     return null;
   }
 
   const totalPages = Math.max(1, Math.ceil(results.total_count / results.page_size));
   const pagination = buildPagination(results.page, totalPages);
+  const relatedPoliticianNames =
+    queryUnderstanding?.related_politicians.map((politician) => politician.meno) ?? [];
+  const relatedHeading =
+    relatedPoliticianNames.length > 0
+      ? `Súvisiace výroky od ${relatedPoliticianNames.join(" a ")}`
+      : "Súvisiace výroky";
 
   return (
     <div className="space-y-6">
@@ -135,6 +149,49 @@ export default function SearchResults({
             »
           </button>
         </nav>
+      ) : null}
+
+      {relatedResults && relatedResults.length > 0 ? (
+        <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
+          <button
+            type="button"
+            onClick={() => setIsRelatedExpanded((expanded) => !expanded)}
+            aria-expanded={isRelatedExpanded}
+            aria-controls="related-results-panel"
+            className="mt-6 flex w-full items-center justify-between py-3 text-sm font-medium text-slate-500 dark:text-slate-400"
+          >
+            <span>{relatedHeading}</span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isRelatedExpanded ? "rotate-180" : ""
+              }`}
+            >
+              <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {isRelatedExpanded ? (
+            <div id="related-results-panel" className="mt-3 grid gap-3">
+              {relatedResults.map((statement) => (
+                <div
+                  key={statement.id}
+                  className="rounded-2xl ring-1 ring-slate-200 opacity-85 dark:ring-slate-700/50"
+                >
+                  <StatementCard
+                    statement={statement}
+                    highlight_query={query || undefined}
+                    show_similarity={Boolean(query)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </div>
   );

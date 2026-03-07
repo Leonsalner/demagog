@@ -48,6 +48,26 @@ export interface SearchResponse {
   page: number;
   page_size: number;
   query_time_ms: number;
+  related_results?: Statement[];
+  query_understanding?: {
+    extracted_filters: QueryUnderstanding["filters"];
+    related_politicians: QueryUnderstanding["related_politicians"];
+  };
+}
+
+export interface QueryUnderstanding {
+  semantic_query: string;
+  filters: {
+    meno: string | null;
+    strana: string | null;
+    vyhodnotenie: Verdict | null;
+    oblast: string | null;
+  };
+  related_politicians: Array<{
+    meno: string;
+    strana: string;
+    topic_relevance: string;
+  }>;
 }
 
 export interface DetectionMatch {

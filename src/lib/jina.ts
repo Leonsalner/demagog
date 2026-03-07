@@ -19,9 +19,9 @@ export async function embedText(text: string): Promise<number[]> {
       Authorization: `Bearer ${process.env.JINA_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "jina-embeddings-v3",
+      model: "jina-embeddings-v5-text-small",
       task: "text-matching",
-      dimensions: 768,
+      dimensions: 1024,
       input: [text],
     }),
     signal: createTimeoutSignal(JINA_TIMEOUT_MS),
