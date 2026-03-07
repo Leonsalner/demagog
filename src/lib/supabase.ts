@@ -28,6 +28,10 @@ type SearchStatementRow = Omit<StatementRow, "embedding"> & {
 
 type MatchStatementRow = SearchStatementRow;
 
+type DistinctValueRow = {
+  value: string | null;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -46,6 +50,12 @@ type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      list_distinct_values: {
+        Args: {
+          col: "meno" | "strana";
+        };
+        Returns: DistinctValueRow[];
+      };
       search_statements: {
         Args: {
           query_embedding: number[];

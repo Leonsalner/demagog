@@ -18,6 +18,34 @@ const VERDICTS: Verdict[] = [
   "Neoveriteľné",
 ];
 
+const DISTINCT_VALUES_TTL_MS = 10 * 60 * 1000;
+const SEARCH_TIMINGS_FLAG = "DEBUG_SEARCH_TIMINGS";
+const SEARCH_RERANK_FLAG = "ENABLE_SEARCH_RERANK";
+
+type DistinctQueryValues = {
+  meno: string[];
+  strana: string[];
+};
+
+type SearchStageTimings = Partial<
+  Record<
+    | "distinct_values_ms"
+    | "understand_query_ms"
+    | "embed_text_ms"
+    | "search_statements_ms"
+    | "rerank_ms"
+    | "related_results_ms",
+    number
+  >
+>;
+
+let distinctValuesCache:
+  | {
+      fetchedAt: number;
+      values: DistinctQueryValues;
+    }
+  | null = null;
+
 interface SearchRow {
   id: number;
   vyrok: string;
@@ -122,6 +150,225 @@ function normalizeValue(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+function normalizeForMatching(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+function tokenizeForMatching(value: string): string[] {
+  const normalized = normalizeForMatching(value);
+  return normalized.length > 0 ? normalized.split(" ") : [];
+}
+
+function readBooleanEnv(name: string): boolean {
+  const value = process.env[name]?.trim().toLocaleLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+function shouldLogSearchTimings(): boolean {
+  return process.env.NODE_ENV === "development" || readBooleanEnv(SEARCH_TIMINGS_FLAG);
+}
+
+function recordStageTiming(
+  timings: SearchStageTimings,
+  key: keyof SearchStageTimings,
+  startedAt: number
+) {
+  timings[key] = Math.round(performance.now() - startedAt);
+}
+
+function logSearchTimings(
+  query: string,
+  page: number,
+  pageSize: number,
+  timings: SearchStageTimings
+) {
+  if (!shouldLogSearchTimings()) {
+    return;
+  }
+
+  console.info("[search] timings", {
+    query,
+    page,
+    page_size: pageSize,
+    ...timings,
+  });
+}
+
+function queryHasSentenceShape(query: string): boolean {
+  return /[?!,:;]/u.test(query) || query.trim().split(/\s+/u).length > 6;
+}
+
+function hasStructuredSearchFilters(body: SearchRequest): boolean {
+  return Boolean(
+    body.meno ||
+      body.strana ||
+      body.vyhodnotenie ||
+      body.oblast ||
+      body.datum_od ||
+      body.datum_do
+  );
+}
+
+function containsTokenSequence(queryTokens: string[], candidateTokens: string[]): boolean {
+  if (candidateTokens.length === 0 || candidateTokens.length > queryTokens.length) {
+    return false;
+  }
+
+  for (let start = 0; start <= queryTokens.length - candidateTokens.length; start += 1) {
+    let matches = true;
+
+    for (let offset = 0; offset < candidateTokens.length; offset += 1) {
+      if (queryTokens[start + offset] !== candidateTokens[offset]) {
+        matches = false;
+        break;
+      }
+    }
+
+    if (matches) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findExactCandidateInQuery(query: string, candidates: string[]): string | null {
+  const queryTokens = tokenizeForMatching(query);
+  const sortedCandidates = [...candidates].sort((left, right) => right.length - left.length);
+
+  for (const candidate of sortedCandidates) {
+    const candidateTokens = tokenizeForMatching(candidate);
+
+    if (containsTokenSequence(queryTokens, candidateTokens)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function stripMatchedTerms(query: string, values: Array<string | null | undefined>): string {
+  const originalTokens = query.trim().split(/\s+/u).filter(Boolean);
+  const normalizedTokens = originalTokens.map((token) => normalizeForMatching(token));
+  const ignoredIndexes = new Set<number>();
+  const sequences = values
+    .flatMap((value) => {
+      if (!value) {
+        return [];
+      }
+
+      const tokens = tokenizeForMatching(value);
+      return tokens.length > 0 ? [tokens] : [];
+    })
+    .sort((left, right) => right.length - left.length);
+
+  for (const sequence of sequences) {
+    for (let start = 0; start <= normalizedTokens.length - sequence.length; start += 1) {
+      const matches = sequence.every(
+        (token, index) =>
+          !ignoredIndexes.has(start + index) && normalizedTokens[start + index] === token
+      );
+
+      if (!matches) {
+        continue;
+      }
+
+      for (let index = 0; index < sequence.length; index += 1) {
+        ignoredIndexes.add(start + index);
+      }
+
+      break;
+    }
+  }
+
+  return originalTokens.filter((_, index) => !ignoredIndexes.has(index)).join(" ").trim();
+}
+
+function detectVerdictFromQuery(query: string): Verdict | null {
+  const normalizedQuery = normalizeForMatching(query);
+
+  if (normalizedQuery.includes("neoveritelne")) {
+    return "Neoveriteľné";
+  }
+
+  if (normalizedQuery.includes("zavadzajuce")) {
+    return "Zavádzajúce";
+  }
+
+  if (normalizedQuery.includes("nepravda")) {
+    return "Nepravda";
+  }
+
+  if (normalizedQuery.includes("pravda")) {
+    return "Pravda";
+  }
+
+  return null;
+}
+
+function buildFastQueryUnderstanding(
+  body: SearchRequest,
+  query: string,
+  availableNames: string[],
+  availableParties: string[]
+): QueryUnderstanding {
+  const detectedName = body.meno ?? findExactCandidateInQuery(query, availableNames);
+  const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
+  const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
+  const semanticQuery =
+    stripMatchedTerms(query, [
+      detectedName,
+      detectedParty,
+      detectedVerdict,
+      body.meno,
+      body.strana,
+      body.vyhodnotenie,
+      body.oblast,
+    ]) || query;
+
+  return {
+    semantic_query: semanticQuery,
+    filters: {
+      meno: detectedName,
+      strana: detectedParty,
+      vyhodnotenie: detectedVerdict,
+      oblast: body.oblast ?? null,
+    },
+    related_politicians: [],
+  };
+}
+
+function shouldUseFastQueryUnderstanding(
+  body: SearchRequest,
+  query: string,
+  availableNames: string[],
+  availableParties: string[]
+): boolean {
+  if (hasStructuredSearchFilters(body)) {
+    return true;
+  }
+
+  if (findExactCandidateInQuery(query, availableNames)) {
+    return true;
+  }
+
+  if (findExactCandidateInQuery(query, availableParties)) {
+    return true;
+  }
+
+  if (detectVerdictFromQuery(query)) {
+    return true;
+  }
+
+  return !queryHasSentenceShape(query);
+}
+
 function resolveAvailableValue(
   value: string | null,
   availableValues: string[]
@@ -186,23 +433,59 @@ async function fetchDistinctValues(
   supabase: ReturnType<typeof getSupabase>,
   column: "meno" | "strana"
 ): Promise<string[]> {
-  const { data, error } = await supabase.from("vyroky").select(column);
+  const { data, error } = await supabase.rpc("list_distinct_values", {
+    col: column,
+  });
 
   if (error) {
+    console.error(
+      "[search] list_distinct_values RPC error:",
+      error.code,
+      error.message,
+      error.details
+    );
     return [];
   }
 
-  const rows = (data ?? []) as Array<{ meno?: string; strana?: string }>;
+  const rows = (data ?? []) as Array<{ value?: string | null }>;
 
   return Array.from(
     new Set(
       rows
-        .map((row) => (column === "meno" ? row.meno : row.strana))
+        .map((row) => row.value)
         .filter((value): value is string => typeof value === "string")
         .map((value) => value.trim())
         .filter(Boolean)
     )
   ).sort((left, right) => left.localeCompare(right, "sk"));
+}
+
+async function fetchAvailableQueryValues(
+  supabase: ReturnType<typeof getSupabase>
+): Promise<DistinctQueryValues> {
+  if (
+    distinctValuesCache &&
+    Date.now() - distinctValuesCache.fetchedAt < DISTINCT_VALUES_TTL_MS
+  ) {
+    return distinctValuesCache.values;
+  }
+
+  const [meno, strana] = await Promise.all([
+    fetchDistinctValues(supabase, "meno"),
+    fetchDistinctValues(supabase, "strana"),
+  ]);
+
+  const values = { meno, strana };
+  distinctValuesCache = {
+    fetchedAt: Date.now(),
+    values,
+  };
+
+  return values;
+}
+
+export function resetSearchRouteStateForTests() {
+  distinctValuesCache = null;
 }
 
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
@@ -330,6 +613,7 @@ export async function POST(request: NextRequest) {
   const page = body.page ?? 1;
   const pageSize = body.page_size ?? 20;
   const offset = (page - 1) * pageSize;
+  const timings: SearchStageTimings = {};
 
   try {
     let results: Statement[] = [];
@@ -339,11 +623,22 @@ export async function POST(request: NextRequest) {
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
     if (body.query) {
-      const [allNames, allParties] = await Promise.all([
-        fetchDistinctValues(supabase, "meno"),
-        fetchDistinctValues(supabase, "strana"),
-      ]);
-      const understanding = await understandQuery(body.query, allNames, allParties);
+      const distinctValuesStartedAt = performance.now();
+      const { meno: allNames, strana: allParties } = await fetchAvailableQueryValues(
+        supabase
+      );
+      recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
+
+      const understandingStartedAt = performance.now();
+      const understanding = shouldUseFastQueryUnderstanding(
+        body,
+        body.query,
+        allNames,
+        allParties
+      )
+        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties)
+        : await understandQuery(body.query, allNames, allParties);
+      recordStageTiming(timings, "understand_query_ms", understandingStartedAt);
       const validatedFilters = validateExtractedFilters(
         understanding.filters,
         allNames,
@@ -357,6 +652,7 @@ export async function POST(request: NextRequest) {
       const semanticQuery = understanding.semantic_query.trim() || body.query;
 
       let embedding: number[];
+      const embedStartedAt = performance.now();
       try {
         embedding = await embedText(semanticQuery);
       } catch {
@@ -365,28 +661,39 @@ export async function POST(request: NextRequest) {
           { status: 502 }
         );
       }
+      recordStageTiming(timings, "embed_text_ms", embedStartedAt);
 
       const limit = Math.min(page * pageSize, 50);
       const filterParams = buildFilterParams(mergedBody);
+      const searchStartedAt = performance.now();
       const { data, error } = await supabase.rpc("search_statements", {
         query_embedding: embedding,
         match_count: limit,
         match_offset: 0,
         ...filterParams,
       });
+      recordStageTiming(timings, "search_statements_ms", searchStartedAt);
 
       if (error) {
+        console.error(
+          "[search] search_statements RPC error:",
+          error.code,
+          error.message,
+          error.details
+        );
         return NextResponse.json({ error: "Database error" }, { status: 502 });
       }
 
       const semanticRows = ((data ?? []) as SearchRow[]).map(toStatement);
       let orderedRows = semanticRows;
 
-      if (semanticRows.length > 5) {
+      if (readBooleanEnv(SEARCH_RERANK_FLAG) && semanticRows.length > 5) {
+        const rerankStartedAt = performance.now();
         const rerankedIds = await rerankResults(
           body.query,
           semanticRows.map((row) => ({ id: row.id, vyrok: row.vyrok }))
         );
+        recordStageTiming(timings, "rerank_ms", rerankStartedAt);
         const rowsById = new Map(semanticRows.map((row) => [row.id, row]));
         orderedRows = rerankedIds
           .map((id) => rowsById.get(id))
@@ -396,6 +703,7 @@ export async function POST(request: NextRequest) {
       results = orderedRows.slice(offset, offset + pageSize);
       totalCount = semanticRows.length;
       hasMore = semanticRows.length === limit;
+      const relatedResultsStartedAt = performance.now();
       relatedResults = await fetchRelatedResults(
         supabase,
         embedding,
@@ -403,6 +711,7 @@ export async function POST(request: NextRequest) {
         validatedRelatedPoliticians,
         new Set(results.map((statement) => statement.id))
       );
+      recordStageTiming(timings, "related_results_ms", relatedResultsStartedAt);
       queryUnderstanding = {
         extracted_filters: validatedFilters,
         related_politicians: validatedRelatedPoliticians,
@@ -458,6 +767,8 @@ export async function POST(request: NextRequest) {
         : {}),
       ...(queryUnderstanding ? { query_understanding: queryUnderstanding } : {}),
     };
+
+    logSearchTimings(body.query ?? "", page, pageSize, timings);
 
     return NextResponse.json(response);
   } catch {

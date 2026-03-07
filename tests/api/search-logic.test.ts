@@ -16,7 +16,7 @@ vi.mock("@/lib/gemini", () => ({
   rerankResults: vi.fn(),
 }));
 
-const { POST } = await import("@/app/api/search/route");
+const { POST, resetSearchRouteStateForTests } = await import("@/app/api/search/route");
 const { getSupabase, getSupabaseConfigError } = await import("@/lib/supabase");
 const { embedText } = await import("@/lib/jina");
 const { understandQuery, rerankResults } = await import("@/lib/gemini");
@@ -82,6 +82,18 @@ function createSupabaseMock(options?: {
   const names = options?.names ?? ["Robert Fico", "Peter Pellegrini"];
   const parties = options?.parties ?? ["Hlas", "Smer-SD"];
   const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => {
+    if (fn === "list_distinct_values") {
+      if (args.col === "meno") {
+        return { data: names.map((value) => ({ value })), error: null };
+      }
+
+      if (args.col === "strana") {
+        return { data: parties.map((value) => ({ value })), error: null };
+      }
+
+      throw new Error(`Unexpected distinct column ${String(args.col)}`);
+    }
+
     if (options?.rpc) {
       return options.rpc(fn, args);
     }
@@ -93,32 +105,31 @@ function createSupabaseMock(options?: {
     throw new Error(`Unexpected RPC ${fn}`);
   });
 
-  const from = vi.fn(() => ({
-    select: vi.fn(async (column: string) => {
-      if (column === "meno") {
-        return { data: names.map((meno) => ({ meno })), error: null };
-      }
-
-      if (column === "strana") {
-        return { data: parties.map((strana) => ({ strana })), error: null };
-      }
-
-      throw new Error(`Unexpected column ${column}`);
-    }),
-  }));
-
-  return { from, rpc };
+  return { from: vi.fn(), rpc };
 }
 
 describe("POST /api/search logic", () => {
+  const originalEnableSearchRerank = process.env.ENABLE_SEARCH_RERANK;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSearchRouteStateForTests();
+    delete process.env.ENABLE_SEARCH_RERANK;
     vi.mocked(getSupabaseConfigError).mockReturnValue(null);
     vi.mocked(embedText).mockResolvedValue([0.1, 0.2, 0.3]);
     vi.mocked(understandQuery).mockResolvedValue(buildUnderstanding());
     vi.mocked(rerankResults).mockImplementation(async (_, results) =>
       results.map((result) => result.id),
     );
+  });
+
+  afterEach(() => {
+    if (originalEnableSearchRerank === undefined) {
+      delete process.env.ENABLE_SEARCH_RERANK;
+      return;
+    }
+
+    process.env.ENABLE_SEARCH_RERANK = originalEnableSearchRerank;
   });
 
   it("returns 400 for invalid verdict strings", async () => {
@@ -166,6 +177,12 @@ describe("POST /api/search logic", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenNthCalledWith(1, "list_distinct_values", {
+      col: "meno",
+    });
+    expect(supabase.rpc).toHaveBeenNthCalledWith(2, "list_distinct_values", {
+      col: "strana",
+    });
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
@@ -176,6 +193,76 @@ describe("POST /api/search logic", () => {
     expect(data.total_count).toBe(50);
     expect(data.has_more).toBe(true);
     expect(data.results).toHaveLength(2);
+  });
+
+  it("does not rerank by default when more than five semantic rows are returned", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: Array.from({ length: 10 }, (_, index) =>
+            buildRow(index + 1, {
+              meno: "Robert Fico",
+              strana: "Smer-SD",
+            }),
+          ),
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "robert fico vojna ukrajina",
+        page: 1,
+        page_size: 10,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(rerankResults).not.toHaveBeenCalled();
+    expect(data.results).toHaveLength(10);
+  });
+
+  it("reranks semantic rows when ENABLE_SEARCH_RERANK is true", async () => {
+    process.env.ENABLE_SEARCH_RERANK = "true";
+
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: Array.from({ length: 6 }, (_, index) => buildRow(index + 1)),
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(rerankResults).mockResolvedValue([6, 5, 4, 3, 2, 1]);
+
+    const response = await POST(
+      createRequest({
+        query: "zdravotnictvo",
+        page: 1,
+        page_size: 6,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(rerankResults).toHaveBeenCalledOnce();
+    expect(data.results.map((statement: { id: number }) => statement.id)).toEqual([
+      6, 5, 4, 3, 2, 1,
+    ]);
   });
 
   it("validates extracted filters and strips unsupported area filters", async () => {
@@ -235,12 +322,14 @@ describe("POST /api/search logic", () => {
       }),
     );
 
-    const response = await POST(createRequest({ query: "fico zdravotnictvo" }));
+    const response = await POST(
+      createRequest({ query: "Co povedal fico o zdravotnictve a pravde?" }),
+    );
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      1,
+      3,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Robert Fico",
@@ -250,7 +339,7 @@ describe("POST /api/search logic", () => {
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      2,
+      4,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Peter Pellegrini",
@@ -363,12 +452,118 @@ describe("POST /api/search logic", () => {
       }),
     );
 
-    const response = await POST(createRequest({ query: "zdravotnictvo" }));
+    const response = await POST(
+      createRequest({ query: "Ako politici hovoria o zdravotnictve v kampani?" }),
+    );
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.related_results.map((statement: { id: number }) => statement.id)).toEqual(
       [11, 21, 31, 22, 32],
     );
+  });
+
+  it("uses the fast understanding path for exact-name keyword queries", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: String(args.filter_meno ?? "Robert Fico"),
+              strana: "Smer-SD",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "robert fico vojna ukrajina",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(understandQuery).not.toHaveBeenCalled();
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: "Robert Fico",
+      }),
+    );
+  });
+
+  it("caches distinct values between semantic requests", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { meno: "Robert Fico", strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+
+    await POST(createRequest({ query: "robert fico vojna ukrajina", page: 1, page_size: 5 }));
+    await POST(createRequest({ query: "robert fico vojna ukrajina", page: 1, page_size: 5 }));
+
+    const distinctCalls = vi
+      .mocked(supabase.rpc)
+      .mock.calls.filter(([fn]) => fn === "list_distinct_values");
+
+    expect(distinctCalls).toHaveLength(2);
+  });
+
+  it("logs the search RPC error details before returning 502", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn === "list_distinct_values") {
+          return { data: [{ value: "Robert Fico" }], error: null };
+        }
+
+        if (fn === "search_statements") {
+          return {
+            data: null,
+            error: {
+              code: "57014",
+              message: "statement timeout",
+              details: "canceling statement due to statement timeout",
+            },
+          };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
+      },
+    });
+
+    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+
+    const response = await POST(createRequest({ query: "robert fico" }));
+
+    expect(response.status).toBe(502);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[search] search_statements RPC error:",
+      "57014",
+      "statement timeout",
+      "canceling statement due to statement timeout",
+    );
+
+    errorSpy.mockRestore();
   });
 });
