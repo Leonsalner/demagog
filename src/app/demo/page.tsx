@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import CurrentContext from "@/components/demo/CurrentContext";
 import SearchBar from "@/components/search/SearchBar";
@@ -10,6 +10,8 @@ import { useDemoLoop } from "@/hooks/useDemoLoop";
 
 export default function DemoPage() {
   const state = useDemoLoop();
+  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  const hasAutoScrolledRef = useRef(false);
   const fakeQueryTime = useMemo(() => {
     if (!state.results) {
       return null;
@@ -18,8 +20,57 @@ export default function DemoPage() {
     return 120 + ((state.results.length * 37) % 221);
   }, [state.results]);
 
+  useEffect(() => {
+    const searchWrapper = searchWrapperRef.current;
+
+    if (!searchWrapper) {
+      return;
+    }
+
+    let frameId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const alignViewport = (behavior: ScrollBehavior) => {
+      const stickyHeaderBottom =
+        document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
+      const offset = stickyHeaderBottom + 12;
+      const targetTop = Math.max(
+        0,
+        window.scrollY + searchWrapper.getBoundingClientRect().top - offset,
+      );
+
+      if (Math.abs(window.scrollY - targetTop) <= 2) {
+        return;
+      }
+
+      window.scrollTo({
+        top: targetTop,
+        behavior,
+      });
+    };
+
+    frameId = window.requestAnimationFrame(() => {
+      alignViewport(hasAutoScrolledRef.current ? "auto" : "smooth");
+      hasAutoScrolledRef.current = true;
+
+      timeoutId = window.setTimeout(() => {
+        alignViewport("auto");
+      }, 120);
+    });
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [state.phase]);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-[28vh] sm:pb-[32vh]">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium uppercase tracking-[0.18em] text-blue-600">
@@ -36,7 +87,10 @@ export default function DemoPage() {
       </section>
 
       <div className="space-y-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+        <div
+          ref={searchWrapperRef}
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900"
+        >
           <SearchBar
             value={state.displayedQuery}
             onChange={() => {}}
