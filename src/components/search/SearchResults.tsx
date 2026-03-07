@@ -64,16 +64,16 @@ export default function SearchResults({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-700/60 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Nájdených {results.total_count} výsledkov
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Spracované za {results.query_time_ms} ms
           </p>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Strana {results.page} z {totalPages}
         </p>
       </div>
@@ -98,7 +98,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page - 1)}
             disabled={results.page === 1}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             «
           </button>
@@ -106,7 +106,7 @@ export default function SearchResults({
             item === "ellipsis" ? (
               <span
                 key={`ellipsis-${index}`}
-                className="px-2 text-sm text-slate-400"
+                className="px-2 text-sm text-slate-400 dark:text-slate-500"
               >
                 ...
               </span>
@@ -118,8 +118,8 @@ export default function SearchResults({
                 aria-current={item === results.page ? "page" : undefined}
                 className={`min-w-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   item === results.page
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    ? "bg-blue-600 text-white shadow-sm dark:bg-blue-500"
+                    : "border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
               >
                 {item}
@@ -130,7 +130,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page + 1)}
             disabled={results.page === totalPages}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             »
           </button>

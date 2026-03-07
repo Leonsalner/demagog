@@ -13,19 +13,19 @@ const verdictStyles: Record<
   }
 > = {
   Pravda: {
-    badge: "border-green-300 bg-green-100 text-green-800",
+    badge: "border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/60 dark:text-green-300",
     dot: "bg-green-700",
   },
   Nepravda: {
-    badge: "border-red-300 bg-red-100 text-red-800",
+    badge: "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300",
     dot: "bg-red-700",
   },
   Zavádzajúce: {
-    badge: "border-amber-300 bg-amber-100 text-amber-800",
+    badge: "border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
     dot: "bg-amber-700",
   },
   Neoveriteľné: {
-    badge: "border-gray-300 bg-gray-100 text-gray-600",
+    badge: "border-gray-300 bg-gray-100 text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
     dot: "bg-gray-500",
   },
 };

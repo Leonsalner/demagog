@@ -12,7 +12,7 @@ export default function LoadingSpinner({
   size = "md",
 }: LoadingSpinnerProps) {
   return (
-    <div className="flex items-center justify-center text-blue-600" role="status">
+    <div className="flex items-center justify-center text-blue-600 dark:text-blue-400" role="status">
       <svg
         className={`animate-spin ${sizeClassName[size]}`}
         viewBox="0 0 24 24"
@@ -23,7 +23,7 @@ export default function LoadingSpinner({
           cx="12"
           cy="12"
           r="9"
-          className="stroke-slate-200"
+          className="stroke-slate-200 dark:stroke-slate-700"
           strokeWidth="4"
         />
         <path

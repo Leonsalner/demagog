@@ -8,21 +8,21 @@ interface DetectionResultsProps {
 
 const statusConfig = {
   DUPLICATE_FOUND: {
-    container: "border-red-200 bg-red-50",
+    container: "border-red-200 bg-red-50 dark:border-red-800/60 dark:bg-red-950/40",
     icon: "⚠",
     title: "Nájdený duplicitný výrok",
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
   },
   RELATED_ONLY: {
-    container: "border-amber-200 bg-amber-50",
+    container: "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/40",
     icon: "◔",
     title: "Nájdené súvisiace výroky",
     description: "Odporúčame kontrolu existujúcich overení.",
     detail: "Nižšie nájdete výroky na podobnú tému.",
   },
   NEW_CLAIM: {
-    container: "border-green-200 bg-green-50",
+    container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
     icon: "✓",
     title: "Nový výrok",
     description: "V databáze sa nenašiel podobný overený nárok.",
@@ -53,19 +53,19 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
     <section className="space-y-5">
       <div className={`rounded-2xl border p-5 ${status.container}`}>
         <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-base font-semibold text-slate-700">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-base font-semibold text-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
             {status.icon}
           </div>
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {status.title} - {status.description}
             </h2>
-            <p className="mt-1 text-sm text-slate-600">{status.detail}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{status.detail}</p>
           </div>
         </div>
       </div>
 
-      <p className="text-sm text-slate-500">Analýza trvala {result.query_time_ms} ms</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">Analýza trvala {result.query_time_ms} ms</p>
 
       {visibleMatches.length > 0 ? (
         <div className="space-y-4">
@@ -82,8 +82,8 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
       ) : null}
 
       {hiddenMatches.length > 0 ? (
-        <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+        <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
             Ďalšie výsledky ({hiddenMatches.length})
           </summary>
           <div className="mt-4 space-y-4">

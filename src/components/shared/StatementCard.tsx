@@ -9,15 +9,15 @@ import VerdictBadge from "./VerdictBadge";
 const classificationLabels = {
   DUPLICATE: {
     label: "Duplicitný výrok",
-    badge: "bg-red-100 text-red-700",
+    badge: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
   },
   RELATED: {
     label: "Súvisiaci výrok",
-    badge: "bg-amber-100 text-amber-700",
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
   },
   UNRELATED: {
     label: "Nesúvisí",
-    badge: "bg-slate-100 text-slate-500",
+    badge: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
   },
 } as const;
 
@@ -80,7 +80,7 @@ export default function StatementCard({
       return (
         <mark
           key={`${part}-${index}`}
-          className="rounded bg-yellow-200 px-1 text-slate-900"
+          className="rounded bg-yellow-200 px-1 text-slate-900 dark:bg-yellow-500/20 dark:text-yellow-200"
         >
           {part}
         </mark>
@@ -89,7 +89,7 @@ export default function StatementCard({
   }, [highlight_query, statement.vyrok]);
 
   const metaParts = [
-    <span key="meno" className="font-semibold text-slate-700">
+    <span key="meno" className="font-semibold text-slate-700 dark:text-slate-300">
       {statement.meno}
     </span>,
     <span key="strana">{statement.strana}</span>,
@@ -100,7 +100,7 @@ export default function StatementCard({
   const similarity = statement.similarity;
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md active:shadow-none dark:border-slate-700/60 dark:bg-slate-800">
       {(classification || (show_similarity && typeof similarity === "number")) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -115,10 +115,10 @@ export default function StatementCard({
 
           {show_similarity && typeof similarity === "number" ? (
             <div className="min-w-24 text-right">
-              <div className="text-xs font-medium text-slate-500">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Podobnosť: {Math.round(similarity * 100)} %
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200">
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                 <div
                   className={`h-full rounded-full ${similarityTone(similarity)}`}
                   style={{ width: `${Math.max(0, Math.min(100, similarity * 100))}%` }}
@@ -129,9 +129,9 @@ export default function StatementCard({
         </div>
       )}
 
-      <p className="text-base leading-7 text-slate-900 sm:text-lg">{highlightedStatement}</p>
+      <p className="text-base leading-7 text-slate-900 dark:text-slate-100 sm:text-lg">{highlightedStatement}</p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
         <VerdictBadge verdict={statement.vyhodnotenie} size="sm" />
         {metaParts.map((part, index) => (
           <Fragment key={index}>
@@ -152,13 +152,13 @@ export default function StatementCard({
           <button
             type="button"
             onClick={() => setIsReasoningOpen((value) => !value)}
-            className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+            className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
             {isReasoningOpen ? "Skryť odôvodnenie" : "Zobraziť odôvodnenie"}
           </button>
 
           {isReasoningOpen ? (
-            <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
               {statement.odovodnenie}
             </div>
           ) : null}
@@ -166,7 +166,7 @@ export default function StatementCard({
       ) : null}
 
       {explanation ? (
-        <p className="mt-4 text-sm italic leading-6 text-slate-500">✦ AI: {explanation}</p>
+        <p className="mt-4 text-sm italic leading-6 text-slate-500 dark:text-slate-400">✦ AI: {explanation}</p>
       ) : null}
     </article>
   );

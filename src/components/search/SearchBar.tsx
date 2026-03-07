@@ -44,7 +44,7 @@ export default function SearchBar({
           }}
           placeholder="Hľadať výroky..."
           disabled={loading}
-          className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+          className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-base text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
         />
 
         {value ? (
@@ -53,7 +53,7 @@ export default function SearchBar({
             onClick={() => onChange("")}
             disabled={loading}
             aria-label="Vymazať dopyt"
-            className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed"
+            className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed dark:text-slate-500 dark:hover:text-slate-300"
           >
             <svg
               aria-hidden="true"
@@ -75,7 +75,7 @@ export default function SearchBar({
         type="button"
         onClick={onSearch}
         disabled={loading}
-        className="inline-flex h-14 items-center justify-center rounded-xl bg-blue-600 px-6 text-base font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 sm:min-w-36"
+        className="inline-flex h-14 items-center justify-center rounded-xl bg-blue-600 px-6 text-base font-medium text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-800 sm:min-w-36"
       >
         {loading ? "Vyhľadáva sa..." : "Hľadať"}
       </button>

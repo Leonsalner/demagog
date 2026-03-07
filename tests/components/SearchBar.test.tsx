@@ -31,6 +31,15 @@ describe("SearchBar", () => {
     expect(onSearch).toHaveBeenCalledTimes(1);
   });
 
+  it("does not call onSearch on Space", () => {
+    const onSearch = vi.fn();
+
+    render(<SearchBar value="test" onChange={() => {}} onSearch={onSearch} />);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: " " });
+
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
   it("shows and uses the clear button", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

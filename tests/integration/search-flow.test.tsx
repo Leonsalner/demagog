@@ -7,7 +7,12 @@ vi.mock("@/hooks/useSearch", () => ({
   useSearch: vi.fn(),
 }));
 
+vi.mock("@/hooks/useDetect", () => ({
+  useDetect: vi.fn(),
+}));
+
 const { useSearch } = await import("@/hooks/useSearch");
+const { useDetect } = await import("@/hooks/useDetect");
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -80,10 +85,22 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   return { setQuery, setFilters, setPage, search, loadFilters };
 }
 
+function mockUseDetectReturn(overrides?: Record<string, unknown>) {
+  vi.mocked(useDetect).mockReturnValue({
+    result: null,
+    loading: false,
+    error: null,
+    detect: vi.fn(),
+    reset: vi.fn(),
+    ...overrides,
+  });
+}
+
 describe("search page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.scrollTo = vi.fn();
+    mockUseDetectReturn();
   });
 
   it("renders the initial search state", () => {
@@ -92,9 +109,14 @@ describe("search page flow", () => {
     render(<Home />);
 
     expect(
-      screen.getAllByText(/Vyhľadávajte vo výrokoch overených Demagog\.sk/i)[0],
+      screen.getAllByText(/Vyhľadávanie a detekcia výrokov/i)[0],
     ).toBeInTheDocument();
     expect(screen.getByText("Filtre")).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", {
+        name: /Detekcia duplikátov/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("submits a query through the search button", () => {
