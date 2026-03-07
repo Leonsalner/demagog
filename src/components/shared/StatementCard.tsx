@@ -100,7 +100,7 @@ export default function StatementCard({
   const similarity = statement.similarity;
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md active:shadow-none dark:border-slate-700/60 dark:bg-slate-900 dark:hover:shadow-slate-950">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md active:shadow-none dark:border-slate-700/60 dark:bg-slate-800">
       {(classification || (show_similarity && typeof similarity === "number")) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -158,7 +158,7 @@ export default function StatementCard({
           </button>
 
           {isReasoningOpen ? (
-            <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+            <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
               {statement.odovodnenie}
             </div>
           ) : null}

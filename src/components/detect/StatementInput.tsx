@@ -32,7 +32,7 @@ export default function StatementInput({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
       <label htmlFor="statement" className="mb-3 block text-sm font-medium text-slate-700 dark:text-slate-300">
         Politický výrok
       </label>

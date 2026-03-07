@@ -82,7 +82,7 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
       ) : null}
 
       {hiddenMatches.length > 0 ? (
-        <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+        <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
           <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
             Ďalšie výsledky ({hiddenMatches.length})
           </summary>

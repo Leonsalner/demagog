@@ -66,7 +66,7 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-slate-950">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
         <div className="mb-4 flex flex-col gap-2">
           <span className="text-sm font-medium uppercase tracking-[0.18em] text-blue-600">
             Demagog.sk
@@ -95,9 +95,9 @@ export default function Home() {
           onChange={setFilters}
         />
 
-        <div className="min-h-[360px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 sm:p-6">
+        <div className="min-h-[360px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 sm:p-6">
           {!hasSearched && !loading && !error && !results ? (
-            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
+            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Vyhľadávajte vo výrokoch overených Demagog.sk
               </h2>
@@ -115,7 +115,7 @@ export default function Home() {
           ) : null}
 
           {!loading && error ? (
-            <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-2xl border border-red-200 bg-red-50 px-6 text-center dark:border-red-950 dark:bg-red-950/40">
+            <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-2xl border border-red-200 bg-red-50 px-6 text-center dark:border-red-800/60 dark:bg-red-950/40">
               <div>
                 <h2 className="text-lg font-semibold text-red-900 dark:text-red-200">
                   Vyhľadávanie zlyhalo
@@ -133,7 +133,7 @@ export default function Home() {
           ) : null}
 
           {!loading && !error && hasSearched && results?.results.length === 0 ? (
-            <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
+            <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Žiadne výsledky pre zadané kritériá.
               </h2>
@@ -155,7 +155,7 @@ export default function Home() {
 
       <section
         id="detekcia-duplikatov"
-        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 dark:shadow-slate-950 sm:p-8"
+        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 sm:p-8"
       >
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="max-w-2xl">
@@ -183,7 +183,7 @@ export default function Home() {
             ) : null}
 
             {detectLoading ? (
-              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950">
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                 <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" />
                 <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
                   Porovnávam výrok s databázou overených tvrdení...
@@ -195,7 +195,7 @@ export default function Home() {
             ) : null}
 
             {!detectLoading && !detectResult ? (
-              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/60 dark:bg-slate-900">
+              <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     Výsledky detekcie sa zobrazia tu
