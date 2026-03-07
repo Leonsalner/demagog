@@ -6,7 +6,6 @@ interface StatementInputProps {
   onSubmit: (statement: string) => void;
   loading: boolean;
   onReset?: () => void;
-  hasResult?: boolean;
 }
 
 const MAX_LENGTH = 2000;
@@ -15,15 +14,11 @@ export default function StatementInput({
   onSubmit,
   loading,
   onReset,
-  hasResult = false,
 }: StatementInputProps) {
   const [value, setValue] = useState("");
-  const [submittedValue, setSubmittedValue] = useState("");
-
-  const currentValue = hasResult ? submittedValue : value;
-  const trimmedValue = currentValue.trim();
-  const isTooLong = currentValue.length > MAX_LENGTH;
-  const isDisabled = trimmedValue.length === 0 || isTooLong || loading || hasResult;
+  const trimmedValue = value.trim();
+  const isTooLong = value.length > MAX_LENGTH;
+  const isDisabled = trimmedValue.length === 0 || isTooLong || loading;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,7 +28,6 @@ export default function StatementInput({
       return;
     }
 
-    setSubmittedValue(nextValue);
     onSubmit(nextValue);
   }
 
@@ -46,12 +40,14 @@ export default function StatementInput({
       <div className="relative">
         <textarea
           id="statement"
-          value={currentValue}
-          onChange={(event) => setValue(event.target.value)}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            onReset?.();
+          }}
           placeholder="Vložte politický výrok na overenie..."
-          readOnly={hasResult}
           rows={5}
-          className="min-h-36 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 read-only:cursor-default read-only:bg-slate-100"
+          className="min-h-36 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400 dark:focus:bg-slate-950 dark:focus:ring-blue-950"
         />
 
         <div
@@ -59,7 +55,7 @@ export default function StatementInput({
             isTooLong ? "text-red-600" : "text-slate-400"
           }`}
         >
-          {currentValue.length} / {MAX_LENGTH}
+          {value.length} / {MAX_LENGTH}
         </div>
       </div>
 
@@ -79,17 +75,16 @@ export default function StatementInput({
           )}
         </button>
 
-        {hasResult && onReset ? (
+        {value && onReset ? (
           <button
             type="button"
             onClick={() => {
               setValue("");
-              setSubmittedValue("");
               onReset();
             }}
-            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
           >
-            Nová analýza
+            Vymazať
           </button>
         ) : null}
       </div>
