@@ -13,7 +13,7 @@ Fast navigation for agents working in this repo.
 
 ### App and API
 
-- [`src/app/api/search/route.ts`](src/app/api/search/route.ts): semantic search and filter-only search
+- [`src/app/api/search/route.ts`](src/app/api/search/route.ts): semantic search, query understanding, related results
 - [`src/app/api/detect/route.ts`](src/app/api/detect/route.ts): duplicate detection
 - [`src/app/api/filters/route.ts`](src/app/api/filters/route.ts): filter metadata
 - [`src/app/api/health/route.ts`](src/app/api/health/route.ts): health/status
@@ -26,8 +26,8 @@ Fast navigation for agents working in this repo.
 
 ### Client State
 
-- [`src/hooks/useSearch.ts`](src/hooks/useSearch.ts)
-- [`src/hooks/useDetect.ts`](src/hooks/useDetect.ts)
+- [`src/hooks/useSearch.ts`](src/hooks/useSearch.ts): search requests, model-owned filters, filter syncing
+- [`src/hooks/useDetect.ts`](src/hooks/useDetect.ts): detect requests and mock fallback
 
 ### Integrations
 
@@ -50,6 +50,11 @@ Fast navigation for agents working in this repo.
 - Live API tests: [`tests/api`](tests/api)
 - Script tests: [`tests/scripts`](tests/scripts)
 
+### Planning Notes
+
+- [`docs/plans`](docs/plans): implementation notes for search intelligence and embedding upgrades
+- [`PLAN.md`](PLAN.md): original project plan and ownership split
+
 ## Commands
 
 ```bash
@@ -68,10 +73,13 @@ TEST_LIVE_API=true TEST_API_URL=http://localhost:3000 npm test
 - `JINA_API_KEY`
 - `GEMINI_API_KEY`
 - `NEXT_PUBLIC_USE_DETECT_MOCK`
+- `ENABLE_SEARCH_RERANK`
+- `DEBUG_SEARCH_TIMINGS`
 
 ## Useful Notes
 
-- Search and filters can fall back to mock data if the live API is unavailable.
+- Search can auto-extract filters from a natural-language query and show related results.
+- Search and filters can still fall back to mock data if the live API is unavailable.
 - Detect supports a mock mode via `NEXT_PUBLIC_USE_DETECT_MOCK`.
-- If you change embedding model settings, update both runtime code and scripts.
+- The embedding stack now expects 1024-dimensional vectors; keep runtime code, scripts, and Supabase schema aligned.
 - Run `scripts/setup-supabase.sql` as SQL, not through `tsx`.
