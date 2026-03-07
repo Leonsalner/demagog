@@ -3,12 +3,19 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse";
 import { createClient } from "@supabase/supabase-js";
 
+export type StatementVerdict =
+  | "Pravda"
+  | "Nepravda"
+  | "Zavádzajúce"
+  | "Neoveriteľné";
+
 type StatementInsert = {
   vyrok: string;
-  vyhodnotenie: string;
+  vyhodnotenie: StatementVerdict;
   odovodnenie: string | null;
   oblast: string | null;
   datum: string | null;
@@ -29,10 +36,58 @@ type Summary = {
   nullCounts: Record<string, number>;
 };
 
+type StatementDiagnosticIssue =
+  | "invalid_column_count"
+  | "missing_meno"
+  | "missing_strana"
+  | "missing_meno_and_strana"
+  | "unsupported_vyhodnotenie";
+
+type StatementDiagnosticSample = {
+  rowNumber: number;
+  issue: StatementDiagnosticIssue;
+  recordLength: number;
+  recordTail: string[];
+  rawRecord: string[];
+};
+
+export type StatementDiagnostics = {
+  defaultedMeno: number;
+  defaultedStrana: number;
+  distinctVerdicts: Map<string, number>;
+  normalizedVerdictAliases: Map<string, number>;
+  unexpectedVerdicts: Map<string, number>;
+  issueCounts: Record<StatementDiagnosticIssue, number>;
+  samples: StatementDiagnosticSample[];
+};
+
+type StatementImportResult = {
+  summary: Summary;
+  diagnostics: StatementDiagnostics;
+};
+
+type StatementParseContext = {
+  rowNumber: number;
+  diagnostics: StatementDiagnostics;
+};
+
 const PROJECT_ROOT = process.cwd();
 const STATEMENTS_CSV = path.join(PROJECT_ROOT, "data", "demagog_vyroky_20260125.csv");
 const ARTICLES_CSV = path.join(PROJECT_ROOT, "data", "demagog_clanky_20260126.csv");
 const STATEMENT_BATCH_SIZE = 500;
+const MAX_STATEMENT_DIAGNOSTIC_SAMPLES = 10;
+export const MISSING_STATEMENT_MENO = "Neznámy rečník";
+export const MISSING_STATEMENT_STRANA = "Bez príslušnosti";
+const STATEMENT_VERDICTS: StatementVerdict[] = [
+  "Pravda",
+  "Nepravda",
+  "Zavádzajúce",
+  "Neoveriteľné",
+];
+const STATEMENT_VERDICT_SET = new Set<StatementVerdict>(STATEMENT_VERDICTS);
+const STATEMENT_VERDICT_ALIASES: Record<string, StatementVerdict> = {
+  Neoveritelné: "Neoveriteľné",
+};
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
 function getEnv(name: string): string {
@@ -60,6 +115,24 @@ function createSummary(nullKeys: string[]): Summary {
   };
 }
 
+export function createStatementDiagnostics(): StatementDiagnostics {
+  return {
+    defaultedMeno: 0,
+    defaultedStrana: 0,
+    distinctVerdicts: new Map(),
+    normalizedVerdictAliases: new Map(),
+    unexpectedVerdicts: new Map(),
+    issueCounts: {
+      invalid_column_count: 0,
+      missing_meno: 0,
+      missing_strana: 0,
+      missing_meno_and_strana: 0,
+      unsupported_vyhodnotenie: 0,
+    },
+    samples: [],
+  };
+}
+
 function normalizeWhitespace(value: string | undefined): string {
   return (value ?? "")
     .replace(/^\uFEFF/, "")
@@ -81,6 +154,59 @@ function stripOuterQuotes(value: string | null): string | null {
 
   const stripped = value.replace(/^"+|"+$/g, "").trim();
   return stripped === "" ? null : stripped;
+}
+
+function incrementFrequency(map: Map<string, number>, key: string): void {
+  map.set(key, (map.get(key) ?? 0) + 1);
+}
+
+function recordStatementDiagnostic(
+  diagnostics: StatementDiagnostics,
+  issue: StatementDiagnosticIssue,
+  rowNumber: number,
+  record: string[],
+): void {
+  diagnostics.issueCounts[issue] += 1;
+
+  if (diagnostics.samples.length >= MAX_STATEMENT_DIAGNOSTIC_SAMPLES) {
+    return;
+  }
+
+  diagnostics.samples.push({
+    rowNumber,
+    issue,
+    recordLength: record.length,
+    recordTail: record.slice(4),
+    rawRecord: [...record],
+  });
+}
+
+export function normalizeStatementVerdict(
+  value: string | undefined,
+  diagnostics?: StatementDiagnostics,
+): StatementVerdict {
+  const normalized = normalizeWhitespace(value).normalize("NFC");
+
+  if (!normalized) {
+    throw new Error("Statement row is missing vyhodnotenie");
+  }
+
+  incrementFrequency(diagnostics?.distinctVerdicts ?? new Map(), normalized);
+
+  const mappedVerdict = STATEMENT_VERDICT_ALIASES[normalized] ?? normalized;
+  if (mappedVerdict !== normalized) {
+    incrementFrequency(
+      diagnostics?.normalizedVerdictAliases ?? new Map(),
+      `${normalized} -> ${mappedVerdict}`,
+    );
+  }
+
+  if (!STATEMENT_VERDICT_SET.has(mappedVerdict as StatementVerdict)) {
+    incrementFrequency(diagnostics?.unexpectedVerdicts ?? new Map(), normalized);
+    throw new Error(`Unsupported statement vyhodnotenie: ${normalized}`);
+  }
+
+  return mappedVerdict as StatementVerdict;
 }
 
 function normalizeDate(value: string | undefined): string | null {
@@ -128,6 +254,8 @@ async function* parseCsv(filePath: string): AsyncGenerator<string[]> {
       bom: true,
       columns: false,
       delimiter: ";",
+      quote: '"',
+      escape: '"',
       relax_column_count: true,
       skip_empty_lines: true,
       trim: false,
@@ -139,24 +267,87 @@ async function* parseCsv(filePath: string): AsyncGenerator<string[]> {
   }
 }
 
-function toStatementInsert(record: string[]): StatementInsert {
-  if (record.length < 7) {
+export function toStatementInsert(
+  record: string[],
+  context?: StatementParseContext,
+): StatementInsert {
+  if (record.length !== 7) {
+    if (context) {
+      recordStatementDiagnostic(
+        context.diagnostics,
+        "invalid_column_count",
+        context.rowNumber,
+        record,
+      );
+    }
     throw new Error(`Expected 7 columns, received ${record.length}`);
   }
 
   const odovodnenie = normalizeNullable(record[2]);
   const oblast = normalizeNullable(record[3]);
-  const meno = stripOuterQuotes(normalizeNullable(record[5]));
-  const strana = stripOuterQuotes(normalizeNullable(record[6]));
-
-  if (!meno || !strana) {
-    throw new Error("Statement row is missing meno or strana");
+  const vyrok = normalizeWhitespace(record[0]);
+  if (!vyrok) {
+    throw new Error("Statement row is missing vyrok");
   }
 
-  const vyrok = normalizeWhitespace(record[0]);
-  const vyhodnotenie = normalizeWhitespace(record[1]);
-  if (!vyrok || !vyhodnotenie) {
-    throw new Error("Statement row is missing vyrok or vyhodnotenie");
+  let meno = stripOuterQuotes(normalizeNullable(record[5]));
+  let strana = stripOuterQuotes(normalizeNullable(record[6]));
+
+  if (!meno && !strana && context) {
+    recordStatementDiagnostic(
+      context.diagnostics,
+      "missing_meno_and_strana",
+      context.rowNumber,
+      record,
+    );
+  } else if (!meno && context) {
+    recordStatementDiagnostic(
+      context.diagnostics,
+      "missing_meno",
+      context.rowNumber,
+      record,
+    );
+  } else if (!strana && context) {
+    recordStatementDiagnostic(
+      context.diagnostics,
+      "missing_strana",
+      context.rowNumber,
+      record,
+    );
+  }
+
+  if (!meno) {
+    if (context) {
+      context.diagnostics.defaultedMeno += 1;
+    }
+    meno = MISSING_STATEMENT_MENO;
+  }
+
+  if (!strana) {
+    if (context) {
+      context.diagnostics.defaultedStrana += 1;
+    }
+    strana = MISSING_STATEMENT_STRANA;
+  }
+
+  let vyhodnotenie: StatementVerdict;
+  try {
+    vyhodnotenie = normalizeStatementVerdict(record[1], context?.diagnostics);
+  } catch (error) {
+    if (
+      context &&
+      error instanceof Error &&
+      error.message.startsWith("Unsupported statement vyhodnotenie:")
+    ) {
+      recordStatementDiagnostic(
+        context.diagnostics,
+        "unsupported_vyhodnotenie",
+        context.rowNumber,
+        record,
+      );
+    }
+
+    throw error;
   }
 
   return {
@@ -220,9 +411,12 @@ async function flushStatements(
   console.log(`Imported ${summary.inserted}/22283 vyroky...`);
 }
 
-async function importStatements(supabase: SupabaseClientAny): Promise<Summary> {
+async function importStatements(
+  supabase: SupabaseClientAny,
+): Promise<StatementImportResult> {
   const summary = createSummary(["odovodnenie", "oblast", "datum"]);
   const batch: StatementInsert[] = [];
+  const diagnostics = createStatementDiagnostics();
   let isHeader = true;
 
   for await (const record of parseCsv(STATEMENTS_CSV)) {
@@ -234,7 +428,10 @@ async function importStatements(supabase: SupabaseClientAny): Promise<Summary> {
     summary.processed += 1;
 
     try {
-      const row = toStatementInsert(record);
+      const row = toStatementInsert(record, {
+        rowNumber: summary.processed,
+        diagnostics,
+      });
       trackNulls(summary, row);
       batch.push(row);
 
@@ -248,7 +445,7 @@ async function importStatements(supabase: SupabaseClientAny): Promise<Summary> {
   }
 
   await flushStatements(supabase, batch, summary);
-  return summary;
+  return { summary, diagnostics };
 }
 
 async function importArticles(supabase: SupabaseClientAny): Promise<Summary> {
@@ -293,6 +490,38 @@ function printSummary(label: string, summary: Summary): void {
   console.log(`Null counts: ${JSON.stringify(summary.nullCounts, null, 2)}`);
 }
 
+function formatFrequencyMap(map: Map<string, number>): string {
+  return JSON.stringify(Object.fromEntries([...map.entries()].sort()), null, 2);
+}
+
+function printStatementDiagnostics(diagnostics: StatementDiagnostics): void {
+  console.log("\nStatement diagnostics");
+  console.log(`Distinct vyhodnotenie values: ${formatFrequencyMap(diagnostics.distinctVerdicts)}`);
+  console.log(
+    `Normalized verdict aliases: ${formatFrequencyMap(diagnostics.normalizedVerdictAliases)}`,
+  );
+  console.log(`Unexpected verdicts: ${formatFrequencyMap(diagnostics.unexpectedVerdicts)}`);
+  console.log(
+    `Applied metadata placeholders: ${JSON.stringify(
+      {
+        meno: diagnostics.defaultedMeno,
+        strana: diagnostics.defaultedStrana,
+      },
+      null,
+      2,
+    )}`,
+  );
+  console.log(`Statement issue counts: ${JSON.stringify(diagnostics.issueCounts, null, 2)}`);
+
+  if (diagnostics.samples.length > 0) {
+    console.log("Sample statement source row diagnostics:");
+
+    for (const sample of diagnostics.samples) {
+      console.log(JSON.stringify(sample, null, 2));
+    }
+  }
+}
+
 async function main(): Promise<void> {
   requireFile(STATEMENTS_CSV);
   requireFile(ARTICLES_CSV);
@@ -311,14 +540,21 @@ async function main(): Promise<void> {
     );
   }
 
-  const statementSummary = await importStatements(supabase);
+  const statementResult = await importStatements(supabase);
   const articleSummary = await importArticles(supabase);
 
-  printSummary("Statements", statementSummary);
+  printSummary("Statements", statementResult.summary);
+  printStatementDiagnostics(statementResult.diagnostics);
   printSummary("Articles", articleSummary);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+const isMainModule =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}
