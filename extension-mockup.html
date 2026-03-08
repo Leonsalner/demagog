@@ -1,0 +1,652 @@
+<!--
+  ============================================================
+  DEMAGOG CHROME EXTENSION — MOCKUP FOR PRESENTATION
+  ============================================================
+
+  HACKATHON Q&A CHEAT SHEET:
+
+  Q: What happens if the statement isn't in the database?
+  A: It shows as "Neoveriteľné" (Unverifiable) with the
+     "Navrhnúť na overenie" button prominently displayed,
+     allowing users to suggest it for fact-checker review.
+
+  Q: How does it get context from the article?
+  A: The Chrome extension API reads the full page content
+     via content scripts. When the user selects text, we
+     capture both the selection and surrounding context
+     (headline, author, publication date) to cross-reference
+     against the Demagog database.
+
+  Q: What about edge cases like images or videos?
+  A: V1 focuses on text selection only. Image/video claim
+     extraction is on the roadmap for V2.
+
+  Q: How accurate is the confidence score?
+  A: It's based on semantic similarity (cosine distance)
+     between the selected text and verified statements in
+     the Demagog database, using Jina v5 1024-dim embeddings.
+     Higher similarity = higher confidence in the match.
+
+  Q: Can it work in other languages?
+  A: Currently Slovak only. Czech could be added easily
+     due to language similarity and shared embedding space.
+     Other languages would require separate embedding models.
+-->
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demagog Extension — Mockup</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: #dfe1e5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding-top: 0;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Chrome browser frame ─────────────────────── */
+
+    .browser-frame {
+      width: 820px;
+      margin-top: 40px;
+    }
+
+    .browser-titlebar {
+      background: #dee1e6;
+      border-radius: 12px 12px 0 0;
+      padding: 12px 16px 0 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .titlebar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .titlebar-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .titlebar-dot--close { background: #ff5f57; }
+    .titlebar-dot--minimize { background: #ffbd2e; }
+    .titlebar-dot--maximize { background: #28c840; }
+
+    .browser-toolbar {
+      background: #f1f3f4;
+      border-radius: 8px 8px 0 0;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-nav {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .toolbar-nav-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #5f6368;
+    }
+
+    .toolbar-nav-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .toolbar-url {
+      flex: 1;
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: #5f6368;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #dadce0;
+    }
+
+    .toolbar-url-lock {
+      color: #5f6368;
+    }
+
+    .toolbar-url-lock svg {
+      width: 13px;
+      height: 13px;
+      display: block;
+    }
+
+    .toolbar-url-text {
+      color: #202124;
+    }
+
+    .toolbar-url-domain {
+      color: #202124;
+    }
+
+    .toolbar-url-path {
+      color: #5f6368;
+    }
+
+    .toolbar-extensions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toolbar-ext-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .toolbar-ext-icon--other {
+      background: #9aa0a6;
+      opacity: 0.3;
+    }
+
+    .toolbar-ext-icon--demagog {
+      background: #e03e1a;
+      box-shadow: 0 0 0 2px #4285f4, 0 0 0 4px rgba(66, 133, 244, 0.2);
+    }
+
+    .toolbar-ext-icon--demagog svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ── Page content (faux article) ──────────────── */
+
+    .page-content {
+      background: #ffffff;
+      min-height: 420px;
+      padding: 48px 64px;
+      position: relative;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .page-source {
+      font-size: 12px;
+      font-weight: 600;
+      color: #e03e1a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .page-headline {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.3;
+      margin-bottom: 12px;
+      max-width: 560px;
+    }
+
+    .page-meta {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 28px;
+    }
+
+    .page-body {
+      font-size: 16px;
+      line-height: 1.75;
+      color: #374151;
+      max-width: 600px;
+    }
+
+    .page-body p {
+      margin-bottom: 16px;
+    }
+
+    .text-highlight {
+      background: rgba(66, 133, 244, 0.15);
+      border-radius: 2px;
+      padding: 1px 0;
+    }
+
+    /* ── Extension popup ──────────────────────────── */
+
+    .popup-anchor {
+      position: absolute;
+      top: -8px;
+      right: 52px;
+    }
+
+    .popup-arrow {
+      width: 16px;
+      height: 8px;
+      margin-left: auto;
+      margin-right: 12px;
+    }
+
+    .popup-arrow polygon {
+      fill: #ffffff;
+    }
+
+    .popup-panel {
+      width: 380px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.18),
+        0 2px 8px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* ── Popup header ─────────────────────────────── */
+
+    .popup-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .popup-logo {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .popup-logo svg {
+      height: 22px;
+      width: auto;
+    }
+
+    .popup-header-divider {
+      width: 1px;
+      height: 18px;
+      background: #d1d5db;
+    }
+
+    .popup-header-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    /* ── Popup: loading state (subtle top accent) ── */
+
+    .popup-accent {
+      height: 3px;
+      background: linear-gradient(90deg, #e03e1a, #f59e0b, #e03e1a);
+      background-size: 200% 100%;
+    }
+
+    /* ── Popup: statement section ─────────────────── */
+
+    .popup-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .popup-section:last-child {
+      border-bottom: none;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .statement-text {
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: #1e293b;
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .statement-speaker {
+      font-size: 13px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .speaker-name {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .speaker-separator {
+      color: #cbd5e1;
+    }
+
+    /* ── Popup: verdict section ───────────────────── */
+
+    .verdict-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .verdict-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 9999px;
+      border: 1px solid #fcd34d;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 5px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .verdict-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #b45309;
+      flex-shrink: 0;
+    }
+
+    .confidence-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .confidence-bar-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .confidence-bar {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      width: 62%;
+      border-radius: 4px;
+      background: #f59e0b;
+      transition: width 0.3s ease;
+    }
+
+    .confidence-pct {
+      font-size: 14px;
+      font-weight: 700;
+      color: #92400e;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* ── Popup: source articles ───────────────────── */
+
+    .article-item {
+      padding: 9px 0;
+      border-bottom: 1px solid #f8fafc;
+    }
+
+    .article-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .article-item:first-child {
+      padding-top: 0;
+    }
+
+    .article-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #e03e1a;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-color: rgba(224, 62, 26, 0.35);
+      cursor: pointer;
+      line-height: 1.4;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .article-title:hover {
+      color: #c73414;
+      text-decoration-color: #c73414;
+    }
+
+    .article-meta {
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
+
+    /* ── Popup: action button ─────────────────────── */
+
+    .action-btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+
+    .action-btn:hover {
+      border-color: #e03e1a;
+      color: #e03e1a;
+    }
+
+    /* ── Popup: footer ────────────────────────────── */
+
+    .popup-footer {
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    /* ── Browser bottom bar ───────────────────────── */
+
+    .browser-bottom {
+      background: #f1f3f4;
+      height: 8px;
+      border-radius: 0 0 12px 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="browser-frame">
+    <!-- Title bar with traffic lights -->
+    <div class="browser-titlebar">
+      <div class="titlebar-controls">
+        <div class="titlebar-dot titlebar-dot--close"></div>
+        <div class="titlebar-dot titlebar-dot--minimize"></div>
+        <div class="titlebar-dot titlebar-dot--maximize"></div>
+      </div>
+
+      <!-- Toolbar: nav, URL, extensions -->
+      <div class="browser-toolbar">
+        <div class="toolbar-nav">
+          <div class="toolbar-nav-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </div>
+          <div class="toolbar-nav-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
+
+        <div class="toolbar-url">
+          <span class="toolbar-url-lock">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <span><span class="toolbar-url-domain">dennikn.sk</span><span class="toolbar-url-path">/minuta/prezident-sutaj-estok-kriminalita-eu-statistiky</span></span>
+        </div>
+
+        <div class="toolbar-extensions">
+          <div class="toolbar-ext-icon toolbar-ext-icon--other"></div>
+          <div class="toolbar-ext-icon toolbar-ext-icon--other"></div>
+          <div class="toolbar-ext-icon toolbar-ext-icon--demagog" title="Demagog.sk">
+            <svg viewBox="0 0 100 100" fill="none">
+              <rect x="24" y="8" width="68" height="68" rx="4" stroke="#fff" stroke-width="7" fill="none"/>
+              <polygon points="24,38 8,24 24,24" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+              <text x="58" y="36" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="19" font-weight="800" fill="#fff" letter-spacing="1">DEM</text>
+              <text x="58" y="55" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="19" font-weight="800" fill="#fff" letter-spacing="1">GOG</text>
+              <text x="58" y="72" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="13" font-weight="700" fill="#fff" letter-spacing="0.5">.SK</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Faux article page -->
+    <div class="page-content">
+      <div class="page-source">Dennik N</div>
+      <h1 class="page-headline">Šutaj Eštok: Bezpečnosť na Slovensku je na historicky najlepšej úrovni</h1>
+      <div class="page-meta">Autor: Jana Kováčová &middot; 8. marca 2026 &middot; 4 min čítanie</div>
+      <div class="page-body">
+        <p>Minister vnútra Matúš Šutaj Eštok na piatkovej tlačovej konferencii prezentoval výsledky rezortu za uplynulý rok. Podľa jeho slov sa Slovensko stalo najbezpečnejšou krajinou v regióne.</p>
+        <p><span class="text-highlight">„Slovensko má najnižšiu mieru kriminality v celej Európskej únii,"</span> vyhlásil minister s odvolaním sa na údaje Eurostatu. Analytici však upozorňujú, že štatistiky je potrebné interpretovať v kontexte metodiky zberu dát, ktorá sa medzi členskými štátmi výrazne líši.</p>
+        <p>Opozičný poslanec Michal Šimečka reagoval, že minister selektívne vyberá čísla, ktoré mu vyhovujú, a ignoruje rastúcu kybernetickú kriminalitu.</p>
+      </div>
+
+      <!-- Extension popup anchored from toolbar -->
+      <div class="popup-anchor">
+        <svg class="popup-arrow" viewBox="0 0 16 8">
+          <polygon points="8,0 16,8 0,8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+          <!-- cover bottom stroke -->
+          <rect x="1" y="7" width="14" height="2" fill="#ffffff"/>
+        </svg>
+
+        <div class="popup-panel">
+          <div class="popup-accent"></div>
+
+          <!-- Header -->
+          <div class="popup-header">
+            <div class="popup-logo">
+              <svg viewBox="0 0 120 42" fill="none" height="20">
+                <!-- Speech bubble icon -->
+                <rect x="6" y="3" width="28" height="28" rx="2" stroke="#1e293b" stroke-width="2.5" fill="none"/>
+                <polygon points="6,17 1,12 6,12" fill="#1e293b" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/>
+                <text x="20" y="15" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="7.5" font-weight="800" fill="#1e293b" letter-spacing="0.3">DEM</text>
+                <text x="20" y="23" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="7.5" font-weight="800" fill="#1e293b" letter-spacing="0.3">GOG</text>
+                <text x="20" y="29.5" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="5" font-weight="700" fill="#1e293b" letter-spacing="0.2">.SK</text>
+                <!-- Wordmark -->
+                <text x="42" y="25" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="16" font-weight="700" fill="#1e293b" letter-spacing="-0.3">Demagog</text>
+              </svg>
+            </div>
+            <div class="popup-header-divider"></div>
+            <div class="popup-header-title">Overenie výroku</div>
+          </div>
+
+          <!-- Statement -->
+          <div class="popup-section">
+            <div class="section-label">Vybraný výrok</div>
+            <div class="statement-text">
+              „Slovensko má najnižšiu mieru kriminality v celej Európskej únii."
+            </div>
+            <div class="statement-speaker">
+              <span class="speaker-name">Matúš Šutaj Eštok</span>
+              <span class="speaker-separator">&middot;</span>
+              <span>HLAS-SD</span>
+            </div>
+          </div>
+
+          <!-- Verdict -->
+          <div class="popup-section">
+            <div class="verdict-row">
+              <div class="verdict-badge">
+                <span class="verdict-dot"></span>
+                Zavádzajúce
+              </div>
+            </div>
+            <div class="confidence-label">Dôveryhodnosť zhody</div>
+            <div class="confidence-bar-wrapper">
+              <div class="confidence-bar">
+                <div class="confidence-fill"></div>
+              </div>
+              <div class="confidence-pct">62 %</div>
+            </div>
+          </div>
+
+          <!-- Source articles -->
+          <div class="popup-section">
+            <div class="section-label">Zdrojové články</div>
+
+            <div class="article-item">
+              <a class="article-title" href="#">Eurostat: Kriminalita na Slovensku klesá, no nie je najnižšia v EÚ</a>
+              <div class="article-meta">sme.sk &middot; 15. 1. 2026</div>
+            </div>
+
+            <div class="article-item">
+              <a class="article-title" href="#">Štatistiky kriminality za rok 2025: Ako si stojí Slovensko?</a>
+              <div class="article-meta">dennikn.sk &middot; 22. 12. 2025</div>
+            </div>
+
+            <div class="article-item">
+              <a class="article-title" href="#">Ministerstvo vnútra: Pokles trestných činov o 8 percent</a>
+              <div class="article-meta">pravda.sk &middot; 3. 1. 2026</div>
+            </div>
+          </div>
+
+          <!-- Action button -->
+          <div class="popup-section">
+            <button class="action-btn">Navrhnúť na overenie</button>
+          </div>
+
+          <!-- Footer -->
+          <div class="popup-footer">
+            Powered by Demagog.sk
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="browser-bottom"></div>
+  </div>
+
+</body>
+</html>

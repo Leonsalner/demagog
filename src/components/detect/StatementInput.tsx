@@ -10,6 +10,10 @@ interface StatementInputProps {
 }
 
 const MAX_LENGTH = 2000;
+const detectModeOptions = [
+  { value: "thorough", label: "Dôkladný" },
+  { value: "fast", label: "Rýchly" },
+] as const satisfies Array<{ value: DetectMode; label: string }>;
 
 export default function StatementInput({
   onSubmit,
@@ -35,7 +39,7 @@ export default function StatementInput({
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <label
           htmlFor="statement"
           className="text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -44,14 +48,11 @@ export default function StatementInput({
         </label>
 
         <div
-          className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-900"
+          className="inline-flex w-full justify-center rounded-full border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-900 sm:w-auto"
           role="group"
           aria-label="Režim detekcie"
         >
-          {([
-            { value: "thorough", label: "Thorough" },
-            { value: "fast", label: "Fast" },
-          ] as const).map((option) => {
+          {detectModeOptions.map((option) => {
             const isActive = mode === option.value;
 
             return (
@@ -60,7 +61,7 @@ export default function StatementInput({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setMode(option.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                className={`rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition sm:px-3 sm:text-xs ${
                   isActive
                     ? "bg-[#e03e1a] text-white shadow-sm dark:bg-[#ff3300]"
                     : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
