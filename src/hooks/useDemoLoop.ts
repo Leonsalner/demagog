@@ -85,7 +85,7 @@ export function useDemoLoop(): DemoState {
         });
 
         if (isComplete) {
-          enterLoading();
+          schedule(enterLoading, 320);
           return;
         }
 
@@ -125,7 +125,7 @@ export function useDemoLoop(): DemoState {
         phase: "RESULTS",
       });
 
-      schedule(enterClearing, 3500);
+      schedule(enterClearing, 3800);
     };
 
     const enterClearing = () => {

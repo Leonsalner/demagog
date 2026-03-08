@@ -69,6 +69,98 @@ export default function DemoPage() {
     };
   }, [state.phase]);
 
+  useEffect(() => {
+    if (state.phase !== "RESULTS") {
+      return;
+    }
+
+    const SCROLL_DOWN_TOTAL = 320;
+    const SETTLE_MS = 600;
+    const SCROLL_DOWN_MS = 750;
+    const BOTTOM_PAUSE_MS = 1200;
+    const SCROLL_UP_MS = 700;
+
+    let cancelled = false;
+    let activeRafId: number | null = null;
+    const timeoutIds: number[] = [];
+
+    const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+    const easeInOutCubic = (t: number): number =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    const animateScroll = (
+      from: number,
+      to: number,
+      duration: number,
+      easeFn: (t: number) => number,
+      onComplete: () => void,
+    ) => {
+      const delta = to - from;
+      let startTime: number | null = null;
+
+      const step = (now: number) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (startTime === null) {
+          startTime = now;
+        }
+
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        window.scrollTo({ top: from + delta * easeFn(t), behavior: "instant" });
+
+        if (t < 1) {
+          activeRafId = window.requestAnimationFrame(step);
+        } else {
+          activeRafId = null;
+          onComplete();
+        }
+      };
+
+      activeRafId = window.requestAnimationFrame(step);
+    };
+
+    const settleTimeoutId = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+
+      const startY = window.scrollY;
+
+      animateScroll(startY, startY + SCROLL_DOWN_TOTAL, SCROLL_DOWN_MS, easeInOutCubic, () => {
+        if (cancelled) {
+          return;
+        }
+
+        const bottomY = window.scrollY;
+
+        const bottomPauseTimeoutId = window.setTimeout(() => {
+          if (cancelled) {
+            return;
+          }
+
+          animateScroll(bottomY, startY, SCROLL_UP_MS, easeInOutCubic, () => {});
+        }, BOTTOM_PAUSE_MS);
+
+        timeoutIds.push(bottomPauseTimeoutId);
+      });
+    }, SETTLE_MS);
+
+    timeoutIds.push(settleTimeoutId);
+
+    return () => {
+      cancelled = true;
+
+      if (activeRafId !== null) {
+        window.cancelAnimationFrame(activeRafId);
+      }
+
+      timeoutIds.forEach(window.clearTimeout);
+    };
+  }, [state.phase]);
+
   return (
     <div className="space-y-8 pb-[calc(100vh-560px)]">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
