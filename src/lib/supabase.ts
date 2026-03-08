@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-
 type StatementRow = {
   id: number;
   vyrok: string;
@@ -52,7 +50,7 @@ type Database = {
     Functions: {
       list_distinct_values: {
         Args: {
-          col: "meno" | "strana";
+          col: "meno" | "strana" | "oblast";
         };
         Returns: DistinctValueRow[];
       };
@@ -78,8 +76,16 @@ type Database = {
           filter_meno?: string | null;
           filter_datum_od?: string | null;
           filter_datum_do?: string | null;
+          require_embedding?: boolean;
         };
         Returns: number;
+      };
+      statement_date_bounds: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          min_date: string | null;
+          max_date: string | null;
+        }>;
       };
       match_statements: {
         Args: {
@@ -92,7 +98,7 @@ type Database = {
         Args: {
           query: string;
         };
-        Returns: Json;
+        Returns: null;
       };
     };
     Enums: Record<string, never>;
@@ -103,12 +109,17 @@ type Database = {
 type SupabaseClient = ReturnType<typeof createClient<Database>>;
 
 const SUPABASE_URL_ENV_NAMES = ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const;
+const SUPABASE_ANON_KEY_ENV_NAMES = [
+  "SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+] as const;
 const SUPABASE_SERVICE_KEY_ENV_NAMES = [
   "SUPABASE_SERVICE_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
-let supabaseClient: SupabaseClient | null = null;
+let publicClient: SupabaseClient | null = null;
+let adminClient: SupabaseClient | null = null;
 
 function readFirstEnv(names: readonly string[]): string | null {
   for (const name of names) {
@@ -122,7 +133,20 @@ function readFirstEnv(names: readonly string[]): string | null {
   return null;
 }
 
-export function getSupabaseConfigError(): string | null {
+export function getSupabasePublicConfigError(): string | null {
+  const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
+  const anonKey = readFirstEnv(SUPABASE_ANON_KEY_ENV_NAMES);
+
+  if (url && anonKey) {
+    return null;
+  }
+
+  return `Missing Supabase environment variables. Set one of ${SUPABASE_URL_ENV_NAMES.join(
+    " or ",
+  )} and one of ${SUPABASE_ANON_KEY_ENV_NAMES.join(" or ")}.`;
+}
+
+export function getSupabaseAdminConfigError(): string | null {
   const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
   const serviceKey = readFirstEnv(SUPABASE_SERVICE_KEY_ENV_NAMES);
 
@@ -135,18 +159,38 @@ export function getSupabaseConfigError(): string | null {
   )} and one of ${SUPABASE_SERVICE_KEY_ENV_NAMES.join(" or ")}.`;
 }
 
-export function getSupabase(): SupabaseClient {
-  if (supabaseClient) {
-    return supabaseClient;
+export function supabasePublic(): SupabaseClient {
+  if (publicClient) {
+    return publicClient;
+  }
+
+  const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
+  const anonKey = readFirstEnv(SUPABASE_ANON_KEY_ENV_NAMES);
+
+  if (!url || !anonKey) {
+    throw new Error(
+      getSupabasePublicConfigError() ?? "Missing public Supabase environment variables",
+    );
+  }
+
+  publicClient = createClient<Database>(url, anonKey);
+  return publicClient;
+}
+
+export function supabaseAdmin(): SupabaseClient {
+  if (adminClient) {
+    return adminClient;
   }
 
   const url = readFirstEnv(SUPABASE_URL_ENV_NAMES);
   const serviceKey = readFirstEnv(SUPABASE_SERVICE_KEY_ENV_NAMES);
 
   if (!url || !serviceKey) {
-    throw new Error(getSupabaseConfigError() ?? "Missing Supabase environment variables");
+    throw new Error(
+      getSupabaseAdminConfigError() ?? "Missing admin Supabase environment variables",
+    );
   }
 
-  supabaseClient = createClient<Database>(url, serviceKey);
-  return supabaseClient;
+  adminClient = createClient<Database>(url, serviceKey);
+  return adminClient;
 }

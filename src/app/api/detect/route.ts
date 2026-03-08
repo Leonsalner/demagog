@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { classifyMatches } from "@/lib/gemini";
+import { classifyMatches, getGeminiModel } from "@/lib/gemini";
 import { embedText } from "@/lib/jina";
-import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
-import type { DetectResponse, DetectionMatch, Statement, Verdict } from "@/types";
+import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
+import { isRecord } from "@/lib/utils";
+import type { DetectMode, DetectResponse, DetectionMatch, Statement, Verdict } from "@/types";
 
 interface MatchRow {
   id: number;
@@ -15,10 +16,6 @@ interface MatchRow {
   meno: string;
   strana: string;
   similarity: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function toStatement(row: MatchRow): Statement {
@@ -74,13 +71,13 @@ function buildFallbackClassification(row: MatchRow): {
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
-  const supabaseConfigError = getSupabaseConfigError();
+  const supabaseConfigError = getSupabasePublicConfigError();
 
   if (supabaseConfigError) {
     return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
   }
 
-  const supabase = getSupabase();
+  const supabase = supabasePublic();
 
   let parsedBody: unknown;
   try {
@@ -95,8 +92,21 @@ export async function POST(request: NextRequest) {
 
   const statement = parsedBody.statement.trim();
   const rawTopK = parsedBody.top_k;
-  const topK =
-    typeof rawTopK === "number" && Number.isInteger(rawTopK) ? rawTopK : 10;
+  const rawMode = parsedBody.mode;
+  const mode: DetectMode = rawMode === "fast" ? "fast" : "thorough";
+
+  if (
+    rawTopK !== undefined &&
+    rawTopK !== null &&
+    (typeof rawTopK !== "number" ||
+      !Number.isInteger(rawTopK) ||
+      rawTopK < 1 ||
+      rawTopK > 20)
+  ) {
+    return NextResponse.json({ error: "top_k must be between 1 and 20" }, { status: 400 });
+  }
+
+  const topK = typeof rawTopK === "number" ? rawTopK : 10;
 
   if (!statement) {
     return NextResponse.json({ error: "Statement is required" }, { status: 400 });
@@ -107,10 +117,6 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (topK < 1 || topK > 20) {
-    return NextResponse.json({ error: "top_k must be between 1 and 20" }, { status: 400 });
-  }
-
   let embedding: number[];
   try {
     embedding = await embedText(statement);
@@ -121,7 +127,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const retrievalCount = Math.max(topK, 30);
+  const retrievalCount = Math.max(topK, mode === "fast" ? 6 : 30);
   const { data, error } = await supabase.rpc("match_statements", {
     query_embedding: embedding,
     match_count: retrievalCount,
@@ -155,7 +161,8 @@ export async function POST(request: NextRequest) {
         id: row.id,
         vyrok: row.vyrok,
         vyhodnotenie: row.vyhodnotenie,
-      }))
+      })),
+      getGeminiModel(mode === "fast" ? "flash" : "pro")
     );
   } catch {
     classifications = rows.map(buildFallbackClassification);

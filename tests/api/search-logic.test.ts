@@ -3,8 +3,8 @@ import { NextRequest } from "next/server";
 import type { QueryUnderstanding, Verdict } from "@/types";
 
 vi.mock("@/lib/supabase", () => ({
-  getSupabase: vi.fn(),
-  getSupabaseConfigError: vi.fn(() => null),
+  supabasePublic: vi.fn(),
+  getSupabasePublicConfigError: vi.fn(() => null),
 }));
 
 vi.mock("@/lib/jina", () => ({
@@ -17,7 +17,7 @@ vi.mock("@/lib/gemini", () => ({
 }));
 
 const { POST, resetSearchRouteStateForTests } = await import("@/app/api/search/route");
-const { getSupabase, getSupabaseConfigError } = await import("@/lib/supabase");
+const { supabasePublic, getSupabasePublicConfigError } = await import("@/lib/supabase");
 const { embedText } = await import("@/lib/jina");
 const { understandQuery, rerankResults } = await import("@/lib/gemini");
 
@@ -95,7 +95,17 @@ function createSupabaseMock(options?: {
     }
 
     if (options?.rpc) {
-      return options.rpc(fn, args);
+      try {
+        return await options.rpc(fn, args);
+      } catch (error) {
+        if (fn !== "count_statements") {
+          throw error;
+        }
+      }
+    }
+
+    if (fn === "count_statements") {
+      return { data: 1, error: null };
     }
 
     if (fn === "search_statements") {
@@ -115,7 +125,7 @@ describe("POST /api/search logic", () => {
     vi.clearAllMocks();
     resetSearchRouteStateForTests();
     delete process.env.ENABLE_SEARCH_RERANK;
-    vi.mocked(getSupabaseConfigError).mockReturnValue(null);
+    vi.mocked(getSupabasePublicConfigError).mockReturnValue(null);
     vi.mocked(embedText).mockResolvedValue([0.1, 0.2, 0.3]);
     vi.mocked(understandQuery).mockResolvedValue(buildUnderstanding());
     vi.mocked(rerankResults).mockImplementation(async (_, results) =>
@@ -145,27 +155,33 @@ describe("POST /api/search logic", () => {
     });
   });
 
-  it("caps semantic retrieval at 50 candidates and exposes has_more", async () => {
+  it("fetches only the requested semantic page and exposes the database total", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn) => {
+        if (fn === "search_statements") {
+          return {
+            data: Array.from({ length: 12 }, (_, index) =>
+              buildRow(index + 49, {
+                meno: "Robert Fico",
+                strana: "Smer-SD",
+                similarity: Number((0.99 - index * 0.01).toFixed(2)),
+              }),
+            ),
+            error: null,
+          };
+        }
+
+        if (fn === "count_statements") {
+          return { data: 80, error: null };
+        }
+
         if (fn !== "search_statements") {
           throw new Error(`Unexpected RPC ${fn}`);
         }
-
-        return {
-          data: Array.from({ length: 50 }, (_, index) =>
-            buildRow(index + 1, {
-              meno: "Robert Fico",
-              strana: "Smer-SD",
-              similarity: Number((0.99 - index * 0.01).toFixed(2)),
-            }),
-          ),
-          error: null,
-        };
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
 
     const response = await POST(
       createRequest({
@@ -186,13 +202,19 @@ describe("POST /api/search logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
-        match_count: 50,
-        match_offset: 0,
+        match_count: 12,
+        match_offset: 48,
       }),
     );
-    expect(data.total_count).toBe(50);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "count_statements",
+      expect.objectContaining({
+        require_embedding: true,
+      }),
+    );
+    expect(data.total_count).toBe(80);
     expect(data.has_more).toBe(true);
-    expect(data.results).toHaveLength(2);
+    expect(data.results).toHaveLength(12);
   });
 
   it("does not rerank by default when more than five semantic rows are returned", async () => {
@@ -214,7 +236,7 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
 
     const response = await POST(
       createRequest({
@@ -246,7 +268,7 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
     vi.mocked(rerankResults).mockResolvedValue([6, 5, 4, 3, 2, 1]);
 
     const response = await POST(
@@ -298,7 +320,7 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         filters: {
@@ -339,7 +361,7 @@ describe("POST /api/search logic", () => {
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      4,
+      5,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Peter Pellegrini",
@@ -429,7 +451,7 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         related_politicians: [
@@ -482,7 +504,7 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
 
     const response = await POST(
       createRequest({
@@ -503,21 +525,114 @@ describe("POST /api/search logic", () => {
     );
   });
 
-  it("caches distinct values between semantic requests", async () => {
+  it("uses the first selected politician for semantic search arrays", async () => {
     const supabase = createSupabaseMock({
-      rpc: async (fn) => {
+      rpc: async (fn, args) => {
         if (fn !== "search_statements") {
           throw new Error(`Unexpected RPC ${fn}`);
         }
 
         return {
-          data: [buildRow(1, { meno: "Robert Fico", strana: "Smer-SD" })],
+          data: [
+            buildRow(1, {
+              meno: String(args.filter_meno ?? "Robert Fico"),
+              strana: "Smer-SD",
+            }),
+          ],
           error: null,
         };
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "vojna ukrajina",
+        meno: ["Robert Fico", "Peter Pellegrini"],
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: "Robert Fico",
+      }),
+    );
+  });
+
+  it("uses in() for filter-only politician arrays", async () => {
+    const queryBuilder = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      in: vi.fn(),
+      gte: vi.fn(),
+      lte: vi.fn(),
+      order: vi.fn(),
+      range: vi.fn(),
+    };
+
+    queryBuilder.select.mockReturnValue(queryBuilder);
+    queryBuilder.eq.mockReturnValue(queryBuilder);
+    queryBuilder.in.mockReturnValue(queryBuilder);
+    queryBuilder.gte.mockReturnValue(queryBuilder);
+    queryBuilder.lte.mockReturnValue(queryBuilder);
+    queryBuilder.order.mockReturnValue(queryBuilder);
+    queryBuilder.range.mockResolvedValue({
+      data: [
+        buildRow(1, { meno: "Robert Fico", strana: "Smer-SD" }),
+        buildRow(2, { meno: "Peter Pellegrini", strana: "Hlas" }),
+      ],
+      error: null,
+      count: 2,
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue({
+      from: vi.fn(() => queryBuilder),
+      rpc: vi.fn(),
+    } as never);
+
+    const response = await POST(
+      createRequest({
+        meno: ["Robert Fico", "Peter Pellegrini"],
+        page: 1,
+        page_size: 10,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(queryBuilder.in).toHaveBeenCalledWith("meno", [
+      "Robert Fico",
+      "Peter Pellegrini",
+    ]);
+    expect(data.total_count).toBe(2);
+  });
+
+  it("reloads distinct values for each semantic request", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn === "search_statements") {
+          return {
+            data: [buildRow(1, { meno: "Robert Fico", strana: "Smer-SD" })],
+            error: null,
+          };
+        }
+
+        if (fn === "count_statements") {
+          return { data: 1, error: null };
+        }
+
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
 
     await POST(createRequest({ query: "robert fico vojna ukrajina", page: 1, page_size: 5 }));
     await POST(createRequest({ query: "robert fico vojna ukrajina", page: 1, page_size: 5 }));
@@ -526,7 +641,7 @@ describe("POST /api/search logic", () => {
       .mocked(supabase.rpc)
       .mock.calls.filter(([fn]) => fn === "list_distinct_values");
 
-    expect(distinctCalls).toHaveLength(2);
+    expect(distinctCalls).toHaveLength(4);
   });
 
   it("logs the search RPC error details before returning 502", async () => {
@@ -552,13 +667,13 @@ describe("POST /api/search logic", () => {
       },
     });
 
-    vi.mocked(getSupabase).mockReturnValue(supabase as never);
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
 
     const response = await POST(createRequest({ query: "robert fico" }));
 
     expect(response.status).toBe(502);
     expect(errorSpy).toHaveBeenCalledWith(
-      "[search] search_statements RPC error:",
+      "[search] semantic search RPC error:",
       "57014",
       "statement timeout",
       "canceling statement due to statement timeout",

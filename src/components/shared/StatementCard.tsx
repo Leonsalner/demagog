@@ -30,7 +30,15 @@ function formatDate(date: string | null) {
     return null;
   }
 
-  return new Date(date).toLocaleDateString("sk-SK", {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day] = match;
+
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("sk-SK", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -152,7 +160,7 @@ export default function StatementCard({
           <button
             type="button"
             onClick={() => setIsReasoningOpen((value) => !value)}
-            className="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            className="text-sm font-medium text-[var(--brand-accent)] transition-colors hover:text-[var(--brand-accent-hover)] dark:text-[var(--brand-accent-dark)] dark:hover:text-[var(--brand-accent)]"
           >
             {isReasoningOpen ? "Skryť odôvodnenie" : "Zobraziť odôvodnenie"}
           </button>

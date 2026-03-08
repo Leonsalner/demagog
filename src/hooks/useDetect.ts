@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 
 import { mockStatements } from "@/lib/mock-data";
-import { DetectResponse, DetectionMatch, Statement } from "@/types";
+import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
 
@@ -117,7 +117,7 @@ export function useDetect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const detect = useCallback(async (statement: string) => {
+  const detect = useCallback(async (statement: string, mode: DetectMode = "thorough") => {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -132,7 +132,7 @@ export function useDetect() {
       const response = await fetch("/api/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ statement, top_k: 10 }),
+        body: JSON.stringify({ statement, top_k: 10, mode }),
       });
 
       if (!response.ok) {

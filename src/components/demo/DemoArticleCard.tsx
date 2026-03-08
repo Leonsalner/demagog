@@ -21,7 +21,7 @@ const sourceBadgeTone = {
 
 export default function DemoArticleCard({ article }: DemoArticleCardProps) {
   return (
-    <article className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/30">
+    <article className="rounded-xl border border-[#f7d4c7] bg-white/88 p-4 dark:border-[#4f251a] dark:bg-[#140d0b]">
       <span
         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${sourceBadgeTone[article.source]}`}
       >

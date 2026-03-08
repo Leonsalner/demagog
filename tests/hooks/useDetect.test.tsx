@@ -27,4 +27,34 @@ describe("useDetect", () => {
     expect(result.current.result).toBeNull();
     expect(result.current.error).toBe("Detekcia zlyhala.");
   });
+
+  it("forwards the selected detect mode to the API", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        input_statement: "Testovaci vyrok",
+        matches: [],
+        overall_status: "NEW_CLAIM",
+        query_time_ms: 12,
+      }),
+    } as Response);
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      await result.current.detect("Testovaci vyrok", "fast");
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/detect",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          statement: "Testovaci vyrok",
+          top_k: 10,
+          mode: "fast",
+        }),
+      }),
+    );
+  });
 });

@@ -125,7 +125,7 @@ export function useDemoLoop(): DemoState {
         phase: "RESULTS",
       });
 
-      schedule(enterClearing, 5000);
+      schedule(enterClearing, 3500);
     };
 
     const enterClearing = () => {

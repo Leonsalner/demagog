@@ -80,7 +80,7 @@ describe("useSearch", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.filters.meno).toBe("Robert Fico");
+      expect(result.current.filters.meno).toEqual(["Robert Fico"]);
     });
 
     await act(async () => {

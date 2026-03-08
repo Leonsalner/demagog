@@ -33,6 +33,7 @@ export default function Home() {
     setPage,
     search,
     loadFilters,
+    isModelFilterUpdateRef,
   } = useSearch();
   const {
     result: detectResult,
@@ -42,6 +43,11 @@ export default function Home() {
     reset: resetDetect,
   } = useDetect();
   const initializedRef = useRef(false);
+  const searchRef = useRef(search);
+
+  useEffect(() => {
+    searchRef.current = search;
+  });
 
   useEffect(() => {
     void loadFilters();
@@ -53,13 +59,18 @@ export default function Home() {
       return;
     }
 
+    if (isModelFilterUpdateRef.current) {
+      isModelFilterUpdateRef.current = false;
+      return;
+    }
+
     setPage(1);
     const timeout = window.setTimeout(() => {
-      void search(1);
+      void searchRef.current(1);
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [filters, search, setPage]);
+  }, [filters, isModelFilterUpdateRef, setPage]);
 
   const handleSearch = () => {
     setPage(1);
@@ -76,14 +87,11 @@ export default function Home() {
     <div className="space-y-8">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium uppercase tracking-[0.18em] text-blue-600">
-            Demagog.sk
-          </span>
           <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
             Vyhľadávanie a detekcia výrokov
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
-            Vyhľadávajte vo výrokoch overených Demagog.sk, spresnite výsledky
+            Vyhľadávajte vo výrokoch overených Demagogom, spresnite výsledky
             podľa filtrov a v rovnakom okne skontrolujte, či nový výrok nie je
             už pokrytý existujúcim fact-checkom.
           </p>
@@ -97,11 +105,13 @@ export default function Home() {
           >
             <span
               aria-hidden="true"
-              className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-white shadow-sm transition-all duration-300 dark:bg-slate-950 ${
-                activeTab === "search"
-                  ? "translate-x-0"
-                  : "translate-x-[calc(100%+0.25rem)]"
-              }`}
+              className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-[#e03e1a] shadow-[0_12px_30px_rgba(224,62,26,0.2)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-[#ff3300] dark:shadow-[0_12px_30px_rgba(255,51,0,0.22)]"
+              style={{
+                transform:
+                  activeTab === "search"
+                    ? "translateX(0)"
+                    : "translateX(calc(100% + 0.25rem))",
+              }}
             />
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -115,10 +125,10 @@ export default function Home() {
                   aria-controls={`${tab.id}-panel`}
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative z-10 rounded-full px-4 py-3 text-sm font-semibold transition-colors duration-300 ${
+                  className={`relative z-10 rounded-full px-4 py-3 text-sm font-semibold transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     isActive
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      ? "text-white"
+                      : "bg-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
                   {tab.label}
@@ -162,7 +172,7 @@ export default function Home() {
                 {!hasSearched && !loading && !error && !results ? (
                   <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      Vyhľadávajte vo výrokoch overených Demagog.sk
+                      Vyhľadávajte vo výrokoch overených Demagogom
                     </h2>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Zadajte tému, citáciu alebo meno politika — systém
@@ -233,7 +243,7 @@ export default function Home() {
           }`}
         >
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#e03e1a] dark:text-[#ff3300]">
               Detekcia duplikátov
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
@@ -257,7 +267,7 @@ export default function Home() {
 
                 {detectLoading ? (
                   <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
-                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" />
+                    <LoadingSpinner size="lg" />
                     <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
                       Porovnávam výrok s databázou overených tvrdení...
                     </p>

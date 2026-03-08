@@ -20,7 +20,7 @@ function ExpandableContextArticles({ articles }: { articles: DemoArticle[] }) {
         onClick={() => setExpanded((value) => !value)}
         aria-expanded={expanded}
         aria-controls="demo-context-more"
-        className="mt-4 inline-flex items-center rounded-full border border-indigo-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-white dark:border-indigo-800/60 dark:bg-slate-900/60 dark:text-indigo-300 dark:hover:border-indigo-700"
+        className="mt-4 inline-flex items-center rounded-full border border-[var(--brand-border-soft)] bg-white/88 px-3 py-1.5 text-xs font-semibold text-[var(--brand-accent)] transition hover:bg-[var(--brand-surface-soft)] dark:border-[var(--brand-border-dark)] dark:bg-[#1e1411] dark:text-[var(--brand-accent-dark)] dark:hover:bg-[#261714]"
       >
         {expanded ? "Zobraziť menej" : `Zobraziť viac (${articles.length})`}
       </button>
@@ -42,7 +42,7 @@ export default function CurrentContext({ articles }: CurrentContextProps) {
   const remainingArticlesKey = remainingArticles.map((article) => article.id).join("-");
 
   return (
-    <section className="animate-in slide-in-from-bottom-2 fade-in rounded-2xl border border-indigo-200/60 bg-gradient-to-r from-indigo-50/80 to-slate-50/80 p-5 duration-500 dark:border-indigo-800/30 dark:from-indigo-950/40 dark:to-slate-900/40">
+    <section className="animate-in slide-in-from-bottom-2 fade-in rounded-2xl border border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)] p-5 duration-500 dark:border-[var(--brand-border-dark)] dark:bg-[var(--brand-surface-dark)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-2">
           <svg
@@ -51,7 +51,7 @@ export default function CurrentContext({ articles }: CurrentContextProps) {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.6"
-            className="h-4 w-4 text-indigo-500"
+            className="h-4 w-4 text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]"
           >
             <path
               d="M3.5 4.5h13v11h-13z"
@@ -62,7 +62,7 @@ export default function CurrentContext({ articles }: CurrentContextProps) {
             <path d="M6 10h8" strokeLinecap="round" />
             <path d="M6 13h5" strokeLinecap="round" />
           </svg>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
             Aktuálny kontext
           </h2>
         </div>

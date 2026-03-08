@@ -114,3 +114,65 @@ The codebase is well-structured with strong input validation, typed Supabase RPC
 - **Accessibility:** Proper ARIA attributes on tabs, buttons, and navigation. Screen reader text on loading spinners. Correct `role="tablist"` / `role="tab"` / `role="tabpanel"` usage.
 - **Good test coverage:** 14 test files covering API routes, components, hooks, integration flows, and scripts.
 - **Secrets not in git:** `.env.local` is properly gitignored and not tracked.
+
+---
+
+## Implementation Report (2026-03-08)
+
+Fixed findings `1-10` and `12-20`. Finding `11` was already resolved in the current branch and was left untouched.
+
+- `1 + 13`: locked down `exec_sql` in `scripts/setup-supabase.sql` with `REVOKE` for `PUBLIC`, `anon`, and `authenticated`, added an explicit `service_role` grant, and corrected the TypeScript RPC return type in `src/lib/supabase.ts`.
+- `2`: removed Gemini API keys from URL query strings and now send them via the `x-goog-api-key` header.
+- `3`: changed `clanky.embedding` in `scripts/setup-supabase.sql` to `vector(1024)` and documented the required manual `ALTER TABLE` for already-deployed databases.
+- `4`: split Supabase access into public anon and admin/service-role clients in `src/lib/supabase.ts`, then moved app routes to the public client.
+- `5`: removed the module-level distinct-values cache from `src/app/api/search/route.ts`.
+- `6 + 14`: added env-overridable Gemini model selection (`GEMINI_MODEL_PRO`, `GEMINI_MODEL_FLASH`, `GEMINI_MODEL_LITE`), kept the current preview defaults, and hardened duplicate-classification prompts with a top-level `systemInstruction` plus explicit XML-delimited untrusted input.
+- `7 + 18`: changed semantic search pagination to fetch only the requested page and added accurate semantic totals via `count_statements(..., require_embedding => true)`.
+- `8`: added unhandled-error logging in the search route before returning 500.
+- `9`: detect now rejects zero, negative, non-integer, and out-of-range `top_k` values with a 400.
+- `10 + 19`: search mock mode now respects `NEXT_PUBLIC_USE_SEARCH_MOCK`, and `loadFilters` is stabilized with a ref-backed cache instead of a dependency loop.
+- `12`: filters now use RPC-backed distinct values plus a dedicated `statement_date_bounds()` helper instead of full-table batch scans.
+- `15 + 16 + 20`: centralized `VERDICTS` and `isRecord` into `src/lib/utils.ts` and updated search, detect, Gemini, and the sidebar to use the shared exports.
+- `17`: `StatementCard` now parses `YYYY-MM-DD` using the local date constructor to avoid timezone drift.
+- Detect speed toggle: added `Thorough` / `Fast` mode to the detect UI, forwarded `mode` through `useDetect` and `/api/detect`, and made fast mode use the flash model with a smaller candidate window.
+
+Focused verification added/updated:
+
+- Supabase public/admin client split tests.
+- Shared `VERDICTS` and `isRecord` export tests.
+- Detect negative `top_k` rejection tests.
+- Detect mode forwarding tests across hook, API logic, and integration flow.
+- Search pagination/count tests updated for page-scoped semantic retrieval.
+
+Live/environment actions performed for verification:
+
+- Applied the non-destructive function/grant changes needed for the public anon client to the current Supabase environment and reloaded the PostgREST schema cache.
+- Left the deployed `clanky.embedding` column migration as a manual follow-up because changing an existing `vector(768)` column to `vector(1024)` can invalidate existing article embeddings.
+
+Verification summary:
+
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm test` passed.
+- `TEST_LIVE_API=true TEST_API_URL=http://localhost:3001 npx vitest run tests/api/search.test.ts tests/api/filters.test.ts` passed.
+- `TEST_LIVE_API=true TEST_API_URL=http://localhost:3001 npx vitest run tests/api/detect.test.ts` passed.
+- Headed Playwright verification passed on `http://localhost:3001`: search returned semantic results, the `Hlas` filter narrowed the result set, fast detect produced related-match output, `/demo` loaded successfully, and `/detect` resolved back into the main app shell as expected.
+
+Known follow-up / deferred item:
+
+- The deployed `clanky.embedding` column still needs the manual `ALTER TABLE ... TYPE vector(1024)` migration if article embeddings are to be generated in that environment.
+
+## Verification Prompt For Claude
+
+Please independently review the fixes appended to `audit-report.md` on 2026-03-08 and verify that:
+
+1. `exec_sql` is no longer callable by anon/authenticated roles, while scripts still retain service-role access.
+2. Public API routes use the anon Supabase client and no longer depend on service-role credentials.
+3. Search semantic pagination now fetches only the requested page and reports an accurate `total_count`.
+4. Filters no longer scan the full `vyroky` table in batches.
+5. Gemini requests no longer leak the API key in query strings, and duplicate classification uses separated trusted instructions plus XML-delimited untrusted input.
+6. The new detect `Thorough` / `Fast` mode is wired from UI to hook to API to Gemini model selection, and fast mode actually reduces work.
+7. Shared `VERDICTS` / `isRecord` utilities replaced duplicate definitions cleanly.
+8. `StatementCard` date rendering no longer shifts by timezone.
+9. All updated tests still reflect intended behavior rather than merely mirroring implementation details.
+10. The remaining manual follow-up for `clanky.embedding` is correctly documented and not accidentally hidden by the code changes.
