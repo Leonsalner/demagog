@@ -12,7 +12,7 @@ export default function LoadingSpinner({
   size = "md",
 }: LoadingSpinnerProps) {
   return (
-    <div className="flex items-center justify-center text-blue-600 dark:text-blue-400" role="status">
+    <div className="flex items-center justify-center text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]" role="status">
       <svg
         className={`animate-spin ${sizeClassName[size]}`}
         viewBox="0 0 24 24"

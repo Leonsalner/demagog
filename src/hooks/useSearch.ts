@@ -10,7 +10,7 @@ import type {
   Statement,
 } from "@/types";
 
-const USE_MOCK = false;
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_SEARCH_MOCK === "true";
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -78,7 +78,7 @@ function applyExtractedFilters(
     nextOwnedFields.add("vyhodnotenie");
   }
   if (clearedFilters.meno === null && extractedFilters.meno !== null) {
-    nextFilters.meno = extractedFilters.meno;
+    nextFilters.meno = [extractedFilters.meno];
     nextOwnedFields.add("meno");
   }
 
@@ -144,8 +144,11 @@ function runMockSearch(request: SearchRequest): SearchResponse {
       return false;
     }
 
-    if (request.meno && statement.meno !== request.meno) {
-      return false;
+    if (request.meno) {
+      const mena = Array.isArray(request.meno) ? request.meno : [request.meno];
+      if (!mena.includes(statement.meno)) {
+        return false;
+      }
     }
 
     if (request.datum_od && (!statement.datum || statement.datum < request.datum_od)) {
@@ -198,15 +201,18 @@ export function useSearch() {
   const [hasSearched, setHasSearched] = useState(false);
   const [availableFilters, setAvailableFilters] =
     useState<FiltersResponse | null>(null);
+  const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const modelSetFields = useRef<Set<keyof FilterState>>(new Set<keyof FilterState>());
+  const isModelFilterUpdateRef = useRef(false);
 
   const loadFilters = useCallback(async () => {
-    if (availableFilters) {
-      return availableFilters;
+    if (availableFiltersRef.current) {
+      return availableFiltersRef.current;
     }
 
     try {
       if (USE_MOCK) {
+        availableFiltersRef.current = mockFilters;
         setAvailableFilters(mockFilters);
         return mockFilters;
       }
@@ -217,13 +223,15 @@ export function useSearch() {
       }
 
       const data: FiltersResponse = await response.json();
+      availableFiltersRef.current = data;
       setAvailableFilters(data);
       return data;
     } catch {
+      availableFiltersRef.current = mockFilters;
       setAvailableFilters(mockFilters);
       return mockFilters;
     }
-  }, [availableFilters]);
+  }, []);
 
   const search = useCallback(
     async (nextPage = page) => {
@@ -256,7 +264,7 @@ export function useSearch() {
         setResults(data);
         if (data.query_understanding?.extracted_filters) {
           const extractedFilters = data.query_understanding.extracted_filters;
-
+          isModelFilterUpdateRef.current = true;
           setFiltersState((currentFilters) => {
             const nextState = applyExtractedFilters(
               currentFilters,
@@ -329,5 +337,6 @@ export function useSearch() {
     setError,
     search,
     loadFilters,
+    isModelFilterUpdateRef,
   };
 }

@@ -70,7 +70,7 @@ export default function DemoPage() {
   }, [state.phase]);
 
   return (
-    <div className="space-y-8 pb-[28vh] sm:pb-[32vh]">
+    <div className="space-y-8 pb-[calc(100vh-560px)]">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium uppercase tracking-[0.18em] text-blue-600">

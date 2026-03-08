@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { MutableRefObject } from "react";
 
 import Home from "@/app/page";
 import type { FilterState, FiltersResponse, SearchResponse } from "@/types";
@@ -63,6 +64,9 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const setPage = vi.fn();
   const search = vi.fn();
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
+  const isModelFilterUpdateRef = {
+    current: false,
+  } as MutableRefObject<boolean>;
 
   vi.mocked(useSearch).mockReturnValue({
     results: null,
@@ -79,10 +83,18 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setError: vi.fn(),
     search,
     loadFilters,
+    isModelFilterUpdateRef,
     ...overrides,
   });
 
-  return { setQuery, setFilters, setPage, search, loadFilters };
+  return {
+    setQuery,
+    setFilters,
+    setPage,
+    search,
+    loadFilters,
+    isModelFilterUpdateRef,
+  };
 }
 
 function mockUseDetectReturn(overrides?: Record<string, unknown>) {
@@ -101,6 +113,10 @@ describe("search page flow", () => {
     vi.clearAllMocks();
     window.scrollTo = vi.fn();
     mockUseDetectReturn();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders the initial search state", () => {
@@ -133,14 +149,132 @@ describe("search page flow", () => {
     const { setFilters } = mockUseSearchReturn();
 
     render(<Home />);
-    fireEvent.change(screen.getByLabelText("Politická strana"), {
-      target: { value: "Hlas" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Hlas" }));
 
     expect(setFilters).toHaveBeenCalledWith({
       ...emptyFilters,
       strana: "Hlas",
     });
+  });
+
+  it("does not auto-search when only the query changes and search is recreated", () => {
+    vi.useFakeTimers();
+
+    const setQuery = vi.fn();
+    const setFilters = vi.fn();
+    const setPage = vi.fn();
+    const loadFilters = vi.fn().mockResolvedValue(availableFilters);
+    const firstSearch = vi.fn();
+    const secondSearch = vi.fn();
+    const isModelFilterUpdateRef = {
+      current: false,
+    } as MutableRefObject<boolean>;
+
+    const sharedState = {
+      results: null,
+      loading: false,
+      error: null,
+      filters: emptyFilters,
+      page: 1,
+      availableFilters,
+      hasSearched: false,
+      setQuery,
+      setFilters,
+      setPage,
+      setError: vi.fn(),
+      loadFilters,
+      isModelFilterUpdateRef,
+    };
+
+    vi.mocked(useSearch)
+      .mockReturnValueOnce({
+        ...sharedState,
+        query: "",
+        search: firstSearch,
+      })
+      .mockReturnValueOnce({
+        ...sharedState,
+        query: "konsolidácia",
+        search: secondSearch,
+      });
+
+    const view = render(<Home />);
+    view.rerender(<Home />);
+
+    vi.advanceTimersByTime(600);
+
+    expect(setPage).not.toHaveBeenCalledWith(1);
+    expect(firstSearch).not.toHaveBeenCalled();
+    expect(secondSearch).not.toHaveBeenCalled();
+  });
+
+  it("skips the auto-search effect when filters were updated by the model", () => {
+    vi.useFakeTimers();
+
+    const setPage = vi.fn();
+    const search = vi.fn();
+    const isModelFilterUpdateRef = {
+      current: false,
+    } as MutableRefObject<boolean>;
+
+    vi.mocked(useSearch)
+      .mockReturnValueOnce({
+        results: null,
+        loading: false,
+        error: null,
+        query: "konsolidácia",
+        filters: emptyFilters,
+        page: 1,
+        availableFilters,
+        hasSearched: true,
+        setQuery: vi.fn(),
+        setFilters: vi.fn(),
+        setPage,
+        setError: vi.fn(),
+        search,
+        loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        isModelFilterUpdateRef,
+      })
+      .mockReturnValueOnce({
+        results: buildResults({
+        query_understanding: {
+          extracted_filters: {
+            meno: "Milan Majerský",
+            strana: null,
+              vyhodnotenie: null,
+              oblast: null,
+            },
+            related_politicians: [],
+          },
+        }),
+        loading: false,
+        error: null,
+        query: "konsolidácia",
+        filters: {
+          ...emptyFilters,
+          meno: ["Milan Majerský"],
+        },
+        page: 1,
+        availableFilters,
+        hasSearched: true,
+        setQuery: vi.fn(),
+        setFilters: vi.fn(),
+        setPage,
+        setError: vi.fn(),
+        search,
+        loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        isModelFilterUpdateRef,
+      });
+
+    const view = render(<Home />);
+    isModelFilterUpdateRef.current = true;
+    view.rerender(<Home />);
+
+    vi.advanceTimersByTime(600);
+
+    expect(setPage).not.toHaveBeenCalledWith(1);
+    expect(search).not.toHaveBeenCalled();
+    expect(isModelFilterUpdateRef.current).toBe(false);
   });
 
   it("renders empty results state", () => {

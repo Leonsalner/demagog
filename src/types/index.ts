@@ -1,6 +1,7 @@
 // ============== DATABASE TYPES ==============
 
 export type Verdict = "Pravda" | "Nepravda" | "Zavádzajúce" | "Neoveriteľné";
+export type DetectMode = "thorough" | "fast";
 
 export interface Statement {
   id: number;
@@ -28,7 +29,7 @@ export interface SearchRequest {
   strana?: string;
   oblast?: string;
   vyhodnotenie?: Verdict;
-  meno?: string;
+  meno?: string | string[];
   datum_od?: string;
   datum_do?: string;
   page?: number;
@@ -38,6 +39,7 @@ export interface SearchRequest {
 export interface DetectRequest {
   statement: string;
   top_k?: number;
+  mode?: DetectMode;
 }
 
 // ============== API RESPONSE TYPES ==============
@@ -110,7 +112,7 @@ export interface FilterState {
   strana: string | null;
   oblast: string | null;
   vyhodnotenie: Verdict | null;
-  meno: string | null;
+  meno: string[] | null;
   datum_od: string | null;
   datum_do: string | null;
 }

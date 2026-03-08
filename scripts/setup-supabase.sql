@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS clanky (
   datum TIMESTAMPTZ,
   autor TEXT,
   text_content TEXT,
-  embedding vector(768)
+  -- If already deployed, apply manually:
+  -- ALTER TABLE clanky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+  embedding vector(1024)
 );
 
 CREATE INDEX IF NOT EXISTS idx_vyroky_strana ON vyroky(strana);
@@ -84,7 +86,8 @@ CREATE OR REPLACE FUNCTION count_statements(
   filter_vyhodnotenie text DEFAULT NULL,
   filter_meno text DEFAULT NULL,
   filter_datum_od date DEFAULT NULL,
-  filter_datum_do date DEFAULT NULL
+  filter_datum_do date DEFAULT NULL,
+  require_embedding boolean DEFAULT false
 ) RETURNS int LANGUAGE plpgsql AS $$
 DECLARE
   result int;
@@ -96,7 +99,8 @@ BEGIN
     AND (filter_vyhodnotenie IS NULL OR v.vyhodnotenie = filter_vyhodnotenie)
     AND (filter_meno IS NULL OR v.meno = filter_meno)
     AND (filter_datum_od IS NULL OR v.datum >= filter_datum_od)
-    AND (filter_datum_do IS NULL OR v.datum <= filter_datum_do);
+    AND (filter_datum_do IS NULL OR v.datum <= filter_datum_do)
+    AND (NOT require_embedding OR v.embedding IS NOT NULL);
 
   RETURN result;
 END;
@@ -118,10 +122,27 @@ BEGIN
     FROM vyroky v
     WHERE v.strana IS NOT NULL
     ORDER BY 1;
+  ELSIF col = 'oblast' THEN
+    RETURN QUERY
+    SELECT DISTINCT v.oblast
+    FROM vyroky v
+    WHERE v.oblast IS NOT NULL
+    ORDER BY 1;
   ELSE
     RAISE EXCEPTION 'Unsupported distinct column: %', col;
   END IF;
 END;
+$$;
+
+CREATE OR REPLACE FUNCTION statement_date_bounds()
+RETURNS TABLE (min_date date, max_date date)
+LANGUAGE sql
+AS $$
+  SELECT
+    MIN(v.datum) AS min_date,
+    MAX(v.datum) AS max_date
+  FROM vyroky v
+  WHERE v.datum IS NOT NULL;
 $$;
 
 CREATE OR REPLACE FUNCTION match_statements(
@@ -167,6 +188,9 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION exec_sql(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION exec_sql(text) TO service_role;
+
 CREATE OR REPLACE FUNCTION index_exists(target_index_name text)
 RETURNS boolean
 LANGUAGE sql
@@ -185,3 +209,11 @@ $$;
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
 -- ON vyroky USING hnsw (embedding vector_cosine_ops)
 -- WITH (m = 16, ef_construction = 64);
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON TABLE vyroky TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text, text, text, text, date, date) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION count_statements(text, text, text, text, date, date, boolean) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION list_distinct_values(text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_statements(vector, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION statement_date_bounds() TO anon, authenticated;

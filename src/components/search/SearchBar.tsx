@@ -43,7 +43,7 @@ export default function SearchBar({
             }
           }}
           placeholder="Hľadať výroky..."
-          className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-base text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
+          className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-base text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-[var(--brand-accent)] focus:ring-4 focus:ring-[rgba(224,62,26,0.15)] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-[var(--brand-accent-dark)] dark:focus:ring-[rgba(255,107,61,0.2)] dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
         />
 
         {value ? (
@@ -74,7 +74,7 @@ export default function SearchBar({
         type="button"
         onClick={onSearch}
         disabled={loading}
-        className="inline-flex h-14 items-center justify-center rounded-xl bg-blue-600 px-6 text-base font-medium text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 dark:disabled:bg-blue-800 sm:min-w-36"
+        className="inline-flex h-14 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[rgba(224,62,26,0.45)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-[rgba(224,62,26,0.3)] sm:min-w-36"
       >
         {loading ? "Vyhľadáva sa..." : "Hľadať"}
       </button>

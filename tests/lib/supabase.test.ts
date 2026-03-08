@@ -1,0 +1,53 @@
+const createClientMock = vi.fn((url: string, key: string) => ({ url, key }));
+
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: createClientMock,
+}));
+
+describe("supabase client split", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it("creates the public client with the anon key", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+
+    const { supabasePublic } = await import("@/lib/supabase");
+
+    expect(supabasePublic()).toEqual({
+      url: "https://example.supabase.co",
+      key: "anon-key",
+    });
+  });
+
+  it("creates the admin client with the service key", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_KEY = "service-key";
+
+    const { supabaseAdmin } = await import("@/lib/supabase");
+
+    expect(supabaseAdmin()).toEqual({
+      url: "https://example.supabase.co",
+      key: "service-key",
+    });
+  });
+
+  it("reports separate config errors for public and admin clients", async () => {
+    const {
+      getSupabaseAdminConfigError,
+      getSupabasePublicConfigError,
+    } = await import("@/lib/supabase");
+
+    expect(getSupabasePublicConfigError()).toContain("SUPABASE_ANON_KEY");
+    expect(getSupabaseAdminConfigError()).toContain("SUPABASE_SERVICE_KEY");
+  });
+});

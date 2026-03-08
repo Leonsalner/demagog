@@ -4,6 +4,15 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --color-brand: #e03e1a;
+  --color-brand-dark: #ff6b3d;
+  --brand-accent: #e03e1a;
+  --brand-accent-hover: #c73414;
+  --brand-accent-dark: #ff6b3d;
+  --brand-surface-soft: #ffe8da;
+  --brand-border-soft: #f3c2b1;
+  --brand-surface-dark: #2a1510;
+  --brand-border-dark: #7a3a28;
 }
 
 :root[data-theme="dark"] {
@@ -31,7 +40,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.08), transparent 35%),
+    radial-gradient(circle at top, rgba(224, 62, 26, 0.1), transparent 35%),
     var(--background);
   color: var(--foreground);
   transition:
@@ -41,19 +50,19 @@ body {
 
 :root[data-theme="dark"] body {
   background:
-    radial-gradient(circle at top, rgba(56, 189, 248, 0.14), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(30, 64, 175, 0.14), transparent 32%),
+    radial-gradient(circle at top, rgba(255, 107, 61, 0.18), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(224, 62, 26, 0.14), transparent 32%),
     radial-gradient(circle at bottom right, rgba(15, 23, 42, 0.8), transparent 35%),
     var(--background);
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.18);
+  background: rgba(224, 62, 26, 0.18);
   color: #0f172a;
 }
 
 :root[data-theme="dark"] ::selection {
-  background: rgba(96, 165, 250, 0.28);
+  background: rgba(255, 107, 61, 0.3);
   color: #f8fafc;
 }
 

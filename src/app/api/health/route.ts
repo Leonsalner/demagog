@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
+import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 
 export async function GET() {
   const start = performance.now();
-  const supabaseConfigError = getSupabaseConfigError();
+  const supabaseConfigError = getSupabasePublicConfigError();
 
   if (supabaseConfigError) {
     return NextResponse.json(
@@ -21,7 +21,7 @@ export async function GET() {
     );
   }
 
-  const supabase = getSupabase();
+  const supabase = supabasePublic();
 
   const [totalResult, embeddedResult] = await Promise.all([
     supabase.from("vyroky").select("*", { count: "exact", head: true }),

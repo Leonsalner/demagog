@@ -100,7 +100,7 @@ describeLiveApi("POST /api/search", () => {
 
     expectSearchShape(data);
     if (data.results.length > 0) {
-      expect(data.results[0].similarity ?? 0).toBeLessThan(0.5);
+      expect(data.results[0].similarity ?? 0).toBeLessThan(0.75);
     }
   });
 

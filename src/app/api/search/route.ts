@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
 import { rerankResults, understandQuery } from "@/lib/gemini";
-import { getSupabase, getSupabaseConfigError } from "@/lib/supabase";
+import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
+import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
   QueryUnderstanding,
   SearchRequest,
@@ -10,15 +11,6 @@ import type {
   Statement,
   Verdict,
 } from "@/types";
-
-const VERDICTS: Verdict[] = [
-  "Pravda",
-  "Nepravda",
-  "Zavádzajúce",
-  "Neoveriteľné",
-];
-
-const DISTINCT_VALUES_TTL_MS = 10 * 60 * 1000;
 const SEARCH_TIMINGS_FLAG = "DEBUG_SEARCH_TIMINGS";
 const SEARCH_RERANK_FLAG = "ENABLE_SEARCH_RERANK";
 
@@ -38,13 +30,6 @@ type SearchStageTimings = Partial<
     number
   >
 >;
-
-let distinctValuesCache:
-  | {
-      fetchedAt: number;
-      values: DistinctQueryValues;
-    }
-  | null = null;
 
 interface SearchRow {
   id: number;
@@ -77,10 +62,6 @@ function toStatement(row: SearchRow): Statement {
   return statement;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function coerceOptionalString(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -88,6 +69,21 @@ function coerceOptionalString(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function coerceOptionalStringOrArray(
+  value: unknown
+): string | string[] | undefined {
+  if (Array.isArray(value)) {
+    const items = value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    return items.length > 0 ? items : undefined;
+  }
+
+  return coerceOptionalString(value);
 }
 
 function coerceOptionalVerdict(value: unknown): Verdict | undefined {
@@ -126,7 +122,7 @@ function buildFilterParams(body: SearchRequest) {
     filter_strana: body.strana ?? null,
     filter_oblast: body.oblast ?? null,
     filter_vyhodnotenie: body.vyhodnotenie ?? null,
-    filter_meno: body.meno ?? null,
+    filter_meno: Array.isArray(body.meno) ? (body.meno[0] ?? null) : body.meno ?? null,
     filter_datum_od: body.datum_od ?? null,
     filter_datum_do: body.datum_do ?? null,
   };
@@ -318,7 +314,8 @@ function buildFastQueryUnderstanding(
   availableNames: string[],
   availableParties: string[]
 ): QueryUnderstanding {
-  const detectedName = body.meno ?? findExactCandidateInQuery(query, availableNames);
+  const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
+  const detectedName = selectedName ?? findExactCandidateInQuery(query, availableNames);
   const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
   const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
   const semanticQuery =
@@ -326,7 +323,7 @@ function buildFastQueryUnderstanding(
       detectedName,
       detectedParty,
       detectedVerdict,
-      body.meno,
+      ...(Array.isArray(body.meno) ? body.meno : [body.meno]),
       body.strana,
       body.vyhodnotenie,
       body.oblast,
@@ -430,7 +427,7 @@ function validateRelatedPoliticians(
 }
 
 async function fetchDistinctValues(
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: ReturnType<typeof supabasePublic>,
   column: "meno" | "strana"
 ): Promise<string[]> {
   const { data, error } = await supabase.rpc("list_distinct_values", {
@@ -461,31 +458,18 @@ async function fetchDistinctValues(
 }
 
 async function fetchAvailableQueryValues(
-  supabase: ReturnType<typeof getSupabase>
+  supabase: ReturnType<typeof supabasePublic>
 ): Promise<DistinctQueryValues> {
-  if (
-    distinctValuesCache &&
-    Date.now() - distinctValuesCache.fetchedAt < DISTINCT_VALUES_TTL_MS
-  ) {
-    return distinctValuesCache.values;
-  }
-
   const [meno, strana] = await Promise.all([
     fetchDistinctValues(supabase, "meno"),
     fetchDistinctValues(supabase, "strana"),
   ]);
 
-  const values = { meno, strana };
-  distinctValuesCache = {
-    fetchedAt: Date.now(),
-    values,
-  };
-
-  return values;
+  return { meno, strana };
 }
 
 export function resetSearchRouteStateForTests() {
-  distinctValuesCache = null;
+  // Distinct values are loaded directly from the database per request.
 }
 
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
@@ -500,7 +484,7 @@ function buildRelatedFilterParams(body: SearchRequest, meno: string) {
 }
 
 async function fetchRelatedResults(
-  supabase: ReturnType<typeof getSupabase>,
+  supabase: ReturnType<typeof supabasePublic>,
   queryEmbedding: number[],
   body: SearchRequest,
   relatedPoliticians: QueryUnderstanding["related_politicians"],
@@ -566,13 +550,13 @@ async function fetchRelatedResults(
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
-  const supabaseConfigError = getSupabaseConfigError();
+  const supabaseConfigError = getSupabasePublicConfigError();
 
   if (supabaseConfigError) {
     return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
   }
 
-  const supabase = getSupabase();
+  const supabase = supabasePublic();
 
   let parsedBody: unknown;
   try {
@@ -603,7 +587,7 @@ export async function POST(request: NextRequest) {
     strana: coerceOptionalString(parsedBody.strana),
     oblast: coerceOptionalString(parsedBody.oblast),
     vyhodnotenie: coercedVerdict,
-    meno: coerceOptionalString(parsedBody.meno),
+    meno: coerceOptionalStringOrArray(parsedBody.meno),
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
     page: coercePositiveInteger(parsedBody.page, 1),
@@ -663,28 +647,33 @@ export async function POST(request: NextRequest) {
       }
       recordStageTiming(timings, "embed_text_ms", embedStartedAt);
 
-      const limit = Math.min(page * pageSize, 50);
       const filterParams = buildFilterParams(mergedBody);
       const searchStartedAt = performance.now();
-      const { data, error } = await supabase.rpc("search_statements", {
-        query_embedding: embedding,
-        match_count: limit,
-        match_offset: 0,
-        ...filterParams,
-      });
+      const [searchResult, countResult] = await Promise.all([
+        supabase.rpc("search_statements", {
+          query_embedding: embedding,
+          match_count: pageSize,
+          match_offset: offset,
+          ...filterParams,
+        }),
+        supabase.rpc("count_statements", {
+          ...filterParams,
+          require_embedding: true,
+        }),
+      ]);
       recordStageTiming(timings, "search_statements_ms", searchStartedAt);
 
-      if (error) {
+      if (searchResult.error || countResult.error) {
         console.error(
-          "[search] search_statements RPC error:",
-          error.code,
-          error.message,
-          error.details
+          "[search] semantic search RPC error:",
+          searchResult.error?.code ?? countResult.error?.code,
+          searchResult.error?.message ?? countResult.error?.message,
+          searchResult.error?.details ?? countResult.error?.details
         );
         return NextResponse.json({ error: "Database error" }, { status: 502 });
       }
 
-      const semanticRows = ((data ?? []) as SearchRow[]).map(toStatement);
+      const semanticRows = ((searchResult.data ?? []) as SearchRow[]).map(toStatement);
       let orderedRows = semanticRows;
 
       if (readBooleanEnv(SEARCH_RERANK_FLAG) && semanticRows.length > 5) {
@@ -700,9 +689,9 @@ export async function POST(request: NextRequest) {
           .filter((row): row is Statement => Boolean(row));
       }
 
-      results = orderedRows.slice(offset, offset + pageSize);
-      totalCount = semanticRows.length;
-      hasMore = semanticRows.length === limit;
+      results = orderedRows;
+      totalCount = countResult.data ?? 0;
+      hasMore = offset + results.length < totalCount;
       const relatedResultsStartedAt = performance.now();
       relatedResults = await fetchRelatedResults(
         supabase,
@@ -734,7 +723,8 @@ export async function POST(request: NextRequest) {
         query = query.eq("vyhodnotenie", body.vyhodnotenie);
       }
       if (body.meno) {
-        query = query.eq("meno", body.meno);
+        const mena = Array.isArray(body.meno) ? body.meno : [body.meno];
+        query = query.in("meno", mena);
       }
       if (body.datum_od) {
         query = query.gte("datum", body.datum_od);
@@ -771,7 +761,8 @@ export async function POST(request: NextRequest) {
     logSearchTimings(body.query ?? "", page, pageSize, timings);
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
+    console.error("[search] unhandled error", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
