@@ -167,6 +167,19 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION index_exists(target_index_name text)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND indexname = target_index_name
+  );
+$$;
+
 -- Create this 1024d HNSW index manually in the Supabase SQL Editor only after
 -- embed-statements.ts finishes to avoid a slow rebuild during imports.
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
