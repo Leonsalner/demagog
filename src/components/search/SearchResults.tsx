@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
 import type { SearchResponse, Statement } from "@/types";
@@ -11,6 +11,61 @@ interface SearchResultsProps {
   queryUnderstanding?: SearchResponse["query_understanding"];
   query: string;
   onPageChange: (page: number) => void;
+}
+
+function RelatedResultsSection({
+  relatedResults,
+  relatedHeading,
+  query,
+}: {
+  relatedResults: Statement[];
+  relatedHeading: string;
+  query: string;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+        aria-controls="related-results-panel"
+        className="mt-6 flex w-full items-center justify-between py-3 text-sm font-medium text-slate-500 dark:text-slate-400"
+      >
+        <span>{relatedHeading}</span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className={`h-4 w-4 transition-transform duration-200 ${
+            isExpanded ? "rotate-180" : ""
+          }`}
+        >
+          <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {isExpanded ? (
+        <div id="related-results-panel" className="mt-3 grid gap-3">
+          {relatedResults.map((statement) => (
+            <div
+              key={statement.id}
+              className="rounded-2xl ring-1 ring-slate-200 opacity-85 dark:ring-slate-700/50"
+            >
+              <StatementCard
+                statement={statement}
+                highlight_query={query || undefined}
+                show_similarity={Boolean(query)}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function buildPagination(currentPage: number, totalPages: number) {
@@ -61,12 +116,6 @@ export default function SearchResults({
   query,
   onPageChange,
 }: SearchResultsProps) {
-  const [isRelatedExpanded, setIsRelatedExpanded] = useState(false);
-
-  useEffect(() => {
-    setIsRelatedExpanded(false);
-  }, [results]);
-
   if (!results) {
     return null;
   }
@@ -79,6 +128,11 @@ export default function SearchResults({
     relatedPoliticianNames.length > 0
       ? `Súvisiace výroky od ${relatedPoliticianNames.join(" a ")}`
       : "Súvisiace výroky";
+  const relatedResultsKey = [
+    results.page,
+    results.query_time_ms,
+    relatedResults?.map((statement) => statement.id).join("-") ?? "none",
+  ].join(":");
 
   return (
     <div className="space-y-6">
@@ -162,46 +216,12 @@ export default function SearchResults({
       ) : null}
 
       {relatedResults && relatedResults.length > 0 ? (
-        <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
-          <button
-            type="button"
-            onClick={() => setIsRelatedExpanded((expanded) => !expanded)}
-            aria-expanded={isRelatedExpanded}
-            aria-controls="related-results-panel"
-            className="mt-6 flex w-full items-center justify-between py-3 text-sm font-medium text-slate-500 dark:text-slate-400"
-          >
-            <span>{relatedHeading}</span>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              className={`h-4 w-4 transition-transform duration-200 ${
-                isRelatedExpanded ? "rotate-180" : ""
-              }`}
-            >
-              <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          {isRelatedExpanded ? (
-            <div id="related-results-panel" className="mt-3 grid gap-3">
-              {relatedResults.map((statement) => (
-                <div
-                  key={statement.id}
-                  className="rounded-2xl ring-1 ring-slate-200 opacity-85 dark:ring-slate-700/50"
-                >
-                  <StatementCard
-                    statement={statement}
-                    highlight_query={query || undefined}
-                    show_similarity={Boolean(query)}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </section>
+        <RelatedResultsSection
+          key={relatedResultsKey}
+          relatedResults={relatedResults}
+          relatedHeading={relatedHeading}
+          query={query}
+        />
       ) : null}
     </div>
   );

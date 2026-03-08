@@ -13,6 +13,13 @@ type EmbeddingResponse = {
   }>;
 };
 
+type RpcError = {
+  code?: string;
+  details?: string;
+  hint?: string;
+  message: string;
+};
+
 const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
 const BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 30_000;
@@ -141,11 +148,43 @@ function logProgress(processed: number, total: number, batchDurationMs: number, 
   );
 }
 
+function formatRpcError(error: RpcError): string {
+  return [
+    error.message,
+    error.code ? `code=${error.code}` : null,
+    error.details ? `details=${error.details}` : null,
+    error.hint ? `hint=${error.hint}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+async function indexExists(supabase: SupabaseClientAny): Promise<boolean> {
+  const { data, error } = await (supabase.rpc as any)("index_exists", {
+    target_index_name: "idx_vyroky_embedding",
+  });
+
+  if (error) {
+    throw new Error(
+      `Failed to verify whether idx_vyroky_embedding exists: ${formatRpcError(error as RpcError)}`,
+    );
+  }
+
+  return Boolean(data);
+}
+
 async function createIndex(supabase: SupabaseClientAny): Promise<void> {
   const { error } = await (supabase.rpc as any)("exec_sql", { query: INDEX_SQL });
   if (error) {
+    if (await indexExists(supabase)) {
+      console.warn(
+        `Supabase returned an error while creating idx_vyroky_embedding, but the index exists and will be reused: ${formatRpcError(error as RpcError)}`,
+      );
+      return;
+    }
+
     throw new Error(
-      "Failed to create the 1024d HNSW index automatically. Run the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.",
+      `Failed to create the 1024d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
     );
   }
 }

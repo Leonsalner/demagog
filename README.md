@@ -2,12 +2,13 @@
 
 Internal tool for searching Demagog.sk fact-checks and checking whether a new political statement is already covered by an existing verification.
 
-## Features
+## What It Does
 
 - Semantic search over verified statements
 - Structured filters for party, topic, verdict, politician, and date
+- Query understanding that can extract filters from natural-language searches
+- Related-results suggestions for politicians or topics connected to the query
 - Duplicate and related-claim detection for new statements
-- Supabase-backed dataset with vector search
 
 ## Stack
 
@@ -17,7 +18,7 @@ Internal tool for searching Demagog.sk fact-checks and checking whether a new po
 - Tailwind CSS 4
 - Supabase Postgres + `pgvector`
 - Jina embeddings
-- Gemini classification/reranking
+- Gemini query understanding, classification, and reranking
 - Vitest + Testing Library
 
 ## Environment
@@ -30,6 +31,8 @@ SUPABASE_SERVICE_KEY=...
 JINA_API_KEY=...
 GEMINI_API_KEY=...
 NEXT_PUBLIC_USE_DETECT_MOCK=false
+ENABLE_SEARCH_RERANK=false
+DEBUG_SEARCH_TIMINGS=false
 ```
 
 Accepted Supabase aliases:
@@ -47,25 +50,27 @@ npm install
 
 2. Apply [`scripts/setup-supabase.sql`](scripts/setup-supabase.sql) to Supabase.
 
-3. Import the source CSVs:
+3. If migrating an existing database from older 768d embeddings, run the manual `vector(1024)` migration noted at the top of [`scripts/setup-supabase.sql`](scripts/setup-supabase.sql) before re-embedding.
+
+4. Import the source CSVs:
 
 ```bash
 npx tsx scripts/import-data.ts
 ```
 
-4. Generate embeddings:
+5. Generate embeddings:
 
 ```bash
 npx tsx scripts/embed-statements.ts
 ```
 
-5. Optionally run dataset checks:
+6. Optionally run dataset checks:
 
 ```bash
 npx tsx scripts/test-queries.ts
 ```
 
-6. Start the app:
+7. Start the app:
 
 ```bash
 npm run dev
@@ -101,4 +106,5 @@ src/
 scripts/        schema, import, embeddings, verification
 tests/          component, integration, API, and script tests
 data/           source CSV files
+docs/plans/     implementation notes for major changes
 ```

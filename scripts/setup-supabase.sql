@@ -102,6 +102,28 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION list_distinct_values(col text)
+RETURNS TABLE (value text)
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF col = 'meno' THEN
+    RETURN QUERY
+    SELECT DISTINCT v.meno
+    FROM vyroky v
+    WHERE v.meno IS NOT NULL
+    ORDER BY 1;
+  ELSIF col = 'strana' THEN
+    RETURN QUERY
+    SELECT DISTINCT v.strana
+    FROM vyroky v
+    WHERE v.strana IS NOT NULL
+    ORDER BY 1;
+  ELSE
+    RAISE EXCEPTION 'Unsupported distinct column: %', col;
+  END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION match_statements(
   query_embedding vector(1024),
   match_count int DEFAULT 10
@@ -145,5 +167,21 @@ BEGIN
 END;
 $$;
 
--- Create this 1024d HNSW index only after embed-statements.ts finishes to avoid a slow rebuild during imports.
--- CREATE INDEX idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+CREATE OR REPLACE FUNCTION index_exists(target_index_name text)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND indexname = target_index_name
+  );
+$$;
+
+-- Create this 1024d HNSW index manually in the Supabase SQL Editor only after
+-- embed-statements.ts finishes to avoid a slow rebuild during imports.
+-- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
+-- ON vyroky USING hnsw (embedding vector_cosine_ops)
+-- WITH (m = 16, ef_construction = 64);

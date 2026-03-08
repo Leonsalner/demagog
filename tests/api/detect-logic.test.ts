@@ -59,7 +59,7 @@ function buildRow(
 
 function createSupabaseMock(rows: ReturnType<typeof buildRow>[]) {
   return {
-    rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+    rpc: vi.fn(async (fn: string) => {
       if (fn !== "match_statements") {
         throw new Error(`Unexpected RPC ${fn}`);
       }
