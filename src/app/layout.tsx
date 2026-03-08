@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Demagog Fact-Check Tool",
   description: "Vyhľadávanie a kontrola výrokov overených Demagog.sk.",
+  icons: {
+    icon: [{ url: "/demagog-logo.png", type: "image/png" }],
+    shortcut: [{ url: "/demagog-logo.png", type: "image/png" }],
+    apple: [{ url: "/demagog-logo.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
