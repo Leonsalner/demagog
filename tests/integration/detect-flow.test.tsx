@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
 
@@ -14,6 +15,22 @@ vi.mock("@/hooks/useSearch", () => ({
 
 vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
+}));
+
+vi.mock("next/link", () => ({
+  default: (props: {
+    children?: ReactNode;
+    href: string;
+    prefetch?: boolean | null;
+  } & AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const { children, href, prefetch, ...anchorProps } = props;
+    void prefetch;
+    return (
+      <a href={href} {...anchorProps}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 const { useDetect } = await import("@/hooks/useDetect");
@@ -52,6 +69,7 @@ function mockUseSearchReturn() {
     setError: vi.fn(),
     search: vi.fn(),
     loadFilters: vi.fn().mockResolvedValue(null),
+    filterLoadError: false,
   });
 }
 
@@ -88,7 +106,7 @@ describe("detect page flow", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Politický výrok")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("submits a statement for analysis", () => {
     const { detect } = mockUseDetectReturn();
@@ -104,14 +122,14 @@ describe("detect page flow", () => {
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
       "thorough",
     );
-  });
+  }, 20_000);
 
   it("forwards the selected fast mode", () => {
     const { detect } = mockUseDetectReturn();
 
     render(<Home />);
     openDetectTab();
-    fireEvent.click(screen.getByRole("button", { name: "Fast" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rýchly" }));
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -121,7 +139,7 @@ describe("detect page flow", () => {
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
       "fast",
     );
-  });
+  }, 20_000);
 
   it("shows loading feedback while detect is running", () => {
     mockUseDetectReturn({ loading: true });

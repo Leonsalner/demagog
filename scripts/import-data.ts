@@ -71,13 +71,23 @@ type StatementParseContext = {
   diagnostics: StatementDiagnostics;
 };
 
+type ScriptArgs = {
+  dryRun: boolean;
+  upsert: boolean;
+};
+
+type ImportOptions = ScriptArgs;
+
 const PROJECT_ROOT = process.cwd();
 const STATEMENTS_CSV = path.join(PROJECT_ROOT, "data", "demagog_vyroky_20260125.csv");
 const ARTICLES_CSV = path.join(PROJECT_ROOT, "data", "demagog_clanky_20260126.csv");
 const STATEMENT_BATCH_SIZE = 500;
+const ARTICLE_BATCH_SIZE = 500;
 const MAX_STATEMENT_DIAGNOSTIC_SAMPLES = 10;
 export const MISSING_STATEMENT_MENO = "Neznámy rečník";
 export const MISSING_STATEMENT_STRANA = "Bez príslušnosti";
+const STATEMENT_UPSERT_CONFLICT = "vyrok,meno,strana,datum";
+const ARTICLE_UPSERT_CONFLICT = "datum,autor,text_content";
 const STATEMENT_VERDICTS: StatementVerdict[] = [
   "Pravda",
   "Nepravda",
@@ -104,6 +114,13 @@ function requireFile(filePath: string): void {
   if (!existsSync(filePath)) {
     throw new Error(`Missing required input file: ${filePath}`);
   }
+}
+
+export function parseArgs(args = process.argv.slice(2)): ScriptArgs {
+  return {
+    dryRun: args.includes("--dry-run"),
+    upsert: args.includes("--upsert"),
+  };
 }
 
 function createSummary(nullKeys: string[]): Summary {
@@ -382,20 +399,39 @@ function trackNulls(summary: Summary, row: Record<string, string | null>): void 
 }
 
 async function flushStatements(
-  supabase: SupabaseClientAny,
+  supabase: SupabaseClientAny | null,
   batch: StatementInsert[],
   summary: Summary,
+  options: ImportOptions,
 ): Promise<void> {
   if (batch.length === 0) {
     return;
   }
 
-  const { error } = await (supabase.from("vyroky") as any).insert(batch);
+  if (options.dryRun) {
+    console.log(`[dry-run] Parsed ${summary.processed} vyroky rows so far.`);
+    return;
+  }
+
+  if (!supabase) {
+    throw new Error("Supabase client is required for non-dry-run statement imports.");
+  }
+
+  const writeBatch = async (rows: StatementInsert[]) =>
+    options.upsert
+      ? (supabase.from("vyroky") as any).upsert(rows, {
+          onConflict: STATEMENT_UPSERT_CONFLICT,
+        })
+      : (supabase.from("vyroky") as any).insert(rows);
+
+  const { error } = await writeBatch(batch);
   if (error) {
-    console.error(`Statement batch insert failed near row ${summary.processed}: ${error.message}`);
+    console.error(
+      `Statement batch ${options.upsert ? "upsert" : "insert"} failed near row ${summary.processed}: ${error.message}`,
+    );
 
     for (const row of batch) {
-      const singleInsert = await (supabase.from("vyroky") as any).insert(row);
+      const singleInsert = await writeBatch([row]);
       if (singleInsert.error) {
         summary.failed += 1;
         console.error(`Failed statement row "${row.vyrok.slice(0, 80)}": ${singleInsert.error.message}`);
@@ -408,11 +444,14 @@ async function flushStatements(
   }
 
   summary.inserted += batch.length;
-  console.log(`Imported ${summary.inserted}/22283 vyroky...`);
+  console.log(
+    `${options.upsert ? "Upserted" : "Imported"} ${summary.inserted}/${summary.processed} vyroky...`,
+  );
 }
 
 async function importStatements(
-  supabase: SupabaseClientAny,
+  supabase: SupabaseClientAny | null,
+  options: ImportOptions,
 ): Promise<StatementImportResult> {
   const summary = createSummary(["odovodnenie", "oblast", "datum"]);
   const batch: StatementInsert[] = [];
@@ -436,7 +475,7 @@ async function importStatements(
       batch.push(row);
 
       if (batch.length >= STATEMENT_BATCH_SIZE) {
-        await flushStatements(supabase, batch.splice(0, batch.length), summary);
+        await flushStatements(supabase, batch.splice(0, batch.length), summary, options);
       }
     } catch (error) {
       summary.failed += 1;
@@ -444,13 +483,55 @@ async function importStatements(
     }
   }
 
-  await flushStatements(supabase, batch, summary);
+  await flushStatements(supabase, batch, summary, options);
   return { summary, diagnostics };
 }
 
-async function importArticles(supabase: SupabaseClientAny): Promise<Summary> {
+async function flushArticles(
+  supabase: SupabaseClientAny | null,
+  batch: ArticleInsert[],
+  summary: Summary,
+  options: ImportOptions,
+): Promise<void> {
+  if (batch.length === 0) {
+    return;
+  }
+
+  if (options.dryRun) {
+    console.log(`[dry-run] Parsed ${summary.processed} clanky rows so far.`);
+    return;
+  }
+
+  if (!supabase) {
+    throw new Error("Supabase client is required for non-dry-run article imports.");
+  }
+
+  const { error } = await (options.upsert
+    ? (supabase.from("clanky") as any).upsert(batch, {
+        onConflict: ARTICLE_UPSERT_CONFLICT,
+      })
+    : (supabase.from("clanky") as any).insert(batch));
+
+  if (error) {
+    summary.failed += batch.length;
+    console.error(
+      `Failed to ${options.upsert ? "upsert" : "insert"} article batch near row ${summary.processed}: ${error.message}`,
+    );
+    return;
+  }
+
+  summary.inserted += batch.length;
+  console.log(
+    `${options.upsert ? "Upserted" : "Imported"} ${summary.inserted}/${summary.processed} clanky...`,
+  );
+}
+
+async function importArticles(
+  supabase: SupabaseClientAny | null,
+  options: ImportOptions,
+): Promise<Summary> {
   const summary = createSummary(["datum", "autor"]);
-  const rows: ArticleInsert[] = [];
+  const batch: ArticleInsert[] = [];
   let isHeader = true;
 
   for await (const record of parseCsv(ARTICLES_CSV)) {
@@ -464,21 +545,18 @@ async function importArticles(supabase: SupabaseClientAny): Promise<Summary> {
     try {
       const row = toArticleInsert(record);
       trackNulls(summary, row);
-      rows.push(row);
+      batch.push(row);
+
+      if (batch.length >= ARTICLE_BATCH_SIZE) {
+        await flushArticles(supabase, batch.splice(0, batch.length), summary, options);
+      }
     } catch (error) {
       summary.failed += 1;
       console.error(`Article row ${summary.processed} failed: ${(error as Error).message}`);
     }
   }
 
-  const { error } = await (supabase.from("clanky") as any).insert(rows);
-  if (error) {
-    summary.failed += rows.length;
-    console.error(`Failed to insert articles: ${error.message}`);
-  } else {
-    summary.inserted = rows.length;
-  }
-
+  await flushArticles(supabase, batch, summary, options);
   return summary;
 }
 
@@ -523,25 +601,34 @@ function printStatementDiagnostics(diagnostics: StatementDiagnostics): void {
 }
 
 async function main(): Promise<void> {
+  const options = parseArgs();
   requireFile(STATEMENTS_CSV);
   requireFile(ARTICLES_CSV);
 
-  await confirmTruncate();
+  const supabase = options.dryRun
+    ? null
+    : createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
 
-  const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
+  if (options.dryRun) {
+    console.log("import-data: running in --dry-run mode. Skipping truncate and database writes.");
+  } else if (options.upsert) {
+    console.log("import-data: running in --upsert mode. Skipping truncate and writing via upsert.");
+  } else {
+    await confirmTruncate();
 
-  const truncateResult = await (supabase.rpc as any)("exec_sql", {
-    query: "TRUNCATE TABLE vyroky, clanky RESTART IDENTITY CASCADE;",
-  });
+    const truncateResult = await (supabase.rpc as any)("exec_sql", {
+      query: "TRUNCATE TABLE vyroky, clanky RESTART IDENTITY CASCADE;",
+    });
 
-  if (truncateResult.error) {
-    throw new Error(
-      "Failed to truncate tables. Create a manual helper RPC or truncate in the Supabase SQL editor before rerunning import-data.ts.",
-    );
+    if (truncateResult.error) {
+      throw new Error(
+        "Failed to truncate tables. Create a manual helper RPC or truncate in the Supabase SQL editor before rerunning import-data.ts.",
+      );
+    }
   }
 
-  const statementResult = await importStatements(supabase);
-  const articleSummary = await importArticles(supabase);
+  const statementResult = await importStatements(supabase, options);
+  const articleSummary = await importArticles(supabase, options);
 
   printSummary("Statements", statementResult.summary);
   printStatementDiagnostics(statementResult.diagnostics);

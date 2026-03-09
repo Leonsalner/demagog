@@ -5,6 +5,7 @@ import {
   MISSING_STATEMENT_STRANA,
   createStatementDiagnostics,
   normalizeStatementVerdict,
+  parseArgs,
   toStatementInsert,
 } from "../../scripts/import-data";
 
@@ -112,5 +113,16 @@ describe("scripts/import-data", () => {
       "Čiastočná pravda": 1,
     });
     expect(diagnostics.issueCounts.unsupported_vyhodnotenie).toBe(1);
+  });
+
+  it("parses dry-run and upsert script flags", () => {
+    expect(parseArgs(["--dry-run", "--upsert"])).toEqual({
+      dryRun: true,
+      upsert: true,
+    });
+    expect(parseArgs([])).toEqual({
+      dryRun: false,
+      upsert: false,
+    });
   });
 });

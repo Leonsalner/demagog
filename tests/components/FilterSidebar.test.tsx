@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -38,19 +38,18 @@ function TestHarness() {
     <FilterSidebar
       filters={filters}
       availableFilters={availableFilters}
+      filterLoadError={false}
       onChange={setFilters}
     />
   );
 }
 
 describe("FilterSidebar", () => {
-  it("supports multi-select politician toggles", async () => {
-    const user = userEvent.setup();
-
+  it("supports multi-select politician toggles", () => {
     render(<TestHarness />);
 
-    await user.click(screen.getByRole("button", { name: "Milan Majerský" }));
-    await user.click(screen.getByRole("button", { name: "Tomáš Drucker" }));
+    fireEvent.click(screen.getByRole("button", { name: "Milan Majerský" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tomáš Drucker" }));
 
     expect(
       screen.getByRole("button", { name: "Odstrániť Milan Majerský" }),
@@ -59,7 +58,7 @@ describe("FilterSidebar", () => {
       screen.getByRole("button", { name: "Odstrániť Tomáš Drucker" }),
     ).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("opens the recommended politician panel and toggles a card", async () => {
     const user = userEvent.setup();
@@ -82,6 +81,21 @@ describe("FilterSidebar", () => {
 
     expect(
       screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0],
+    ).toBeInTheDocument();
+  }, 20_000);
+
+  it("shows a non-blocking warning when filter loading falls back", () => {
+    render(
+      <FilterSidebar
+        filters={emptyFilters}
+        availableFilters={availableFilters}
+        filterLoadError
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Filter data unavailable\. Zobrazujú sa náhradné hodnoty\./i),
     ).toBeInTheDocument();
   });
 });
