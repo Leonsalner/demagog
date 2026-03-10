@@ -251,6 +251,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        filterLoadError: false,
         isModelFilterUpdateRef,
       })
       .mockReturnValueOnce({
@@ -281,6 +282,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        filterLoadError: false,
         isModelFilterUpdateRef,
       });
 

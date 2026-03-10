@@ -70,6 +70,7 @@ function mockUseSearchReturn() {
     search: vi.fn(),
     loadFilters: vi.fn().mockResolvedValue(null),
     filterLoadError: false,
+    isModelFilterUpdateRef: { current: false },
   });
 }
 
