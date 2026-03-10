@@ -46,7 +46,7 @@ Accepted aliases used by the app:
 - `NEXT_PUBLIC_SUPABASE_URL` instead of `SUPABASE_URL`
 - `SUPABASE_ANON_KEY` instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` instead of `SUPABASE_SERVICE_KEY`
-- `GEMINI_MODEL_FLASH`, `GEMINI_MODEL_PRO`, `GEMINI_MODEL_LITE` to override default Gemini models
+- `GEMINI_FLASH_MODEL`, `GEMINI_PRO_MODEL`, `GEMINI_FLASH_LITE_MODEL` to override default Gemini models
 
 Script note:
 

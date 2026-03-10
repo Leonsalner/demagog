@@ -32,14 +32,16 @@ function getGeminiApiKey(): string {
 
 export function getGeminiModel(kind: keyof typeof DEFAULT_GEMINI_MODELS): string {
   if (kind === "pro") {
-    return process.env.GEMINI_MODEL_PRO?.trim() || DEFAULT_GEMINI_MODELS.pro;
+    return process.env.GEMINI_PRO_MODEL?.trim() || DEFAULT_GEMINI_MODELS.pro;
   }
 
   if (kind === "flash") {
-    return process.env.GEMINI_MODEL_FLASH?.trim() || DEFAULT_GEMINI_MODELS.flash;
+    return process.env.GEMINI_FLASH_MODEL?.trim() || DEFAULT_GEMINI_MODELS.flash;
   }
 
-  return process.env.GEMINI_MODEL_LITE?.trim() || DEFAULT_GEMINI_MODELS.lite;
+  return (
+    process.env.GEMINI_FLASH_LITE_MODEL?.trim() || DEFAULT_GEMINI_MODELS.lite
+  );
 }
 
 function getGeminiUrl(model: string): string {
