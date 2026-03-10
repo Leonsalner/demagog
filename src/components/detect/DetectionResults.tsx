@@ -112,20 +112,31 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
           </div>
 
           <div className="space-y-3">
-            {result.related_articles.map((article) => (
-              <article
-                key={article.id}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70"
-              >
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                  {article.autor}
-                  {article.datum ? ` · ${new Date(article.datum).toLocaleDateString("sk-SK")}` : ""}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                  {article.text}
-                </p>
-              </article>
-            ))}
+            {result.related_articles.map((article) => {
+              const sentenceEnd = article.text.search(/[.!?](\s|$)/);
+              const title = sentenceEnd > 0 ? article.text.slice(0, sentenceEnd + 1) : article.text.slice(0, 80);
+              const body = sentenceEnd > 0 ? article.text.slice(sentenceEnd + 1).trim() : "";
+
+              return (
+                <article
+                  key={article.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/70"
+                >
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+                    {article.autor}
+                    {article.datum ? ` · ${new Date(article.datum).toLocaleDateString("sk-SK")}` : ""}
+                  </p>
+                  <p className="mt-1.5 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {title}
+                  </p>
+                  {body ? (
+                    <p className="mt-1 line-clamp-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {body}
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </section>
       ) : null}
