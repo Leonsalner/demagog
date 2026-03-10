@@ -614,6 +614,10 @@ async function main(): Promise<void> {
   } else if (options.upsert) {
     console.log("import-data: running in --upsert mode. Skipping truncate and writing via upsert.");
   } else {
+    if (!supabase) {
+      throw new Error("Supabase client is required when import-data.ts is not running in dry-run mode.");
+    }
+
     await confirmTruncate();
 
     const truncateResult = await (supabase.rpc as any)("exec_sql", {
