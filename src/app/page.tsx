@@ -103,7 +103,7 @@ export default function Home() {
           <Link
             href="/add"
             prefetch={false}
-            className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-4 py-2.5 text-sm font-semibold text-white visited:text-white shadow-sm transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
+            className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-4 py-2.5 text-sm font-semibold !text-white visited:!text-white hover:!text-white shadow-sm transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
           >
             Pridať nový výrok
           </Link>
