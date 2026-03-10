@@ -4,7 +4,14 @@ import { classifyMatches, getGeminiModel } from "@/lib/gemini";
 import { embedText } from "@/lib/jina";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord } from "@/lib/utils";
-import type { DetectMode, DetectResponse, DetectionMatch, Statement, Verdict } from "@/types";
+import type {
+  Article,
+  DetectMode,
+  DetectResponse,
+  DetectionMatch,
+  Statement,
+  Verdict,
+} from "@/types";
 
 interface MatchRow {
   id: number;
@@ -18,6 +25,14 @@ interface MatchRow {
   similarity: number;
 }
 
+interface ArticleMatchRow {
+  id: number;
+  datum: string | null;
+  autor: string | null;
+  text_content: string | null;
+  similarity: number;
+}
+
 function toStatement(row: MatchRow): Statement {
   return {
     id: row.id,
@@ -28,6 +43,15 @@ function toStatement(row: MatchRow): Statement {
     datum: row.datum,
     meno: row.meno,
     strana: row.strana,
+  };
+}
+
+function toArticle(row: ArticleMatchRow): Article {
+  return {
+    id: row.id,
+    datum: row.datum ?? "",
+    autor: row.autor ?? "Demagog.sk",
+    text: row.text_content?.trim() ?? "",
   };
 }
 
@@ -54,7 +78,7 @@ function buildFallbackClassification(row: MatchRow): {
     };
   }
 
-  if (row.similarity >= 0.5) {
+  if (row.similarity >= 0.62) {
     return {
       id: row.id,
       classification: "RELATED",
@@ -139,7 +163,7 @@ export async function POST(request: NextRequest) {
 
   const rows = (data ?? []) as MatchRow[];
 
-  if (rows.length === 0 || rows.every((row) => row.similarity < 0.5)) {
+  if (rows.length === 0 || rows.every((row) => row.similarity < 0.62)) {
     const response: DetectResponse = {
       input_statement: statement,
       matches: [],
@@ -204,11 +228,35 @@ export async function POST(request: NextRequest) {
       ? "RELATED_ONLY"
       : "NEW_CLAIM";
 
+  let relatedArticles: Article[] | undefined;
+  if (overallStatus !== "NEW_CLAIM") {
+    try {
+      const { data: articleData, error: articleError } = await supabase.rpc(
+        "match_articles",
+        {
+          query_embedding: embedding,
+          match_count: 3,
+        }
+      );
+
+      if (!articleError) {
+        relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+          .map(toArticle)
+          .filter((article) => article.text.length > 0);
+      }
+    } catch {
+      // Article context is best-effort and should not fail detection.
+    }
+  }
+
   const response: DetectResponse = {
     input_statement: statement,
     matches,
     overall_status: overallStatus,
     query_time_ms: Math.round(performance.now() - start),
+    ...(relatedArticles && relatedArticles.length > 0
+      ? { related_articles: relatedArticles }
+      : {}),
   };
 
   return NextResponse.json(response);

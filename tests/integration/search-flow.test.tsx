@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { MutableRefObject } from "react";
+import type { AnchorHTMLAttributes, MutableRefObject, ReactNode } from "react";
 
 import Home from "@/app/page";
 import type { FilterState, FiltersResponse, SearchResponse } from "@/types";
@@ -10,6 +10,22 @@ vi.mock("@/hooks/useSearch", () => ({
 
 vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
+}));
+
+vi.mock("next/link", () => ({
+  default: (props: {
+    children?: ReactNode;
+    href: string;
+    prefetch?: boolean | null;
+  } & AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    const { children, href, prefetch, ...anchorProps } = props;
+    void prefetch;
+    return (
+      <a href={href} {...anchorProps}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 const { useSearch } = await import("@/hooks/useSearch");
@@ -76,6 +92,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     filters: emptyFilters,
     page: 1,
     availableFilters,
+    filterLoadError: false,
     hasSearched: false,
     setQuery,
     setFilters,
@@ -177,6 +194,7 @@ describe("search page flow", () => {
       filters: emptyFilters,
       page: 1,
       availableFilters,
+      filterLoadError: false,
       hasSearched: false,
       setQuery,
       setFilters,
@@ -233,6 +251,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        filterLoadError: false,
         isModelFilterUpdateRef,
       })
       .mockReturnValueOnce({
@@ -263,6 +282,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        filterLoadError: false,
         isModelFilterUpdateRef,
       });
 

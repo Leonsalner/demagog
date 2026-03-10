@@ -77,10 +77,12 @@ function buildRow(
 function createSupabaseMock(options?: {
   names?: string[];
   parties?: string[];
+  areas?: string[];
   rpc?: (fn: string, args: Record<string, unknown>) => Promise<unknown>;
 }) {
   const names = options?.names ?? ["Robert Fico", "Peter Pellegrini"];
   const parties = options?.parties ?? ["Hlas", "Smer-SD"];
+  const areas = options?.areas ?? ["Ekonomika", "Zdravotníctvo"];
   const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => {
     if (fn === "list_distinct_values") {
       if (args.col === "meno") {
@@ -89,6 +91,10 @@ function createSupabaseMock(options?: {
 
       if (args.col === "strana") {
         return { data: parties.map((value) => ({ value })), error: null };
+      }
+
+      if (args.col === "oblast") {
+        return { data: areas.map((value) => ({ value })), error: null };
       }
 
       throw new Error(`Unexpected distinct column ${String(args.col)}`);
@@ -199,6 +205,9 @@ describe("POST /api/search logic", () => {
     expect(supabase.rpc).toHaveBeenNthCalledWith(2, "list_distinct_values", {
       col: "strana",
     });
+    expect(supabase.rpc).toHaveBeenNthCalledWith(3, "list_distinct_values", {
+      col: "oblast",
+    });
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
@@ -287,7 +296,7 @@ describe("POST /api/search logic", () => {
     ]);
   });
 
-  it("validates extracted filters and strips unsupported area filters", async () => {
+  it("validates extracted filters including supported area filters", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
         if (fn !== "search_statements") {
@@ -351,17 +360,17 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      3,
+      4,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Robert Fico",
         filter_strana: "Smer-SD",
-        filter_oblast: null,
+        filter_oblast: "Zdravotníctvo",
         filter_vyhodnotenie: "Pravda",
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      5,
+      6,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Peter Pellegrini",
@@ -371,7 +380,7 @@ describe("POST /api/search logic", () => {
       meno: "Robert Fico",
       strana: "Smer-SD",
       vyhodnotenie: "Pravda",
-      oblast: null,
+      oblast: "Zdravotníctvo",
     });
     expect(data.query_understanding.related_politicians).toEqual([
       {
@@ -380,6 +389,45 @@ describe("POST /api/search logic", () => {
         topic_relevance: "Rovnaka tema.",
       },
     ]);
+  });
+
+  it("uses the fast understanding path for exact area keyword queries", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { oblast: "Zdravotníctvo" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "zdravotníctvo čakacie lehoty",
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(understandQuery).not.toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_oblast: "Zdravotníctvo",
+      }),
+    );
+    expect(data.query_understanding.extracted_filters).toEqual({
+      meno: null,
+      strana: null,
+      vyhodnotenie: null,
+      oblast: "Zdravotníctvo",
+    });
   });
 
   it("fills related results with each politician's best hit first, then global similarity", async () => {
@@ -641,7 +689,7 @@ describe("POST /api/search logic", () => {
       .mocked(supabase.rpc)
       .mock.calls.filter(([fn]) => fn === "list_distinct_values");
 
-    expect(distinctCalls).toHaveLength(4);
+    expect(distinctCalls).toHaveLength(6);
   });
 
   it("logs the search RPC error details before returning 502", async () => {

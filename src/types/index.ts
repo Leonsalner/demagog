@@ -85,6 +85,7 @@ export interface DetectResponse {
   matches: DetectionMatch[];
   overall_status: "DUPLICATE_FOUND" | "RELATED_ONLY" | "NEW_CLAIM";
   query_time_ms: number;
+  related_articles?: Article[];
 }
 
 export interface FiltersResponse {

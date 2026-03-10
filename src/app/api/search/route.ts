@@ -17,6 +17,7 @@ const SEARCH_RERANK_FLAG = "ENABLE_SEARCH_RERANK";
 type DistinctQueryValues = {
   meno: string[];
   strana: string[];
+  oblast: string[];
 };
 
 type SearchStageTimings = Partial<
@@ -140,10 +141,6 @@ function mergeQueryFilters(
       body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
     oblast: body.oblast ?? extractedFilters.oblast ?? undefined,
   };
-}
-
-function normalizeValue(value: string): string {
-  return value.trim().toLocaleLowerCase();
 }
 
 function normalizeForMatching(value: string): string {
@@ -312,17 +309,20 @@ function buildFastQueryUnderstanding(
   body: SearchRequest,
   query: string,
   availableNames: string[],
-  availableParties: string[]
+  availableParties: string[],
+  availableAreas: string[]
 ): QueryUnderstanding {
   const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
   const detectedName = selectedName ?? findExactCandidateInQuery(query, availableNames);
   const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
   const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
+  const detectedArea = body.oblast ?? findExactCandidateInQuery(query, availableAreas);
   const semanticQuery =
     stripMatchedTerms(query, [
       detectedName,
       detectedParty,
       detectedVerdict,
+      detectedArea,
       ...(Array.isArray(body.meno) ? body.meno : [body.meno]),
       body.strana,
       body.vyhodnotenie,
@@ -335,7 +335,7 @@ function buildFastQueryUnderstanding(
       meno: detectedName,
       strana: detectedParty,
       vyhodnotenie: detectedVerdict,
-      oblast: body.oblast ?? null,
+      oblast: detectedArea,
     },
     related_politicians: [],
   };
@@ -345,7 +345,8 @@ function shouldUseFastQueryUnderstanding(
   body: SearchRequest,
   query: string,
   availableNames: string[],
-  availableParties: string[]
+  availableParties: string[],
+  availableAreas: string[]
 ): boolean {
   if (hasStructuredSearchFilters(body)) {
     return true;
@@ -356,6 +357,10 @@ function shouldUseFastQueryUnderstanding(
   }
 
   if (findExactCandidateInQuery(query, availableParties)) {
+    return true;
+  }
+
+  if (findExactCandidateInQuery(query, availableAreas)) {
     return true;
   }
 
@@ -374,9 +379,9 @@ function resolveAvailableValue(
     return null;
   }
 
-  const normalizedValue = normalizeValue(value);
+  const normalizedValue = normalizeForMatching(value);
   const exactMatch = availableValues.find(
-    (candidate) => normalizeValue(candidate) === normalizedValue
+    (candidate) => normalizeForMatching(candidate) === normalizedValue
   );
 
   if (exactMatch) {
@@ -384,7 +389,7 @@ function resolveAvailableValue(
   }
 
   const fuzzyMatch = availableValues.find((candidate) => {
-    const normalizedCandidate = normalizeValue(candidate);
+    const normalizedCandidate = normalizeForMatching(candidate);
     return (
       normalizedCandidate.startsWith(normalizedValue) ||
       normalizedCandidate.includes(normalizedValue) ||
@@ -398,13 +403,14 @@ function resolveAvailableValue(
 function validateExtractedFilters(
   filters: QueryUnderstanding["filters"],
   availableNames: string[],
-  availableParties: string[]
+  availableParties: string[],
+  availableAreas: string[]
 ): QueryUnderstanding["filters"] {
   return {
     meno: resolveAvailableValue(filters.meno, availableNames),
     strana: resolveAvailableValue(filters.strana, availableParties),
     vyhodnotenie: filters.vyhodnotenie,
-    oblast: null,
+    oblast: resolveAvailableValue(filters.oblast, availableAreas),
   };
 }
 
@@ -428,7 +434,7 @@ function validateRelatedPoliticians(
 
 async function fetchDistinctValues(
   supabase: ReturnType<typeof supabasePublic>,
-  column: "meno" | "strana"
+  column: "meno" | "strana" | "oblast"
 ): Promise<string[]> {
   const { data, error } = await supabase.rpc("list_distinct_values", {
     col: column,
@@ -460,12 +466,13 @@ async function fetchDistinctValues(
 async function fetchAvailableQueryValues(
   supabase: ReturnType<typeof supabasePublic>
 ): Promise<DistinctQueryValues> {
-  const [meno, strana] = await Promise.all([
+  const [meno, strana, oblast] = await Promise.all([
     fetchDistinctValues(supabase, "meno"),
     fetchDistinctValues(supabase, "strana"),
+    fetchDistinctValues(supabase, "oblast"),
   ]);
 
-  return { meno, strana };
+  return { meno, strana, oblast };
 }
 
 export function resetSearchRouteStateForTests() {
@@ -608,7 +615,11 @@ export async function POST(request: NextRequest) {
 
     if (body.query) {
       const distinctValuesStartedAt = performance.now();
-      const { meno: allNames, strana: allParties } = await fetchAvailableQueryValues(
+      const {
+        meno: allNames,
+        strana: allParties,
+        oblast: allAreas,
+      } = await fetchAvailableQueryValues(
         supabase
       );
       recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
@@ -618,15 +629,17 @@ export async function POST(request: NextRequest) {
         body,
         body.query,
         allNames,
-        allParties
+        allParties,
+        allAreas
       )
-        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties)
+        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties, allAreas)
         : await understandQuery(body.query, allNames, allParties);
       recordStageTiming(timings, "understand_query_ms", understandingStartedAt);
       const validatedFilters = validateExtractedFilters(
         understanding.filters,
         allNames,
-        allParties
+        allParties,
+        allAreas
       );
       const validatedRelatedPoliticians = validateRelatedPoliticians(
         understanding.related_politicians,

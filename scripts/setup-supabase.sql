@@ -178,6 +178,31 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION match_articles(
+  query_embedding vector(1024),
+  match_count int DEFAULT 3
+) RETURNS TABLE (
+  id int,
+  datum timestamptz,
+  autor text,
+  text_content text,
+  similarity float
+) LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.datum,
+    c.autor,
+    c.text_content,
+    (1 - (c.embedding <=> query_embedding))::float AS similarity
+  FROM clanky c
+  WHERE c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION exec_sql(query text)
 RETURNS void
 LANGUAGE plpgsql
@@ -216,4 +241,5 @@ GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text, text, text, 
 GRANT EXECUTE ON FUNCTION count_statements(text, text, text, text, date, date, boolean) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION list_distinct_values(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_statements(vector, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_articles(vector, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION statement_date_bounds() TO anon, authenticated;

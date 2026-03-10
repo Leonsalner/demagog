@@ -8,7 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:test": "tsc --noEmit -p tsconfig.vitest.json",
+    "typecheck:all": "npm run typecheck && npm run typecheck:test",
+    "embed:articles": "tsx scripts/embed-articles.ts",
+    "embed:statements": "tsx scripts/embed-statements.ts",
+    "clear:vyroky": "tsx scripts/clear-vyroky.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",

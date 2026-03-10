@@ -30,6 +30,14 @@ type DistinctValueRow = {
   value: string | null;
 };
 
+type MatchArticleRow = {
+  id: number;
+  datum: string | null;
+  autor: string | null;
+  text_content: string | null;
+  similarity: number;
+};
+
 type Database = {
   public: {
     Tables: {
@@ -93,6 +101,13 @@ type Database = {
           match_count?: number;
         };
         Returns: MatchStatementRow[];
+      };
+      match_articles: {
+        Args: {
+          query_embedding: number[];
+          match_count?: number;
+        };
+        Returns: MatchArticleRow[];
       };
       exec_sql: {
         Args: {

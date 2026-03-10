@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import type { Verdict } from "@/types";
+import type { Article, Verdict } from "@/types";
 
 vi.mock("@/lib/supabase", () => ({
   supabasePublic: vi.fn(),
@@ -58,17 +58,33 @@ function buildRow(
   };
 }
 
-function createSupabaseMock(rows: ReturnType<typeof buildRow>[]) {
+function createSupabaseMock(
+  rows: ReturnType<typeof buildRow>[],
+  articleRows: Array<{
+    id: number;
+    datum: string | null;
+    autor: string | null;
+    text_content: string | null;
+    similarity: number;
+  }> = [],
+) {
   return {
     rpc: vi.fn(async (fn: string) => {
-      if (fn !== "match_statements") {
-        throw new Error(`Unexpected RPC ${fn}`);
+      if (fn === "match_statements") {
+        return {
+          data: rows,
+          error: null,
+        };
       }
 
-      return {
-        data: rows,
-        error: null,
-      };
+      if (fn === "match_articles") {
+        return {
+          data: articleRows,
+          error: null,
+        };
+      }
+
+      throw new Error(`Unexpected RPC ${fn}`);
     }),
   };
 }
@@ -182,6 +198,55 @@ describe("POST /api/detect logic", () => {
       "Klasifikácia nedostupná - vysoká zhoda.",
     );
     expect(data.overall_status).toBe("DUPLICATE_FOUND");
+  });
+
+  it("adds related articles when duplicate or related matches are found", async () => {
+    const rows = [buildRow(1, 0.9)];
+    const articles: Article[] = [
+      {
+        id: 3,
+        autor: "Demagog.sk",
+        datum: "2026-02-14T12:00:00.000Z",
+        text: "Článok o rovnakom tvrdení a jeho kontexte.",
+      },
+    ];
+    const supabase = createSupabaseMock(
+      rows,
+      articles.map((article) => ({
+        id: article.id,
+        autor: article.autor,
+        datum: article.datum,
+        text_content: article.text,
+        similarity: 0.81,
+      })),
+    );
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      {
+        id: 1,
+        classification: "RELATED",
+        explanation: "Tvrdenie je na rovnakú tému.",
+      },
+    ]);
+
+    const response = await POST(
+      createRequest({
+        statement: "Nova formulacia tvrdenia",
+        top_k: 3,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "match_articles",
+      expect.objectContaining({
+        match_count: 3,
+        query_embedding: [0.4, 0.5, 0.6],
+      }),
+    );
+    expect(data.related_articles).toEqual(articles);
   });
 
   it("rejects zero or negative top_k values", async () => {

@@ -119,4 +119,21 @@ describe("useSearch", () => {
     expect(result.current.results).toBeNull();
     expect(result.current.error).toBe("Nepodarilo sa načítať výsledky vyhľadávania.");
   });
+
+  it("marks filter load fallback as non-blocking when the filters request fails", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      await result.current.loadFilters();
+    });
+
+    expect(result.current.availableFilters).not.toBeNull();
+    expect(result.current.filterLoadError).toBe(true);
+  });
 });

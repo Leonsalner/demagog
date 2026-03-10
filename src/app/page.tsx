@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import StatementInput from "@/components/detect/StatementInput";
@@ -27,6 +28,7 @@ export default function Home() {
     filters,
     page,
     availableFilters,
+    filterLoadError,
     hasSearched,
     setQuery,
     setFilters,
@@ -86,15 +88,25 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
-            Vyhľadávanie a detekcia výrokov
-          </h1>
-          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
-            Vyhľadávajte vo výrokoch overených Demagogom, spresnite výsledky
-            podľa filtrov a v rovnakom okne skontrolujte, či nový výrok nie je
-            už pokrytý existujúcim fact-checkom.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
+              Vyhľadávanie a detekcia výrokov
+            </h1>
+            <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
+              Vyhľadávajte vo výrokoch overených Demagogom, spresnite výsledky
+              podľa filtrov a v rovnakom okne skontrolujte, či nový výrok nie je
+              už pokrytý existujúcim fact-checkom.
+            </p>
+          </div>
+
+          <Link
+            href="/add"
+            prefetch={false}
+            className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-4 py-2.5 text-sm font-semibold !text-white visited:!text-white hover:!text-white shadow-sm transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
+          >
+            Pridať nový výrok
+          </Link>
         </div>
 
         <div className="mt-6">
@@ -165,6 +177,7 @@ export default function Home() {
               <FilterSidebar
                 filters={filters}
                 availableFilters={availableFilters}
+                filterLoadError={filterLoadError}
                 onChange={setFilters}
               />
 

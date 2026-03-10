@@ -201,6 +201,7 @@ export function useSearch() {
   const [hasSearched, setHasSearched] = useState(false);
   const [availableFilters, setAvailableFilters] =
     useState<FiltersResponse | null>(null);
+  const [filterLoadError, setFilterLoadError] = useState(false);
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const modelSetFields = useRef<Set<keyof FilterState>>(new Set<keyof FilterState>());
   const isModelFilterUpdateRef = useRef(false);
@@ -214,6 +215,7 @@ export function useSearch() {
       if (USE_MOCK) {
         availableFiltersRef.current = mockFilters;
         setAvailableFilters(mockFilters);
+        setFilterLoadError(false);
         return mockFilters;
       }
 
@@ -225,10 +227,12 @@ export function useSearch() {
       const data: FiltersResponse = await response.json();
       availableFiltersRef.current = data;
       setAvailableFilters(data);
+      setFilterLoadError(false);
       return data;
     } catch {
       availableFiltersRef.current = mockFilters;
       setAvailableFilters(mockFilters);
+      setFilterLoadError(true);
       return mockFilters;
     }
   }, []);
@@ -330,6 +334,7 @@ export function useSearch() {
     filters,
     page,
     availableFilters,
+    filterLoadError,
     hasSearched,
     setQuery,
     setFilters,

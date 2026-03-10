@@ -13,6 +13,7 @@ import type { FilterState, FiltersResponse, Verdict } from "@/types";
 interface FilterSidebarProps {
   filters: FilterState;
   availableFilters: FiltersResponse | null;
+  filterLoadError?: boolean;
   onChange: (filters: FilterState) => void;
 }
 
@@ -104,6 +105,7 @@ function countActiveFilters(filters: FilterState) {
 export default function FilterSidebar({
   filters,
   availableFilters,
+  filterLoadError = false,
   onChange,
 }: FilterSidebarProps) {
   const [personQuery, setPersonQuery] = useState("");
@@ -202,6 +204,12 @@ export default function FilterSidebar({
       </div>
 
       <div className="space-y-6">
+        {filterLoadError ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+            Filter data unavailable. Zobrazujú sa náhradné hodnoty.
+          </div>
+        ) : null}
+
         <FilterSection label="Hodnotenie">
           <div className="flex flex-wrap gap-2">
             {verdictOptions.map((verdict) => {
