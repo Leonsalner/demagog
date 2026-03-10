@@ -1,65 +1,65 @@
-# Demagog.sk AI Search Showcase
+# Ukážka AI vyhľadávania pre Demagog.sk
 
-This is a quick product showcase for a Demagog.sk toolset built around one simple idea: make Demagog's existing archive easier to use for both readers and analysts.
+Toto je stručná produktová ukážka nástrojov pre Demagog.sk postavená na jednoduchej myšlienke: sprístupniť existujúci archív Demagogu lepšie čitateľom aj analytikom.
 
-It combines two practical workflows:
+Spája dva praktické scenáre použitia:
 
-- a better public search experience for finding existing fact-checks, even when the user does not know the exact wording
-- an internal duplicate detector that helps analysts see whether a new claim has already been checked or overlaps with earlier work
+- lepšie verejné vyhľadávanie existujúcich overení aj vtedy, keď používateľ nepozná presné znenie výroku
+- interný detektor duplicít, ktorý analytikom pomáha rýchlo zistiť, či bol nový výrok už overený alebo či sa výrazne prekrýva s predchádzajúcou prácou
 
-The goal is not to replace editorial judgment. The goal is to reduce repetitive searching, surface relevant prior work faster, and help Demagog get more value from its own archive.
-
-<p align="center">
-  <img src="docs/images/demagog-home-fold.png" alt="Demagog search and duplicate-detection home screen" width="900" />
-</p>
-
-## Why It Matters
-
-Demagog already has the hard part: a valuable body of fact-checking work. What this prototype improves is access.
-
-- Readers can find relevant fact-checks even when they search with different wording than the original statement.
-- Analysts can immediately see whether a claim is likely a duplicate, only loosely related, or genuinely new.
-- The workflow stays grounded in Demagog's own material instead of pretending to automate the editorial decision itself.
-
-## What The Demo Shows
-
-### 1. Smarter search for the public site
-
-The search experience is designed to feel closer to how people actually ask questions. Instead of relying only on exact keywords, it can understand natural phrasing and return relevant verified statements from the archive.
-
-### 2. Faster internal triage for analysts
-
-When a new political claim comes in, the duplicate detector helps answer a very practical question: have we already checked this, or something very close to it? That means less manual digging and a faster start to the real fact-checking work.
+Cieľom nie je nahradiť redakčný úsudok. Cieľom je obmedziť opakované manuálne hľadanie, rýchlejšie sprístupniť relevantné predchádzajúce overenia a pomôcť Demagogu naplno využiť hodnotu vlastného archívu.
 
 <p align="center">
-  <img src="docs/images/demagog-demo-fold.png" alt="Demo search results showing semantically matched Demagog statements" width="900" />
+  <img src="docs/images/demagog-home-fold.png" alt="Domovská obrazovka vyhľadávania a detekcie duplicít pre Demagog" width="900" />
 </p>
 
-### 3. A browser-extension direction
+## Prečo je to dôležité
 
-The extension concept shows how this could eventually move even closer to the analyst's day-to-day workflow. A highlighted sentence in an article can be checked against existing Demagog material without forcing the user to leave the page.
+Demagog už má to najcennejšie: rozsiahly archív overení. Tento prototyp nezlepšuje obsah samotný, ale prístup k nemu.
+
+- Čitatelia môžu nájsť relevantné overenia aj vtedy, keď hľadajú inými slovami, než ako bol výrok pôvodne formulovaný.
+- Analytici okamžite vidia, či je nový výrok pravdepodobne duplicitný, len voľne súvisiaci alebo skutočne nový.
+- Celý workflow zostáva pevne ukotvený v existujúcej práci Demagogu namiesto toho, aby predstieral automatizáciu redakčného rozhodovania.
+
+## Čo ukážka predvádza
+
+### 1. Inteligentnejšie vyhľadávanie pre verejný web
+
+Vyhľadávanie je navrhnuté tak, aby lepšie zodpovedalo tomu, ako ľudia v skutočnosti kladú otázky. Namiesto spoliehania sa iba na presné kľúčové slová vie pracovať aj s prirodzenou formuláciou a vrátiť relevantné overené výroky z archívu.
+
+### 2. Rýchlejší interný štart pre analytikov
+
+Keď príde nový politický výrok, detektor duplicít pomáha zodpovedať veľmi praktickú otázku: overovali sme už toto tvrdenie alebo niečo veľmi podobné? Znamená to menej manuálneho dohľadávania a rýchlejší začiatok skutočnej overovacej práce.
 
 <p align="center">
-  <img src="docs/images/demagog-extension.png" alt="Chrome extension mockup for checking a highlighted claim against Demagog data" width="700" />
+  <img src="docs/images/demagog-demo-fold.png" alt="Ukážka výsledkov vyhľadávania so sémanticky priradenými výrokmi z Demagogu" width="900" />
 </p>
 
-## Product Framing
+### 3. Smerovanie k rozšíreniu pre prehliadač
 
-This is best understood as a newsroom support tool:
+Koncept rozšírenia ukazuje, ako by sa tento nástroj mohol v budúcnosti ešte viac priblížiť každodennej práci analytikov. Zvýraznenú vetu v článku by bolo možné porovnať s existujúcim obsahom Demagogu bez toho, aby používateľ musel opustiť stránku.
 
-- it helps people find prior checks faster
-- it gives analysts a clearer starting point for new claims
-- it keeps Demagog's archive useful, visible, and reusable
+<p align="center">
+  <img src="docs/images/demagog-extension.png" alt="Maketa rozšírenia pre Chrome na porovnanie zvýrazneného výroku s databázou Demagogu" width="700" />
+</p>
 
-If the prototype proves useful, the natural next step is not a flashy redesign. It is a more polished version of the same core value: better retrieval, better research starting points, and less duplicated work.
+## Ako tento produkt chápať
 
-## Local Preview
+Najlepšie je vnímať ho ako podporný nástroj pre redakciu:
 
-If you want to open the prototype locally:
+- pomáha rýchlejšie nájsť už existujúce overenia
+- analytikom dáva jasnejší východiskový bod pri nových výrokoch
+- zvyšuje využiteľnosť, viditeľnosť a opätovné použitie archívu Demagogu
+
+Ak sa prototyp ukáže ako užitočný, prirodzeným ďalším krokom nie je efektný redizajn. Je ním kvalitnejšie spracovanie tej istej základnej hodnoty: lepšie vyhľadávanie, lepšie východiská pre výskum a menej duplicitnej práce.
+
+## Lokálne spustenie
+
+Ak si chcete prototyp otvoriť lokálne:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The screenshots above were captured locally with Playwright from the app and from the extension mockup in [`extension-mockup.html`](extension-mockup.html).
+Snímky obrazovky vyššie boli vytvorené lokálne pomocou Playwrightu z aplikácie a z makety rozšírenia v súbore [`extension-mockup.html`](extension-mockup.html).
