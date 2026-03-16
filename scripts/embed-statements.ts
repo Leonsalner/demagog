@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
+
+loadEnvConfig(process.cwd(), true);
 
 type StatementRow = {
   id: number;
