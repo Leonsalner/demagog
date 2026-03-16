@@ -489,7 +489,7 @@ describe("POST /api/search logic", () => {
     );
   });
 
-  it("uses the fast understanding path for exact-name keyword queries", async () => {
+  it("delegates exact-name keyword queries to the LLM path", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
         if (fn !== "search_statements") {
@@ -509,6 +509,12 @@ describe("POST /api/search logic", () => {
     });
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "vojna ukrajina",
+        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+      }),
+    );
 
     const response = await POST(
       createRequest({
@@ -519,7 +525,7 @@ describe("POST /api/search logic", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(understandQuery).not.toHaveBeenCalled();
+    expect(understandQuery).toHaveBeenCalled();
     expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
@@ -529,7 +535,7 @@ describe("POST /api/search logic", () => {
     );
   });
 
-  it("maps unique surname-only queries to the full politician name", async () => {
+  it("delegates surname-only queries to the LLM path", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
         if (fn !== "search_statements") {
@@ -549,6 +555,12 @@ describe("POST /api/search logic", () => {
     });
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "vojna ukrajina",
+        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+      }),
+    );
 
     const response = await POST(
       createRequest({
@@ -559,7 +571,7 @@ describe("POST /api/search logic", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(understandQuery).not.toHaveBeenCalled();
+    expect(understandQuery).toHaveBeenCalled();
     expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",

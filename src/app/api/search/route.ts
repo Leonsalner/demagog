@@ -423,9 +423,9 @@ function shouldUseFastQueryUnderstanding(
     return true;
   }
 
-  if (findNameInQuery(query, availableNames)) {
-    return true;
-  }
+  // Name-only detection no longer forces the fast path. When a name is
+  // the only signal, the LLM decides whether the user means statements
+  // FROM the politician or ABOUT the politician.
 
   if (findExactCandidateInQuery(query, availableParties)) {
     return true;
@@ -435,7 +435,7 @@ function shouldUseFastQueryUnderstanding(
     return true;
   }
 
-  return !queryHasSentenceShape(query);
+  return !queryHasSentenceShape(query) && !findNameInQuery(query, availableNames);
 }
 
 function resolveAvailableValue(

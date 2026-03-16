@@ -232,7 +232,17 @@ export function useSearch() {
       setError(null);
       setHasSearched(true);
 
-      const cleanedFilters = clearModelOwnedFilters(filters, modelSetFields.current);
+      // Capture and clear model-owned filters immediately so stale
+      // auto-detected filters disappear from the UI as soon as a new
+      // search starts, rather than lingering until the response arrives.
+      const previousOwnedFields = new Set(modelSetFields.current);
+      if (previousOwnedFields.size > 0) {
+        modelSetFields.current = new Set<keyof FilterState>();
+        isModelFilterUpdateRef.current = true;
+        setFiltersState((cur) => clearModelOwnedFilters(cur, previousOwnedFields));
+      }
+
+      const cleanedFilters = clearModelOwnedFilters(filters, previousOwnedFields);
       const request = buildRequestBody(query, cleanedFilters, nextPage);
 
       try {
