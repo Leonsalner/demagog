@@ -17,7 +17,8 @@
  *
  * Usage:
  *   tsx scripts/fix-vyroky-encoding.ts [--phase1-only] [--dry-run] [--batch-size=N]
- *     [--concurrency=N] [--continue-from-batch=N] [--checkpoint-file=PATH]
+ *     [--concurrency=N] [--continue-from-batch=N] [--only-batches=1,2,3]
+ *     [--checkpoint-file=PATH]
  *   (reads GEMINI_API_KEY from .env.local automatically)
  *
  * Output: data/demagog_vyroky_fixed.csv (semicolon-delimited, ready for import-data.ts)
@@ -56,6 +57,7 @@ export type ScriptArgs = {
   batchSize: number;
   concurrency: number;
   continueFromBatch: number;
+  onlyBatches: number[] | null;
   checkpointFile: string;
   model: string;
 };
@@ -70,11 +72,32 @@ function parsePositiveInteger(value: string, flagName: string): number {
   return parsed;
 }
 
+function parseBatchList(value: string): number[] {
+  const parsed = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => parsePositiveInteger(item, "--only-batches"));
+
+  if (parsed.length === 0) {
+    throw new Error("--only-batches must include at least one batch number.");
+  }
+
+  return Array.from(new Set(parsed)).sort((a, b) => a - b);
+}
+
 export function parseArgs(args = process.argv.slice(2)): ScriptArgs {
   const batchArg = args.find((a) => a.startsWith("--batch-size="));
   const concurrencyArg = args.find((a) => a.startsWith("--concurrency="));
   const continueArg = args.find((a) => a.startsWith("--continue-from-batch="));
+  const onlyBatchesArg = args.find((a) => a.startsWith("--only-batches="));
   const checkpointArg = args.find((a) => a.startsWith("--checkpoint-file="));
+
+  if (continueArg && onlyBatchesArg) {
+    throw new Error(
+      "Use either --continue-from-batch or --only-batches, not both.",
+    );
+  }
 
   return {
     phase1Only: args.includes("--phase1-only"),
@@ -91,6 +114,9 @@ export function parseArgs(args = process.argv.slice(2)): ScriptArgs {
           "--continue-from-batch",
         )
       : 1,
+    onlyBatches: onlyBatchesArg
+      ? parseBatchList(onlyBatchesArg.split("=")[1])
+      : null,
     checkpointFile: checkpointArg?.split("=")[1] || DEFAULT_CHECKPOINT,
     model:
       args.find((a) => a.startsWith("--model="))?.split("=")[1] ??
@@ -696,9 +722,17 @@ async function main(): Promise<void> {
     return;
   }
 
+  const requestedBatchNumbers = args.onlyBatches;
+
   if (args.continueFromBatch > batches.length) {
     throw new Error(
       `--continue-from-batch=${args.continueFromBatch} is beyond the last batch (${batches.length}).`,
+    );
+  }
+
+  if (requestedBatchNumbers?.some((batchNumber) => batchNumber > batches.length)) {
+    throw new Error(
+      `--only-batches includes a batch beyond the last batch (${batches.length}).`,
     );
   }
 
@@ -708,12 +742,15 @@ async function main(): Promise<void> {
     args.model,
   );
 
-  if (args.continueFromBatch > 1) {
+  const needsExistingCheckpoint =
+    args.continueFromBatch > 1 || requestedBatchNumbers !== null;
+
+  if (needsExistingCheckpoint) {
     const existingCheckpoint = readPhase2Checkpoint(args.checkpointFile);
 
     if (!existingCheckpoint) {
       throw new Error(
-        `Checkpoint file not found: ${args.checkpointFile}. Resume requires a prior run checkpoint.`,
+        `Checkpoint file not found: ${args.checkpointFile}. This mode requires a prior run checkpoint.`,
       );
     }
 
@@ -730,15 +767,17 @@ async function main(): Promise<void> {
     }
 
     checkpoint = existingCheckpoint;
-    const missingBatches = getMissingCompletedBatches(
-      checkpoint,
-      args.continueFromBatch,
-    );
-
-    if (missingBatches.length > 0) {
-      throw new Error(
-        `Cannot continue from batch ${args.continueFromBatch}. Missing completed batches before it: ${missingBatches.join(", ")}.`,
+    if (args.continueFromBatch > 1) {
+      const missingBatches = getMissingCompletedBatches(
+        checkpoint,
+        args.continueFromBatch,
       );
+
+      if (missingBatches.length > 0) {
+        throw new Error(
+          `Cannot continue from batch ${args.continueFromBatch}. Missing completed batches before it: ${missingBatches.join(", ")}.`,
+        );
+      }
     }
 
     applyCheckpointedBatches(records, batches, checkpoint);
@@ -750,12 +789,26 @@ async function main(): Promise<void> {
     console.log(`  Starting fresh checkpoint at ${args.checkpointFile}`);
   }
 
-  const targetBatches = batches.filter(
-    (batch) => batch.batchNumber >= args.continueFromBatch,
-  );
+  const targetBatches = requestedBatchNumbers
+    ? batches.filter((batch) => requestedBatchNumbers.includes(batch.batchNumber))
+    : batches.filter((batch) => batch.batchNumber >= args.continueFromBatch);
   const workerCount = Math.min(args.concurrency, targetBatches.length);
   let queueIndex = 0;
   let processed = getCompletedRecordCount(checkpoint, batches);
+
+  if (requestedBatchNumbers) {
+    processed -= targetBatches.reduce(
+      (total, batch) =>
+        total +
+        (checkpoint.completedBatches[String(batch.batchNumber)]
+          ? batch.indices.length
+          : 0),
+      0,
+    );
+    console.log(
+      `  Rerunning only batches: ${requestedBatchNumbers.join(", ")}`,
+    );
+  }
 
   const runWorker = async (workerId: number): Promise<void> => {
     while (queueIndex < targetBatches.length) {

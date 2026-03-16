@@ -25,8 +25,24 @@ describe("scripts/fix-vyroky-encoding", () => {
       batchSize: 25,
       concurrency: 12,
       continueFromBatch: 4,
+      onlyBatches: null,
       checkpointFile: ".context/fix.json",
       model: "gemini-3.1-flash-lite-preview",
+    });
+  });
+
+  it("parses a targeted rerun batch list", () => {
+    expect(
+      parseArgs([
+        "--batch-size=30",
+        "--concurrency=5",
+        "--only-batches=29,12,29,8",
+      ]),
+    ).toMatchObject({
+      batchSize: 30,
+      concurrency: 5,
+      continueFromBatch: 1,
+      onlyBatches: [8, 12, 29],
     });
   });
 
