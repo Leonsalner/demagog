@@ -46,7 +46,7 @@ describe("DetectionResults", () => {
       />,
     );
 
-    expect(screen.getByText("Súvisiaci kontext")).toBeInTheDocument();
+    expect(screen.getByText("Súvisiace články (1)")).toBeInTheDocument();
     expect(
       screen.getByText("Krátky článok s doplňujúcim kontextom."),
     ).toBeInTheDocument();

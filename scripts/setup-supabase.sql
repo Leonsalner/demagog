@@ -14,7 +14,14 @@ CREATE TABLE IF NOT EXISTS vyroky (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(1024)
+  embedding vector(1024),
+  source_id TEXT NOT NULL,
+  numeric_id BIGINT,
+  url TEXT NOT NULL,
+  speaker_url TEXT,
+  analysis_paragraphs JSONB NOT NULL DEFAULT '[]'::jsonb,
+  analysis_date TIMESTAMPTZ,
+  scraped_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS clanky (
@@ -27,11 +34,25 @@ CREATE TABLE IF NOT EXISTS clanky (
   embedding vector(1024)
 );
 
+CREATE TABLE IF NOT EXISTS statement_sources (
+  id BIGSERIAL PRIMARY KEY,
+  statement_id INTEGER NOT NULL REFERENCES vyroky(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  url TEXT NOT NULL,
+  UNIQUE(statement_id, position)
+);
+
 CREATE INDEX IF NOT EXISTS idx_vyroky_strana ON vyroky(strana);
 CREATE INDEX IF NOT EXISTS idx_vyroky_oblast ON vyroky(oblast) WHERE oblast IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_vyroky_vyhodnotenie ON vyroky(vyhodnotenie);
 CREATE INDEX IF NOT EXISTS idx_vyroky_meno ON vyroky(meno);
 CREATE INDEX IF NOT EXISTS idx_vyroky_datum ON vyroky(datum) WHERE datum IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vyroky_source_id ON vyroky(source_id);
+CREATE INDEX IF NOT EXISTS idx_vyroky_numeric_id ON vyroky(numeric_id) WHERE numeric_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_vyroky_url ON vyroky(url);
+CREATE INDEX IF NOT EXISTS idx_vyroky_speaker_url ON vyroky(speaker_url) WHERE speaker_url IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_statement_sources_statement_id ON statement_sources(statement_id);
 
 CREATE OR REPLACE FUNCTION search_statements(
   query_embedding vector(1024),
