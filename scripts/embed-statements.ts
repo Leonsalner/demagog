@@ -56,13 +56,14 @@ type RpcError = {
 
 const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
 const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
+const STATEMENT_EMBEDDING_DIMENSIONS = 4096;
 const BATCH_SIZE = 32; // Smaller batches suit a local Ollama/GPU inference loop.
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
 const INDEX_SQL =
   "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
 const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
-ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
-ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
+ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
+ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 DROP INDEX IF EXISTS idx_vyroky_embedding;
 
 The script will recreate the HNSW index after embedding completes.`;
@@ -264,7 +265,7 @@ async function createIndex(supabase: SupabaseClientAny): Promise<void> {
     }
 
     throw new Error(
-      `Failed to create the 2048d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
+      `Failed to create the ${STATEMENT_EMBEDDING_DIMENSIONS}d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
     );
   }
 }
@@ -303,7 +304,7 @@ async function main(): Promise<void> {
 
   console.log(`embed-statements: mode=${modeLabel}`);
   console.log(`Embedding API: ${embeddingUrl}`);
-  console.log(`Model: ${embeddingModel}, dimensions=2048`);
+  console.log(`Model: ${embeddingModel}, dimensions=${STATEMENT_EMBEDDING_DIMENSIONS}`);
 
   const total = await countPendingRows(supabase, effectiveForce, fromId);
   const startedAt = Date.now();
@@ -326,7 +327,9 @@ async function main(): Promise<void> {
 
   if (effectiveForce && fromId === 0) {
     await clearEmbeddings(supabase);
-    console.log(`Cleared existing embeddings. Re-embedding all rows with ${embeddingModel} (2048d)...`);
+    console.log(
+      `Cleared existing embeddings. Re-embedding all rows with ${embeddingModel} (${STATEMENT_EMBEDDING_DIMENSIONS}d)...`,
+    );
   }
 
   let processed = 0;

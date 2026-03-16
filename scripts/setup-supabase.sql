@@ -1,9 +1,9 @@
 -- Wave 2 migration notes:
--- Before running embed-statements.ts with Qwen 2048d vectors, apply in the Supabase SQL Editor:
---   ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
---   ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
+-- Before running embed-statements.ts with Qwen 4096d vectors, apply in the Supabase SQL Editor:
+--   ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(4096) USING NULL::vector(4096);
+--   ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(4096) USING NULL::vector(4096);
 --   DROP INDEX IF EXISTS idx_vyroky_embedding;
--- The embed script recreates the HNSW index after the new 2048d vectors are stored.
+-- The embed script recreates the HNSW index after the new 4096d vectors are stored.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS vyroky (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(2048),
+  embedding vector(4096),
   source_id TEXT NOT NULL,
   numeric_id BIGINT,
   url TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS vyroky_import_staging (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(2048),
+  embedding vector(4096),
   numeric_id BIGINT,
   url TEXT NOT NULL,
   speaker_url TEXT,
@@ -90,7 +90,7 @@ CREATE INDEX IF NOT EXISTS idx_statement_sources_import_staging_run_id
   ON statement_sources_import_staging(import_run_id);
 
 CREATE OR REPLACE FUNCTION search_statements(
-  query_embedding vector(2048),
+  query_embedding vector(4096),
   match_count int DEFAULT 20,
   match_offset int DEFAULT 0,
   filter_strana text DEFAULT NULL,
@@ -194,7 +194,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION match_statements(
-  query_embedding vector(2048),
+  query_embedding vector(4096),
   match_count int DEFAULT 10
 ) RETURNS TABLE (
   id int,
@@ -279,7 +279,7 @@ AS $$
   );
 $$;
 
--- Create this 2048d HNSW index manually in the Supabase SQL Editor only after
+-- Create this 4096d HNSW index manually in the Supabase SQL Editor only after
 -- embed-statements.ts finishes to avoid a slow rebuild during imports.
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
 -- ON vyroky USING hnsw (embedding vector_cosine_ops)
