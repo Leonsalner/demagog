@@ -12,6 +12,8 @@ type StatementRow = {
 type ScriptArgs = {
   force: boolean;
   fromId: number;
+  limit: number;
+  onlyNull: boolean;
   dryRun: boolean;
 };
 
@@ -19,6 +21,7 @@ function parseArgs(): ScriptArgs {
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const dryRun = args.includes("--dry-run");
+  const onlyNull = args.includes("--only-null");
 
   const fromIdArg = args.find((a) => a.startsWith("--from-id="));
   const fromId = fromIdArg ? parseInt(fromIdArg.split("=")[1] ?? "0", 10) : 0;
@@ -27,7 +30,14 @@ function parseArgs(): ScriptArgs {
     throw new Error(`Invalid --from-id value: ${fromIdArg}`);
   }
 
-  return { force, fromId, dryRun };
+  const limitArg = args.find((a) => a.startsWith("--limit="));
+  const limit = limitArg ? parseInt(limitArg.split("=")[1] ?? "0", 10) : 0;
+
+  if (limitArg && (Number.isNaN(limit) || limit < 0)) {
+    throw new Error(`Invalid --limit value: ${limitArg}`);
+  }
+
+  return { force, fromId, limit, onlyNull, dryRun };
 }
 
 type EmbeddingResponse = {
@@ -44,16 +54,19 @@ type RpcError = {
   message: string;
 };
 
-const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
-const BATCH_SIZE = 100;
-const RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
+const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
+const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
+const BATCH_SIZE = 32; // Smaller batches suit a local Ollama/GPU inference loop.
+const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
 const INDEX_SQL =
   "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
 const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
-ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
+ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
 DROP INDEX IF EXISTS idx_vyroky_embedding;
 
-The script will recreate the HNSW index after re-embedding completes.`;
+The script will recreate the HNSW index after embedding completes.`;
+
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
 function getEnv(name: string): string {
@@ -122,20 +135,21 @@ async function countPendingRows(
   return count ?? 0;
 }
 
-async function requestEmbeddings(inputs: string[], apiKey: string): Promise<number[][]> {
+async function requestEmbeddings(
+  inputs: string[],
+  embeddingUrl: string,
+  embeddingModel: string,
+): Promise<number[][]> {
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
-      const response = await fetch(JINA_API_URL, {
+      const response = await fetch(embeddingUrl, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "jina-embeddings-v5-text-small",
+          model: embeddingModel,
           input: inputs,
-          dimensions: 1024,
-          task: "text-matching",
         }),
       });
 
@@ -146,13 +160,13 @@ async function requestEmbeddings(inputs: string[], apiKey: string): Promise<numb
         if (isRetryable && attempt < RETRY_DELAYS_MS.length) {
           const delayMs = RETRY_DELAYS_MS[attempt];
           console.warn(
-            `Jina request failed with ${response.status}. Retrying in ${delayMs / 1000}s.`,
+            `Embedding request failed with ${response.status}. Retrying in ${delayMs / 1000}s.`,
           );
           await sleep(delayMs);
           continue;
         }
 
-        throw new Error(`Jina request failed with ${response.status}: ${body}`);
+        throw new Error(`Embedding request failed with ${response.status}: ${body}`);
       }
 
       const payload = (await response.json()) as EmbeddingResponse;
@@ -194,15 +208,23 @@ async function updateEmbeddings(
   }
 }
 
-function logProgress(processed: number, total: number, batchDurationMs: number, startedAt: number): void {
-  const percent = total === 0 ? 100 : (processed / total) * 100;
+function logProgress(
+  processed: number,
+  total: number,
+  limit: number,
+  batchDurationMs: number,
+  startedAt: number,
+): void {
+  const target = limit > 0 ? Math.min(total, limit) : total;
+  const percent = target === 0 ? 100 : (processed / target) * 100;
   const elapsedMs = Date.now() - startedAt;
   const avgPerItemMs = processed === 0 ? 0 : elapsedMs / processed;
-  const remainingMs = avgPerItemMs * Math.max(total - processed, 0);
+  const remainingMs = avgPerItemMs * Math.max(target - processed, 0);
   const remainingMinutes = Math.round(remainingMs / 60000);
 
+  const limitNote = limit > 0 ? ` (limit=${limit})` : "";
   console.log(
-    `Embedded ${processed}/${total} (${percent.toFixed(1)}%) - batch took ${batchDurationMs}ms - estimated ${remainingMinutes}min remaining`,
+    `Embedded ${processed}/${target}${limitNote} (${percent.toFixed(1)}%) - batch took ${batchDurationMs}ms - estimated ${remainingMinutes}min remaining`,
   );
 }
 
@@ -242,7 +264,7 @@ async function createIndex(supabase: SupabaseClientAny): Promise<void> {
     }
 
     throw new Error(
-      `Failed to create the 1024d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
+      `Failed to create the 2048d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
     );
   }
 }
@@ -258,25 +280,32 @@ async function clearEmbeddings(supabase: SupabaseClientAny): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const { force, fromId, dryRun } = parseArgs();
+  const { force, fromId, limit, onlyNull, dryRun } = parseArgs();
 
   const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
-  const jinaApiKey = getEnv("JINA_API_KEY");
+
+  const embeddingUrl = process.env.EMBEDDING_API_URL?.trim() || DEFAULT_EMBEDDING_URL;
+  const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
 
   console.log(EMBEDDING_MIGRATION_REMINDER);
 
+  // --only-null is equivalent to default incremental mode; --force overrides it.
+  const effectiveForce = force && !onlyNull;
+
   const modeLabel = [
-    force ? "--force (re-embed all)" : "incremental (null embeddings only)",
+    effectiveForce ? "--force (re-embed all)" : "incremental (null embeddings only)",
     fromId > 0 ? `--from-id=${fromId}` : null,
+    limit > 0 ? `--limit=${limit}` : null,
     dryRun ? "--dry-run" : null,
   ]
     .filter(Boolean)
     .join(", ");
 
   console.log(`embed-statements: mode=${modeLabel}`);
-  console.log("Model: jina-embeddings-v5-text-small, dimensions=1024, task=text-matching");
+  console.log(`Embedding API: ${embeddingUrl}`);
+  console.log(`Model: ${embeddingModel}, dimensions=2048`);
 
-  const total = await countPendingRows(supabase, force, fromId);
+  const total = await countPendingRows(supabase, effectiveForce, fromId);
   const startedAt = Date.now();
 
   if (total === 0) {
@@ -287,29 +316,31 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(`Found ${total} statements to embed.`);
+  const target = limit > 0 ? Math.min(total, limit) : total;
+  console.log(`Found ${total} statements to embed${limit > 0 ? ` (will embed up to ${limit})` : ""}.`);
 
   if (dryRun) {
-    console.log(`[dry-run] Would embed ${total} statements. Exiting without writing.`);
+    console.log(`[dry-run] Would embed ${target} statements. Exiting without writing.`);
     return;
   }
 
-  if (force && fromId === 0) {
+  if (effectiveForce && fromId === 0) {
     await clearEmbeddings(supabase);
-    console.log("Cleared existing embeddings. Re-embedding all rows with jina-embeddings-v5-text-small (1024d)...");
+    console.log(`Cleared existing embeddings. Re-embedding all rows with ${embeddingModel} (2048d)...`);
   }
 
   let processed = 0;
-  let warnedAboutGemini = false;
   let rangeFrom = 0;
 
-  while (true) {
+  while (processed < target) {
+    const batchLimit = Math.min(BATCH_SIZE, target - processed);
+
     let rows: StatementRow[];
     try {
-      rows = await fetchPendingRows(supabase, rangeFrom, rangeFrom + BATCH_SIZE - 1, force, fromId);
+      rows = await fetchPendingRows(supabase, rangeFrom, rangeFrom + batchLimit - 1, effectiveForce, fromId);
     } catch (fetchError) {
       console.error(
-        `Batch fetch failed (range ${rangeFrom}-${rangeFrom + BATCH_SIZE - 1}): ${(fetchError as Error).message}. Skipping batch.`,
+        `Batch fetch failed (range ${rangeFrom}-${rangeFrom + batchLimit - 1}): ${(fetchError as Error).message}. Skipping batch.`,
       );
       rangeFrom += BATCH_SIZE;
       continue;
@@ -325,7 +356,8 @@ async function main(): Promise<void> {
     try {
       embeddings = await requestEmbeddings(
         rows.map((row) => row.vyrok),
-        jinaApiKey,
+        embeddingUrl,
+        embeddingModel,
       );
     } catch (embedError) {
       console.error(
@@ -346,20 +378,13 @@ async function main(): Promise<void> {
     }
 
     processed += rows.length;
-    logProgress(processed, total, Date.now() - batchStartedAt, startedAt);
+    logProgress(processed, total, limit, Date.now() - batchStartedAt, startedAt);
 
-    if (force) {
+    if (effectiveForce) {
       rangeFrom += BATCH_SIZE;
     }
     // In incremental mode the IS NULL filter always fetches the next un-embedded
     // page from offset 0, so rangeFrom stays at 0.
-
-    if (!warnedAboutGemini && Date.now() - startedAt > 5 * 60_000 && processed < total) {
-      console.warn(
-        "Embedding runtime has exceeded 5 minutes. If rate limiting remains too aggressive, switch manually to Gemini embeddings:\nPOST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=<GEMINI_API_KEY>\nBody: { \"model\": \"models/text-embedding-004\", \"content\": { \"parts\": [{ \"text\": \"...\" }] }, \"outputDimensionality\": 1024 }",
-      );
-      warnedAboutGemini = true;
-    }
   }
 
   await createIndex(supabase);

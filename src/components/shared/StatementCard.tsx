@@ -96,12 +96,26 @@ export default function StatementCard({
     });
   }, [highlight_query, statement.vyrok]);
 
-  const metaParts = [
+  const speakerName = (
     <span key="meno" className="font-semibold text-slate-700 dark:text-slate-300">
-      {statement.meno}
-    </span>,
+      {statement.speaker_url ? (
+        <a
+          href={statement.speaker_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline"
+        >
+          {statement.meno}
+        </a>
+      ) : (
+        statement.meno
+      )}
+    </span>
+  );
+
+  const metaParts = [
+    speakerName,
     <span key="strana">{statement.strana}</span>,
-    statement.oblast ? <span key="oblast">{statement.oblast}</span> : null,
   ].filter(Boolean);
 
   const formattedDate = formatDate(statement.datum);
@@ -176,6 +190,40 @@ export default function StatementCard({
       {explanation ? (
         <p className="mt-4 text-sm italic leading-6 text-slate-500 dark:text-slate-400">✦ AI: {explanation}</p>
       ) : null}
+
+      {(statement.url || (statement.sources && statement.sources.length > 0)) && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          {statement.url && (
+            <a
+              href={statement.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-[#e03e1a] hover:underline dark:hover:text-[#ff8c71]"
+            >
+              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+              </svg>
+              Demagog.sk
+            </a>
+          )}
+          {statement.sources?.map((source) => (
+            <a
+              key={source.id}
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-[#e03e1a] hover:underline dark:hover:text-[#ff8c71]"
+            >
+              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+              </svg>
+              {source.label}
+            </a>
+          ))}
+        </div>
+      )}
     </article>
   );
 }

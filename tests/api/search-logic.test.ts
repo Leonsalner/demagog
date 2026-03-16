@@ -40,7 +40,6 @@ function buildUnderstanding(
       meno: null,
       strana: null,
       vyhodnotenie: null,
-      oblast: null,
     },
     related_politicians: [],
     ...overrides,
@@ -53,10 +52,11 @@ function buildRow(
     vyrok: string;
     vyhodnotenie: Verdict;
     odovodnenie: string | null;
-    oblast: string | null;
     datum: string | null;
     meno: string;
     strana: string;
+    url: string;
+    speaker_url: string | null;
     similarity: number;
   }>,
 ) {
@@ -65,10 +65,11 @@ function buildRow(
     vyrok: `Vyrok ${id}`,
     vyhodnotenie: "Pravda" as Verdict,
     odovodnenie: `Odovodnenie ${id}`,
-    oblast: "Ekonomika",
     datum: "2026-01-01",
     meno: `Politik ${id}`,
     strana: "Strana",
+    url: `https://demagog.sk/vyrok/${id}`,
+    speaker_url: null,
     similarity: Math.max(0.1, 1 - id / 100),
     ...overrides,
   };
@@ -77,12 +78,10 @@ function buildRow(
 function createSupabaseMock(options?: {
   names?: string[];
   parties?: string[];
-  areas?: string[];
   rpc?: (fn: string, args: Record<string, unknown>) => Promise<unknown>;
 }) {
   const names = options?.names ?? ["Robert Fico", "Peter Pellegrini"];
   const parties = options?.parties ?? ["Hlas", "Smer-SD"];
-  const areas = options?.areas ?? ["Ekonomika", "Zdravotníctvo"];
   const rpc = vi.fn(async (fn: string, args: Record<string, unknown>) => {
     if (fn === "list_distinct_values") {
       if (args.col === "meno") {
@@ -91,10 +90,6 @@ function createSupabaseMock(options?: {
 
       if (args.col === "strana") {
         return { data: parties.map((value) => ({ value })), error: null };
-      }
-
-      if (args.col === "oblast") {
-        return { data: areas.map((value) => ({ value })), error: null };
       }
 
       throw new Error(`Unexpected distinct column ${String(args.col)}`);
@@ -121,7 +116,13 @@ function createSupabaseMock(options?: {
     throw new Error(`Unexpected RPC ${fn}`);
   });
 
-  return { from: vi.fn(), rpc };
+  const sourcesQuery = {
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
+
+  return { from: vi.fn(() => sourcesQuery), rpc };
 }
 
 describe("POST /api/search logic", () => {
@@ -204,9 +205,6 @@ describe("POST /api/search logic", () => {
     });
     expect(supabase.rpc).toHaveBeenNthCalledWith(2, "list_distinct_values", {
       col: "strana",
-    });
-    expect(supabase.rpc).toHaveBeenNthCalledWith(3, "list_distinct_values", {
-      col: "oblast",
     });
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
@@ -296,7 +294,7 @@ describe("POST /api/search logic", () => {
     ]);
   });
 
-  it("validates extracted filters including supported area filters", async () => {
+  it("validates extracted filters and related politician names", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
         if (fn !== "search_statements") {
@@ -336,7 +334,6 @@ describe("POST /api/search logic", () => {
           meno: "fico",
           strana: "smer",
           vyhodnotenie: "Pravda",
-          oblast: "zdravotnictvo",
         },
         related_politicians: [
           {
@@ -360,17 +357,16 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      4,
+      3,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Robert Fico",
         filter_strana: "Smer-SD",
-        filter_oblast: "Zdravotníctvo",
         filter_vyhodnotenie: "Pravda",
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      6,
+      5,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Peter Pellegrini",
@@ -380,7 +376,6 @@ describe("POST /api/search logic", () => {
       meno: "Robert Fico",
       strana: "Smer-SD",
       vyhodnotenie: "Pravda",
-      oblast: "Zdravotníctvo",
     });
     expect(data.query_understanding.related_politicians).toEqual([
       {
@@ -389,45 +384,6 @@ describe("POST /api/search logic", () => {
         topic_relevance: "Rovnaka tema.",
       },
     ]);
-  });
-
-  it("uses the fast understanding path for exact area keyword queries", async () => {
-    const supabase = createSupabaseMock({
-      rpc: async (fn) => {
-        if (fn !== "search_statements") {
-          throw new Error(`Unexpected RPC ${fn}`);
-        }
-
-        return {
-          data: [buildRow(1, { oblast: "Zdravotníctvo" })],
-          error: null,
-        };
-      },
-    });
-
-    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
-
-    const response = await POST(
-      createRequest({
-        query: "zdravotníctvo čakacie lehoty",
-      }),
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(understandQuery).not.toHaveBeenCalled();
-    expect(supabase.rpc).toHaveBeenCalledWith(
-      "search_statements",
-      expect.objectContaining({
-        filter_oblast: "Zdravotníctvo",
-      }),
-    );
-    expect(data.query_understanding.extracted_filters).toEqual({
-      meno: null,
-      strana: null,
-      vyhodnotenie: null,
-      oblast: "Zdravotníctvo",
-    });
   });
 
   it("fills related results with each politician's best hit first, then global similarity", async () => {
@@ -729,7 +685,7 @@ describe("POST /api/search logic", () => {
       .mocked(supabase.rpc)
       .mock.calls.filter(([fn]) => fn === "list_distinct_values");
 
-    expect(distinctCalls).toHaveLength(6);
+    expect(distinctCalls).toHaveLength(4);
   });
 
   it("logs the search RPC error details before returning 502", async () => {

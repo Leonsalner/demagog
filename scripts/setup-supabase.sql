@@ -1,7 +1,9 @@
--- Manual migration required before re-running scripts/embed-statements.ts:
--- ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
--- DROP INDEX IF EXISTS idx_vyroky_embedding;
--- The embed script recreates the HNSW index after the new jina-embeddings-v5-text-small vectors are stored.
+-- Wave 2 migration notes:
+-- Before running embed-statements.ts with Qwen 2048d vectors, apply in the Supabase SQL Editor:
+--   ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
+--   ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(2048) USING NULL::vector(2048);
+--   DROP INDEX IF EXISTS idx_vyroky_embedding;
+-- The embed script recreates the HNSW index after the new 2048d vectors are stored.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -14,7 +16,7 @@ CREATE TABLE IF NOT EXISTS vyroky (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(1024),
+  embedding vector(2048),
   source_id TEXT NOT NULL,
   numeric_id BIGINT,
   url TEXT NOT NULL,
@@ -29,8 +31,7 @@ CREATE TABLE IF NOT EXISTS clanky (
   datum TIMESTAMPTZ,
   autor TEXT,
   text_content TEXT,
-  -- If already deployed, apply manually:
-  -- ALTER TABLE clanky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+  -- clanky embeddings remain at 1024d (unchanged in Wave 2).
   embedding vector(1024)
 );
 
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS vyroky_import_staging (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(1024),
+  embedding vector(2048),
   numeric_id BIGINT,
   url TEXT NOT NULL,
   speaker_url TEXT,
@@ -89,11 +90,10 @@ CREATE INDEX IF NOT EXISTS idx_statement_sources_import_staging_run_id
   ON statement_sources_import_staging(import_run_id);
 
 CREATE OR REPLACE FUNCTION search_statements(
-  query_embedding vector(1024),
+  query_embedding vector(2048),
   match_count int DEFAULT 20,
   match_offset int DEFAULT 0,
   filter_strana text DEFAULT NULL,
-  filter_oblast text DEFAULT NULL,
   filter_vyhodnotenie text DEFAULT NULL,
   filter_meno text DEFAULT NULL,
   filter_datum_od date DEFAULT NULL,
@@ -103,10 +103,11 @@ CREATE OR REPLACE FUNCTION search_statements(
   vyrok text,
   vyhodnotenie text,
   odovodnenie text,
-  oblast text,
   datum date,
   meno text,
   strana text,
+  url text,
+  speaker_url text,
   similarity float
 ) LANGUAGE plpgsql AS $$
 BEGIN
@@ -116,14 +117,14 @@ BEGIN
     v.vyrok,
     v.vyhodnotenie,
     v.odovodnenie,
-    v.oblast,
     v.datum,
     v.meno,
     v.strana,
+    v.url,
+    v.speaker_url,
     (1 - (v.embedding <=> query_embedding))::float AS similarity
   FROM vyroky v
   WHERE (filter_strana IS NULL OR v.strana = filter_strana)
-    AND (filter_oblast IS NULL OR v.oblast = filter_oblast)
     AND (filter_vyhodnotenie IS NULL OR v.vyhodnotenie = filter_vyhodnotenie)
     AND (filter_meno IS NULL OR v.meno = filter_meno)
     AND (filter_datum_od IS NULL OR v.datum >= filter_datum_od)
@@ -137,7 +138,6 @@ $$;
 
 CREATE OR REPLACE FUNCTION count_statements(
   filter_strana text DEFAULT NULL,
-  filter_oblast text DEFAULT NULL,
   filter_vyhodnotenie text DEFAULT NULL,
   filter_meno text DEFAULT NULL,
   filter_datum_od date DEFAULT NULL,
@@ -150,7 +150,6 @@ BEGIN
   SELECT COUNT(*)::int INTO result
   FROM vyroky v
   WHERE (filter_strana IS NULL OR v.strana = filter_strana)
-    AND (filter_oblast IS NULL OR v.oblast = filter_oblast)
     AND (filter_vyhodnotenie IS NULL OR v.vyhodnotenie = filter_vyhodnotenie)
     AND (filter_meno IS NULL OR v.meno = filter_meno)
     AND (filter_datum_od IS NULL OR v.datum >= filter_datum_od)
@@ -177,12 +176,6 @@ BEGIN
     FROM vyroky v
     WHERE v.strana IS NOT NULL
     ORDER BY 1;
-  ELSIF col = 'oblast' THEN
-    RETURN QUERY
-    SELECT DISTINCT v.oblast
-    FROM vyroky v
-    WHERE v.oblast IS NOT NULL
-    ORDER BY 1;
   ELSE
     RAISE EXCEPTION 'Unsupported distinct column: %', col;
   END IF;
@@ -201,17 +194,18 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION match_statements(
-  query_embedding vector(1024),
+  query_embedding vector(2048),
   match_count int DEFAULT 10
 ) RETURNS TABLE (
   id int,
   vyrok text,
   vyhodnotenie text,
   odovodnenie text,
-  oblast text,
   datum date,
   meno text,
   strana text,
+  url text,
+  speaker_url text,
   similarity float
 ) LANGUAGE plpgsql AS $$
 BEGIN
@@ -221,10 +215,11 @@ BEGIN
     v.vyrok,
     v.vyhodnotenie,
     v.odovodnenie,
-    v.oblast,
     v.datum,
     v.meno,
     v.strana,
+    v.url,
+    v.speaker_url,
     (1 - (v.embedding <=> query_embedding))::float AS similarity
   FROM vyroky v
   WHERE v.embedding IS NOT NULL
@@ -284,7 +279,7 @@ AS $$
   );
 $$;
 
--- Create this 1024d HNSW index manually in the Supabase SQL Editor only after
+-- Create this 2048d HNSW index manually in the Supabase SQL Editor only after
 -- embed-statements.ts finishes to avoid a slow rebuild during imports.
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
 -- ON vyroky USING hnsw (embedding vector_cosine_ops)
@@ -292,8 +287,9 @@ $$;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON TABLE vyroky TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text, text, text, text, date, date) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION count_statements(text, text, text, text, date, date, boolean) TO anon, authenticated;
+GRANT SELECT ON TABLE statement_sources TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text, text, text, date, date) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION count_statements(text, text, text, date, date, boolean) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION list_distinct_values(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_statements(vector, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_articles(vector, int) TO anon, authenticated;

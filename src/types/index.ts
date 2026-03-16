@@ -3,15 +3,24 @@
 export type Verdict = "Pravda" | "Nepravda" | "Zavádzajúce" | "Neoveriteľné";
 export type DetectMode = "thorough" | "fast";
 
+export interface StatementSource {
+  id: number;
+  position: number;
+  label: string;
+  url: string;
+}
+
 export interface Statement {
   id: number;
   vyrok: string;
   vyhodnotenie: Verdict;
   odovodnenie: string | null;
-  oblast: string | null;
   datum: string | null;
   meno: string;
   strana: string;
+  url?: string;
+  speaker_url?: string | null;
+  sources?: StatementSource[];
   similarity?: number;
 }
 
@@ -27,7 +36,6 @@ export interface Article {
 export interface SearchRequest {
   query?: string;
   strana?: string;
-  oblast?: string;
   vyhodnotenie?: Verdict;
   meno?: string | string[];
   datum_od?: string;
@@ -64,7 +72,6 @@ export interface QueryUnderstanding {
     meno: string | null;
     strana: string | null;
     vyhodnotenie: Verdict | null;
-    oblast: string | null;
   };
   related_politicians: Array<{
     meno: string;
@@ -90,7 +97,6 @@ export interface DetectResponse {
 
 export interface FiltersResponse {
   strany: string[];
-  oblasti: string[];
   mena: string[];
   verdicts: Verdict[];
   date_range: {
@@ -111,7 +117,6 @@ export interface StatementCardProps {
 
 export interface FilterState {
   strana: string | null;
-  oblast: string | null;
   vyhodnotenie: Verdict | null;
   meno: string[] | null;
   datum_od: string | null;

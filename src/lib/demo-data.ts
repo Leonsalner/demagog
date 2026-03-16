@@ -158,7 +158,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Nepravda",
         odovodnenie:
           "Neexistuje žiadne tajné uznesenie. Zníženie prietoku bolo spôsobené technickou poruchou na prečerpávacej stanici na ukrajinskom území, čo potvrdil aj prevádzkovateľ siete.",
-        oblast: "Energetika",
         datum: "2025-04-12",
         meno: "Robert Fico",
         strana: "SMER-SD",
@@ -171,7 +170,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Zavádzajúce",
         odovodnenie:
           "Tranzit ropy od spoločnosti Lukoil bol síce pozastavený kvôli ukrajinským sankciám, ale iné ruské spoločnosti ropu naďalej dodávajú. Tvrdenie o úplnom blokovaní je preto zavádzajúce.",
-        oblast: "Energetika",
         datum: "2025-05-20",
         meno: "Robert Kaliňák",
         strana: "SMER-SD",
@@ -184,7 +182,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Neoveriteľné",
         odovodnenie:
           "Tieto spravodajské informácie nie sú verejne dostupné a ukrajinská strana ich odmietla komentovať, výrok preto nie je možné nezávisle overiť z otvorených zdrojov.",
-        oblast: "Energetika",
         datum: "2025-06-05",
         meno: "Juraj Blanár",
         strana: "SMER-SD",
@@ -197,7 +194,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Nepravda",
         odovodnenie:
           "Kancelária ukrajinského prezidenta aj slovenský diplomatický zbor popreli, že by takýto rozhovor prebehol. Žiadne podmieňovanie dodávok ropy zbraňami nebolo zaznamenané.",
-        oblast: "Energetika",
         datum: "2026-01-15",
         meno: "Robert Fico",
         strana: "SMER-SD",
@@ -217,7 +213,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Pravda",
         odovodnenie:
           "Podľa údajov Správy štátnych hmotných rezerv SR z januára 2025 Slovensko skutočne spĺňa európsku normu a má zásoby na 94 dní.",
-        oblast: "Energetika",
         datum: "2025-02-10",
         meno: "Denisa Saková",
         strana: "HLAS-SD",
@@ -230,7 +225,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Zavádzajúce",
         odovodnenie:
           "Hoci je závislosť stále vysoká, rafinéria Slovnaft už spracováva približne 30 % alternatívnej ropy z iných zdrojov cez ropovod Adria. Zásoby by navyše vydržali mesiace, nie týždeň.",
-        oblast: "Energetika",
         datum: "2025-03-22",
         meno: "Richard Sulík",
         strana: "SaS",
@@ -243,7 +237,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Nepravda",
         odovodnenie:
           "Dodávky sú zmluvne zabezpečené aj bez nových politických dohôd s Moskvou a štátne rezervy spolu so zásobami Slovnaftu garantujú plynulé zásobovanie na niekoľko mesiacov.",
-        oblast: "Energetika",
         datum: "2025-08-14",
         meno: "Andrej Danko",
         strana: "SNS",
@@ -256,7 +249,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Pravda",
         odovodnenie:
           "Rekonštrukcia ropovodu Adria zvýšila jeho kapacitu na 6 miliónov ton ročne, čo plne postačuje pre potreby bratislavskej rafinérie Slovnaft.",
-        oblast: "Energetika",
         datum: "2026-02-03",
         meno: "Michal Šimečka",
         strana: "PS",
@@ -276,7 +268,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Nepravda",
         odovodnenie:
           "Vyšetrovanie medzinárodnej komisie v roku 2025 preukázalo, že poškodenie ropovodu bolo spôsobené zlyhaním materiálu a koróziou, nie cieleným útokom.",
-        oblast: "Energetika",
         datum: "2025-09-11",
         meno: "Robert Fico",
         strana: "SMER-SD",
@@ -289,7 +280,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Zavádzajúce",
         odovodnenie:
           "Úlomky dronov sa v oblasti skutočne našli, pochádzali však z ruského útoku na neďalekú elektrickú rozvodňu spred dvoch mesiacov. Samotný ropovod dronom zasiahnutý nebol.",
-        oblast: "Energetika",
         datum: "2025-09-15",
         meno: "Tomáš Taraba",
         strana: "SNS",
@@ -302,7 +292,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Pravda",
         odovodnenie:
           "Ukrajinský prevádzkovateľ Ukrtransnafta aj nezávislí pozorovatelia potvrdili, že výpadok prúdu po ruskom ostreľovaní energetickej infraštruktúry zastavil čerpadlá ropovodu.",
-        oblast: "Energetika",
         datum: "2025-10-02",
         meno: "Ivan Štefunko",
         strana: "PS",
@@ -315,7 +304,6 @@ export const DEMO_QUERIES: DemoQuery[] = [
         vyhodnotenie: "Pravda",
         odovodnenie:
           "Potvrdzujú to správy z dispečingu prevádzkovateľa. Po obnove dodávok elektriny sa tranzit ropy v priebehu 48 hodín plne obnovil.",
-        oblast: "Energetika",
         datum: "2025-10-05",
         meno: "Milan Majerský",
         strana: "KDH",

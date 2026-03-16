@@ -35,7 +35,6 @@ const verdictActiveClass: Record<Verdict, string> = {
 
 const emptyFilters: FilterState = {
   strana: null,
-  oblast: null,
   vyhodnotenie: null,
   meno: null,
   datum_od: null,
@@ -94,7 +93,6 @@ function buildPartyOptions(parties: string[]) {
 function countActiveFilters(filters: FilterState) {
   return [
     filters.strana,
-    filters.oblast,
     filters.vyhodnotenie,
     filters.datum_od,
     filters.datum_do,
@@ -263,22 +261,6 @@ export default function FilterSidebar({
               );
             })}
           </div>
-        </FilterSection>
-
-        <FilterSection label="Oblasť">
-          <select
-            value={filters.oblast ?? ""}
-            onChange={(event) => updateFilter("oblast", event.target.value || null)}
-            aria-label="Oblasť"
-            className={baseControlClassName()}
-          >
-            <option value="">Všetky</option>
-            {(availableFilters?.oblasti ?? []).map((area) => (
-              <option key={area} value={area}>
-                {area}
-              </option>
-            ))}
-          </select>
         </FilterSection>
 
         <FilterSection

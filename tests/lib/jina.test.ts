@@ -3,15 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { embedText } from "@/lib/jina";
 
 describe("embedText", () => {
-  const originalApiKey = process.env.JINA_API_KEY;
-
   beforeEach(() => {
-    process.env.JINA_API_KEY = "test-key";
     vi.useFakeTimers();
   });
 
   afterEach(() => {
-    process.env.JINA_API_KEY = originalApiKey;
     vi.useRealTimers();
     vi.restoreAllMocks();
   });

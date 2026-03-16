@@ -11,7 +11,6 @@ type FormState = {
   meno: string;
   strana: string;
   vyhodnotenie: "" | Verdict;
-  oblast: string;
   datum: string;
   odovodnenie: string;
 };
@@ -21,7 +20,6 @@ const initialFormState: FormState = {
   meno: "",
   strana: "",
   vyhodnotenie: "",
-  oblast: "",
   datum: "",
   odovodnenie: "",
 };
@@ -187,47 +185,29 @@ export default function AddStatementPage() {
                 </div>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="vyhodnotenie"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Vyhodnotenie
-                  </label>
-                  <select
-                    id="vyhodnotenie"
-                    value={form.vyhodnotenie}
-                    onChange={(event) =>
-                      updateField("vyhodnotenie", event.target.value as FormState["vyhodnotenie"])
-                    }
-                    required
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15"
-                  >
-                    <option value="">Vybrať hodnotenie</option>
-                    {VERDICTS.map((verdict) => (
-                      <option key={verdict} value={verdict}>
-                        {verdict}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="oblast"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                  >
-                    Oblasť
-                  </label>
-                  <input
-                    id="oblast"
-                    value={form.oblast}
-                    onChange={(event) => updateField("oblast", event.target.value)}
-                    placeholder="Zdravotníctvo"
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15"
-                  />
-                </div>
+              <div>
+                <label
+                  htmlFor="vyhodnotenie"
+                  className="mb-2 block text-sm font-semibold text-slate-800"
+                >
+                  Vyhodnotenie
+                </label>
+                <select
+                  id="vyhodnotenie"
+                  value={form.vyhodnotenie}
+                  onChange={(event) =>
+                    updateField("vyhodnotenie", event.target.value as FormState["vyhodnotenie"])
+                  }
+                  required
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15"
+                >
+                  <option value="">Vybrať hodnotenie</option>
+                  {VERDICTS.map((verdict) => (
+                    <option key={verdict} value={verdict}>
+                      {verdict}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

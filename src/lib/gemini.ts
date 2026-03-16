@@ -123,7 +123,6 @@ function fallbackQueryUnderstanding(query: string): QueryUnderstanding {
       meno: null,
       strana: null,
       vyhodnotenie: null,
-      oblast: null,
     },
     related_politicians: [],
   };
@@ -279,8 +278,7 @@ Urč:
 2. filters.meno: ak dopyt obsahuje meno politika, vyber PRESNÉ meno z dostupných mien, inak null
 3. filters.strana: ak dopyt obsahuje názov strany, vyber PRESNÉ meno strany z dostupných strán, inak null
 4. filters.vyhodnotenie: ak dopyt obsahuje hodnotenie (napr. "nepravda", "zavádzajúce"), vráť presnú hodnotu, inak null
-5. filters.oblast: ak dopyt jasne odkazuje na tematickú oblasť, vráť ju, inak null
-6. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
+5. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
 
 Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
 {
@@ -288,8 +286,7 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
   "filters": {
     "meno": "..." | null,
     "strana": "..." | null,
-    "vyhodnotenie": "..." | null,
-    "oblast": "..." | null
+    "vyhodnotenie": "..." | null
   },
   "related_politicians": [
     { "meno": "...", "strana": "...", "topic_relevance": "..." }
@@ -305,7 +302,6 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
       const semanticQuery = toOptionalString(value.semantic_query);
       const meno = toOptionalString(value.filters.meno);
       const strana = toOptionalString(value.filters.strana);
-      const oblast = toOptionalString(value.filters.oblast);
       const verdict = value.filters.vyhodnotenie;
 
       if (!semanticQuery) {
@@ -343,7 +339,6 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
           meno,
           strana,
           vyhodnotenie: isVerdict(verdict) ? verdict : null,
-          oblast,
         },
         related_politicians,
       };

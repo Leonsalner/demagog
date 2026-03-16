@@ -1,25 +1,32 @@
-const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
-const JINA_TIMEOUT_MS = 10_000;
+// Generic local embedding provider (Wave 2: Qwen3 via Ollama or compatible endpoint).
+// Configure via env vars; defaults target a local Ollama instance.
+//
+// EMBEDDING_API_URL  - OpenAI-compatible /v1/embeddings endpoint
+//                      default: http://localhost:11434/v1/embeddings
+// EMBEDDING_MODEL    - model identifier passed to the endpoint
+//                      default: qwen3-embedding:8b
+// EMBEDDING_TIMEOUT_MS - per-request timeout in ms (default 30000)
+
+const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
+const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export async function embedText(text: string): Promise<number[]> {
-  if (!process.env.JINA_API_KEY) {
-    throw new Error("Missing Jina API key");
-  }
+  const url = process.env.EMBEDDING_API_URL?.trim() || DEFAULT_EMBEDDING_URL;
+  const model = process.env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
+  const timeoutMs = Number(process.env.EMBEDDING_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), JINA_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(JINA_API_URL, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.JINA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "jina-embeddings-v5-text-small",
-        task: "text-matching",
-        dimensions: 1024,
+        model,
         input: [text],
       }),
       signal: controller.signal,
@@ -27,7 +34,7 @@ export async function embedText(text: string): Promise<number[]> {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Jina API error (${response.status}): ${body}`);
+      throw new Error(`Embedding API error (${response.status}): ${body}`);
     }
 
     const payload = (await response.json()) as {
@@ -36,7 +43,7 @@ export async function embedText(text: string): Promise<number[]> {
     const embedding = payload.data?.[0]?.embedding;
 
     if (!embedding) {
-      throw new Error("Jina API returned no embedding");
+      throw new Error("Embedding API returned no embedding");
     }
 
     return embedding;

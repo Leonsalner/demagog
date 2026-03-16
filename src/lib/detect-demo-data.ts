@@ -25,7 +25,6 @@ export const DETECT_DEMO_QUERIES: DetectDemoQuery[] = [
             vyhodnotenie: "Nepravda",
             odovodnenie:
               "Neexistuje žiadne tajné uznesenie. Zníženie prietoku bolo spôsobené technickou poruchou na prečerpávacej stanici na ukrajinskej strane, čo potvrdil aj prevádzkovateľ siete Ukrtransnafta.",
-            oblast: "Energetika",
             datum: "2025-04-12",
             meno: "Robert Fico",
             strana: "SMER-SD",
@@ -43,7 +42,6 @@ export const DETECT_DEMO_QUERIES: DetectDemoQuery[] = [
             vyhodnotenie: "Zavádzajúce",
             odovodnenie:
               "Tranzit ropy od spoločnosti Lukoil bol síce pozastavený kvôli ukrajinskym sankciám, ale iné ruské spoločnosti ropu naďalej dodávajú. Tvrdenie o úplnom blokovaní je zavádzajúce.",
-            oblast: "Energetika",
             datum: "2025-05-20",
             meno: "Robert Kaliňák",
             strana: "SMER-SD",

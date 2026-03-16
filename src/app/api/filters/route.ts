@@ -15,7 +15,7 @@ function uniqueSorted(values: Array<string | null>): string[] {
 
 async function fetchColumnValues(
   supabase: ReturnType<typeof supabasePublic>,
-  column: "strana" | "oblast" | "meno",
+  column: "strana" | "meno",
 ): Promise<Array<string | null>> {
   const { data, error } = await supabase.rpc("list_distinct_values", {
     col: column,
@@ -56,14 +56,12 @@ export async function GET() {
   const supabase = supabasePublic();
 
   let strany: Array<string | null>;
-  let oblasti: Array<string | null>;
   let mena: Array<string | null>;
   let dateRange: { min: string | null; max: string | null };
 
   try {
-    [strany, oblasti, mena, dateRange] = await Promise.all([
+    [strany, mena, dateRange] = await Promise.all([
       fetchColumnValues(supabase, "strana"),
-      fetchColumnValues(supabase, "oblast"),
       fetchColumnValues(supabase, "meno"),
       fetchDateRange(supabase),
     ]);
@@ -73,7 +71,6 @@ export async function GET() {
 
   const response: FiltersResponse & { query_time_ms: number } = {
     strany: uniqueSorted(strany),
-    oblasti: uniqueSorted(oblasti),
     mena: uniqueSorted(mena),
     verdicts: VERDICTS,
     date_range: dateRange,

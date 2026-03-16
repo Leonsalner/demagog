@@ -35,7 +35,17 @@ type StatementSourceRow = {
   url: string;
 };
 
-type SearchStatementRow = Omit<StatementRow, "embedding"> & {
+// RPCs return a projected subset of columns (no embedding, no oblast).
+type SearchStatementRow = {
+  id: number;
+  vyrok: string;
+  vyhodnotenie: string;
+  odovodnenie: string | null;
+  datum: string | null;
+  meno: string;
+  strana: string;
+  url: string;
+  speaker_url: string | null;
   similarity: number;
 };
 
@@ -86,7 +96,7 @@ type Database = {
     Functions: {
       list_distinct_values: {
         Args: {
-          col: "meno" | "strana" | "oblast";
+          col: "meno" | "strana";
         };
         Returns: DistinctValueRow[];
       };
@@ -96,7 +106,6 @@ type Database = {
           match_count?: number;
           match_offset?: number;
           filter_strana?: string | null;
-          filter_oblast?: string | null;
           filter_vyhodnotenie?: string | null;
           filter_meno?: string | null;
           filter_datum_od?: string | null;
@@ -107,7 +116,6 @@ type Database = {
       count_statements: {
         Args: {
           filter_strana?: string | null;
-          filter_oblast?: string | null;
           filter_vyhodnotenie?: string | null;
           filter_meno?: string | null;
           filter_datum_od?: string | null;
