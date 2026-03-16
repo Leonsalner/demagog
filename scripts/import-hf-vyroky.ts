@@ -6,7 +6,7 @@
  * 1. Download the HF JSONL files into data/hf-demagogsk/.
  * 2. Apply scripts/migrations/2026-03-16-hf-vyroky-wave1.sql (or rerun scripts/setup-supabase.sql on a fresh DB).
  * 3. Run `tsx scripts/import-hf-vyroky.ts --dry-run`.
- * 4. Run `tsx scripts/import-hf-vyroky.ts --truncate` (add --upsert only for non-truncate reruns).
+ * 4. Run `tsx scripts/import-hf-vyroky.ts --truncate` only when you explicitly want to atomically replace the live statement corpus.
  * 5. Verify row counts in vyroky and statement_sources.
  * 6. Stop here for Wave 1. Do not start embedding yet.
  */
@@ -58,6 +58,19 @@ type StatementSourceDraft = {
 
 type StatementSourceInsert = {
   statement_id: number;
+  position: number;
+  label: string;
+  url: string;
+};
+
+type StagedStatementInsert = StatementInsert & {
+  import_run_id: string;
+  staging_order: number;
+};
+
+type StagedStatementSourceInsert = {
+  import_run_id: string;
+  source_id: string;
   position: number;
   label: string;
   url: string;
@@ -149,7 +162,7 @@ const VALID_VERDICTS = new Set<StatementVerdict>([
   "Zavádzajúce",
   "Neoveriteľné",
 ]);
-const TRUNCATE_SQL = "TRUNCATE TABLE statement_sources, vyroky RESTART IDENTITY CASCADE;";
+const LIVE_TRUNCATE_SQL = "TRUNCATE TABLE statement_sources, vyroky RESTART IDENTITY CASCADE;";
 
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
@@ -570,16 +583,6 @@ async function scanInputFiles(
   return { statements, stats };
 }
 
-async function truncateStatements(supabase: SupabaseClientAny): Promise<void> {
-  const { error } = await supabase.rpc("exec_sql", {
-    query: TRUNCATE_SQL,
-  });
-
-  if (error) {
-    throw new Error(`Failed to truncate statement tables: ${error.message}`);
-  }
-}
-
 async function upsertStatementsBatch(
   supabase: SupabaseClientAny,
   batch: StatementInsert[],
@@ -644,6 +647,90 @@ function chunk<T>(items: T[], size: number): T[][] {
   }
 
   return chunks;
+}
+
+function quoteSqlLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function buildCleanupStagingSql(importRunId: string): string {
+  const runId = quoteSqlLiteral(importRunId);
+
+  return `
+    BEGIN;
+    DELETE FROM statement_sources_import_staging WHERE import_run_id = ${runId};
+    DELETE FROM vyroky_import_staging WHERE import_run_id = ${runId};
+    COMMIT;
+  `;
+}
+
+export function buildAtomicSwapSql(importRunId: string): string {
+  const runId = quoteSqlLiteral(importRunId);
+
+  return `
+    BEGIN;
+    ${LIVE_TRUNCATE_SQL}
+    ALTER TABLE vyroky
+      ALTER COLUMN source_id SET NOT NULL,
+      ALTER COLUMN url SET NOT NULL,
+      ALTER COLUMN analysis_paragraphs SET DEFAULT '[]'::jsonb,
+      ALTER COLUMN analysis_paragraphs SET NOT NULL;
+    INSERT INTO vyroky (
+      vyrok,
+      vyhodnotenie,
+      odovodnenie,
+      oblast,
+      datum,
+      meno,
+      strana,
+      embedding,
+      source_id,
+      numeric_id,
+      url,
+      speaker_url,
+      analysis_paragraphs,
+      analysis_date,
+      scraped_at
+    )
+    SELECT
+      vyrok,
+      vyhodnotenie,
+      odovodnenie,
+      oblast,
+      datum,
+      meno,
+      strana,
+      embedding,
+      source_id,
+      numeric_id,
+      url,
+      speaker_url,
+      analysis_paragraphs,
+      analysis_date,
+      scraped_at
+    FROM vyroky_import_staging
+    WHERE import_run_id = ${runId}
+    ORDER BY staging_order;
+    INSERT INTO statement_sources (
+      statement_id,
+      position,
+      label,
+      url
+    )
+    SELECT
+      v.id,
+      s.position,
+      s.label,
+      s.url
+    FROM statement_sources_import_staging s
+    JOIN vyroky v
+      ON v.source_id = s.source_id
+    WHERE s.import_run_id = ${runId}
+    ORDER BY v.id, s.position;
+    DELETE FROM statement_sources_import_staging WHERE import_run_id = ${runId};
+    DELETE FROM vyroky_import_staging WHERE import_run_id = ${runId};
+    COMMIT;
+  `;
 }
 
 async function persistStatements(
@@ -711,6 +798,120 @@ async function persistStatements(
   return { importedStatements, importedSources };
 }
 
+async function insertStagedStatementsBatch(
+  supabase: SupabaseClientAny,
+  batch: StagedStatementInsert[],
+): Promise<number> {
+  if (batch.length === 0) {
+    return 0;
+  }
+
+  const { error, data } = await supabase
+    .from("vyroky_import_staging")
+    .insert(batch)
+    .select("source_id");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.length ?? batch.length;
+}
+
+async function insertStagedSourcesBatch(
+  supabase: SupabaseClientAny,
+  batch: StagedStatementSourceInsert[],
+): Promise<number> {
+  if (batch.length === 0) {
+    return 0;
+  }
+
+  const { error, data } = await supabase
+    .from("statement_sources_import_staging")
+    .insert(batch)
+    .select("source_id");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.length ?? batch.length;
+}
+
+async function stageStatementsForAtomicSwap(
+  supabase: SupabaseClientAny,
+  statements: NormalizedStatement[],
+  importRunId: string,
+): Promise<{ importedStatements: number; importedSources: number }> {
+  let importedStatements = 0;
+  let importedSources = 0;
+
+  for (let batchStart = 0; batchStart < statements.length; batchStart += STATEMENT_BATCH_SIZE) {
+    const batch = statements.slice(batchStart, batchStart + STATEMENT_BATCH_SIZE);
+    const stagedStatements: StagedStatementInsert[] = batch.map((item, batchIndex) => ({
+      import_run_id: importRunId,
+      staging_order: batchStart + batchIndex,
+      ...item.statement,
+    }));
+
+    try {
+      importedStatements += await insertStagedStatementsBatch(supabase, stagedStatements);
+    } catch {
+      for (const stagedStatement of stagedStatements) {
+        importedStatements += await insertStagedStatementsBatch(supabase, [stagedStatement]);
+      }
+    }
+
+    const stagedSources: StagedStatementSourceInsert[] = batch.flatMap((item) =>
+      item.sources.map((source) => ({
+        import_run_id: importRunId,
+        source_id: source.source_id,
+        position: source.position,
+        label: source.label,
+        url: source.url,
+      })),
+    );
+
+    for (const sourceBatch of chunk(stagedSources, SOURCE_BATCH_SIZE)) {
+      try {
+        importedSources += await insertStagedSourcesBatch(supabase, sourceBatch);
+      } catch {
+        for (const sourceRow of sourceBatch) {
+          importedSources += await insertStagedSourcesBatch(supabase, [sourceRow]);
+        }
+      }
+    }
+  }
+
+  return { importedStatements, importedSources };
+}
+
+async function cleanupStagedImportRun(
+  supabase: SupabaseClientAny,
+  importRunId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("exec_sql", {
+    query: buildCleanupStagingSql(importRunId),
+  });
+
+  if (error) {
+    throw new Error(`Failed to clean up staged import rows: ${error.message}`);
+  }
+}
+
+async function swapStagedStatementsIntoLive(
+  supabase: SupabaseClientAny,
+  importRunId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("exec_sql", {
+    query: buildAtomicSwapSql(importRunId),
+  });
+
+  if (error) {
+    throw new Error(`Failed to atomically swap staged statements into live tables: ${error.message}`);
+  }
+}
+
 async function fetchDatabaseCounts(supabase: SupabaseClientAny): Promise<DatabaseCounts> {
   const [{ count: vyrokyCount, error: vyrokyError }, { count: sourcesCount, error: sourcesError }] =
     await Promise.all([
@@ -737,7 +938,7 @@ function printOperatorRunbook(): void {
   console.log(`1. Download JSONL into ${path.relative(PROJECT_ROOT, HF_DIR)}/`);
   console.log("2. Apply the Wave 1 schema SQL");
   console.log("3. Run this importer with --dry-run");
-  console.log("4. Run this importer with --truncate");
+  console.log("4. Run this importer with --truncate only for the explicit live-corpus replacement");
   console.log("5. Verify counts");
   console.log("6. Stop before embedding");
   console.log("");
@@ -790,10 +991,17 @@ async function main(): Promise<void> {
   const args = parseArgs();
   const diagnostics = createDiagnostics();
   const inputFiles = resolveInputFiles();
+  const mode = args.dryRun
+    ? "dry-run"
+    : args.truncate
+      ? "atomic truncate-swap"
+      : args.upsert
+        ? "upsert"
+        : "insert";
 
   printOperatorRunbook();
   console.log(`Reading files from: ${path.dirname(inputFiles[0])}`);
-  console.log(`Mode: ${args.dryRun ? "dry-run" : args.upsert ? "upsert" : "insert"}`);
+  console.log(`Mode: ${mode}`);
   console.log(`Truncate before import: ${args.truncate ? "yes" : "no"}`);
   console.log("");
 
@@ -811,9 +1019,15 @@ async function main(): Promise<void> {
     rowsSkipped: stats.rowsSkipped,
   };
 
+  if (args.truncate && normalizedStatements.length === 0) {
+    throw new Error("Refusing to run --truncate because no valid HF statements were staged.");
+  }
+
   if (args.dryRun) {
     if (args.truncate) {
-      console.log(`Dry run: would execute "${TRUNCATE_SQL}"`);
+      console.log(
+        `Dry run: would stage rows first and only then atomically replace live tables via "${LIVE_TRUNCATE_SQL}"`,
+      );
       console.log("");
     }
 
@@ -828,12 +1042,35 @@ async function main(): Promise<void> {
   );
 
   if (args.truncate) {
-    await truncateStatements(supabase);
-  }
+    const importRunId = crypto.randomUUID();
 
-  const persisted = await persistStatements(supabase, normalizedStatements, args.upsert);
-  summary.importedStatements = persisted.importedStatements;
-  summary.importedSources = persisted.importedSources;
+    try {
+      const staged = await stageStatementsForAtomicSwap(
+        supabase,
+        normalizedStatements,
+        importRunId,
+      );
+      await swapStagedStatementsIntoLive(supabase, importRunId);
+      summary.importedStatements = staged.importedStatements;
+      summary.importedSources = staged.importedSources;
+    } catch (error) {
+      try {
+        await cleanupStagedImportRun(supabase, importRunId);
+      } catch (cleanupError) {
+        console.error(
+          cleanupError instanceof Error
+            ? cleanupError.message
+            : cleanupError,
+        );
+      }
+
+      throw error;
+    }
+  } else {
+    const persisted = await persistStatements(supabase, normalizedStatements, args.upsert);
+    summary.importedStatements = persisted.importedStatements;
+    summary.importedSources = persisted.importedSources;
+  }
 
   printSummary(summary);
   printDiagnostics(diagnostics, stats.duplicateIds);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAtomicSwapSql,
   createDiagnostics,
   extractStatementSources,
   normalizeHfStatement,
@@ -141,5 +142,18 @@ describe("scripts/import-hf-vyroky", () => {
         url: "https://example.com/3",
       },
     ]);
+  });
+
+  it("builds the truncate path as an atomic stage-and-swap transaction", () => {
+    const sql = buildAtomicSwapSql("run'id");
+
+    expect(sql).toContain("BEGIN;");
+    expect(sql).toContain("TRUNCATE TABLE statement_sources, vyroky RESTART IDENTITY CASCADE;");
+    expect(sql).toContain("INSERT INTO vyroky (");
+    expect(sql).toContain("FROM vyroky_import_staging");
+    expect(sql).toContain("INSERT INTO statement_sources (");
+    expect(sql).toContain("FROM statement_sources_import_staging s");
+    expect(sql).toContain("DELETE FROM vyroky_import_staging WHERE import_run_id = 'run''id';");
+    expect(sql).toContain("COMMIT;");
   });
 });

@@ -58,26 +58,7 @@ type Database = {
     Tables: {
       vyroky: {
         Row: StatementRow;
-        Insert: Omit<
-          StatementRow,
-          | "id"
-          | "source_id"
-          | "numeric_id"
-          | "url"
-          | "speaker_url"
-          | "analysis_paragraphs"
-          | "analysis_date"
-          | "scraped_at"
-        > & {
-          id?: number;
-          source_id?: string;
-          numeric_id?: number | null;
-          url?: string;
-          speaker_url?: string | null;
-          analysis_paragraphs?: unknown[];
-          analysis_date?: string | null;
-          scraped_at?: string | null;
-        };
+        Insert: Omit<StatementRow, "id"> & { id?: number };
         Update: Partial<Omit<StatementRow, "id">>;
         Relationships: [];
       };
