@@ -24,7 +24,13 @@
  */
 
 import { loadEnvConfig } from "@next/env";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { parse } from "csv-parse/sync";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -282,6 +288,9 @@ function writeSemicolonCsv(records: VyrokyRecord[], outputPath: string): void {
 // ---------------------------------------------------------------------------
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const GEMINI_REQUEST_TIMEOUT_MS = 90_000;
+const GEMINI_MAX_API_RETRIES = 6;
+const GEMINI_BASE_RETRY_MS = 2_000;
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -295,47 +304,98 @@ async function callGemini(
   prompt: string,
   systemInstruction: string,
   model: string,
+  attempt = 0,
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
   const url = `${GEMINI_API_BASE}/${model}:generateContent`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      generationConfig: {
-        temperature: 0.05,
-        responseMimeType: "application/json",
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), GEMINI_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        generationConfig: {
+          temperature: 0.05,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    if (response.status === 429) {
-      // Rate limited — wait and retry
-      console.warn("  Rate limited, waiting 10s...");
-      await sleep(10_000);
-      return callGemini(prompt, systemInstruction, model);
+    if (!response.ok) {
+      const body = await response.text();
+      if (
+        (response.status === 429 || response.status >= 500) &&
+        attempt < GEMINI_MAX_API_RETRIES
+      ) {
+        const retryMs = getRetryDelayMs(
+          response.headers.get("retry-after"),
+          attempt,
+        );
+        console.warn(
+          `  Gemini ${response.status}, retrying in ${Math.round(retryMs / 1000)}s...`,
+        );
+        await sleep(retryMs);
+        return callGemini(prompt, systemInstruction, model, attempt + 1);
+      }
+
+      throw new Error(`Gemini API error (${response.status}): ${body.slice(0, 300)}`);
     }
-    throw new Error(`Gemini API error (${response.status}): ${body.slice(0, 300)}`);
-  }
 
-  const payload = (await response.json()) as GeminiResponse;
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini API returned no content");
-  return text;
+    const payload = (await response.json()) as GeminiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("Gemini API returned no content");
+    return text;
+  } catch (error) {
+    if (attempt < GEMINI_MAX_API_RETRIES && isTransientGeminiError(error)) {
+      const retryMs = getRetryDelayMs(null, attempt);
+      console.warn(
+        `  Gemini request failed (${toErrorMessage(error)}), retrying in ${Math.round(retryMs / 1000)}s...`,
+      );
+      await sleep(retryMs);
+      return callGemini(prompt, systemInstruction, model, attempt + 1);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRetryDelayMs(retryAfterHeader: string | null, attempt: number): number {
+  const retryAfterSeconds = retryAfterHeader
+    ? Number.parseInt(retryAfterHeader, 10)
+    : Number.NaN;
+
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  const exponentialDelay = GEMINI_BASE_RETRY_MS * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 1000);
+  return Math.min(exponentialDelay + jitter, 60_000);
+}
+
+function isTransientGeminiError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 const PHASE2_SYSTEM = `Si jazykový korektor pre slovenský text z faktickej databázy Demagog.sk.
@@ -458,7 +518,9 @@ function writePhase2Checkpoint(
 ): void {
   mkdirSync(path.dirname(checkpointPath), { recursive: true });
   checkpoint.lastUpdatedAt = new Date().toISOString();
-  writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2), "utf-8");
+  const tempPath = `${checkpointPath}.tmp`;
+  writeFileSync(tempPath, JSON.stringify(checkpoint, null, 2), "utf-8");
+  renameSync(tempPath, checkpointPath);
 }
 
 function applyBatchResult(
