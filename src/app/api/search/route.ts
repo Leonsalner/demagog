@@ -246,6 +246,65 @@ function findExactCandidateInQuery(query: string, candidates: string[]): string 
   return null;
 }
 
+function findUniqueNameSurnameInQuery(query: string, candidates: string[]): string | null {
+  const queryTokens = new Set(tokenizeForMatching(query));
+
+  if (queryTokens.size === 0) {
+    return null;
+  }
+
+  const surnameMatches = new Map<string, string[]>();
+
+  for (const candidate of candidates) {
+    const candidateTokens = tokenizeForMatching(candidate);
+    const surname = candidateTokens.at(-1);
+
+    if (!surname || surname.length < 3) {
+      continue;
+    }
+
+    const matches = surnameMatches.get(surname);
+
+    if (matches) {
+      matches.push(candidate);
+    } else {
+      surnameMatches.set(surname, [candidate]);
+    }
+  }
+
+  for (const token of queryTokens) {
+    const matches = surnameMatches.get(token);
+
+    if (matches?.length === 1) {
+      return matches[0] ?? null;
+    }
+  }
+
+  return null;
+}
+
+function findNameInQuery(query: string, candidates: string[]): string | null {
+  return (
+    findExactCandidateInQuery(query, candidates) ??
+    findUniqueNameSurnameInQuery(query, candidates)
+  );
+}
+
+function getNameAliases(name: string | null | undefined): string[] {
+  if (!name) {
+    return [];
+  }
+
+  const tokens = name.trim().split(/\s+/u).filter(Boolean);
+  const surname = tokens.at(-1);
+
+  if (!surname || surname === name) {
+    return [name];
+  }
+
+  return [name, surname];
+}
+
 function stripMatchedTerms(query: string, values: Array<string | null | undefined>): string {
   const originalTokens = query.trim().split(/\s+/u).filter(Boolean);
   const normalizedTokens = originalTokens.map((token) => normalizeForMatching(token));
@@ -313,13 +372,13 @@ function buildFastQueryUnderstanding(
   availableAreas: string[]
 ): QueryUnderstanding {
   const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
-  const detectedName = selectedName ?? findExactCandidateInQuery(query, availableNames);
+  const detectedName = selectedName ?? findNameInQuery(query, availableNames);
   const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
   const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
   const detectedArea = body.oblast ?? findExactCandidateInQuery(query, availableAreas);
   const semanticQuery =
     stripMatchedTerms(query, [
-      detectedName,
+      ...getNameAliases(detectedName),
       detectedParty,
       detectedVerdict,
       detectedArea,
@@ -352,7 +411,7 @@ function shouldUseFastQueryUnderstanding(
     return true;
   }
 
-  if (findExactCandidateInQuery(query, availableNames)) {
+  if (findNameInQuery(query, availableNames)) {
     return true;
   }
 

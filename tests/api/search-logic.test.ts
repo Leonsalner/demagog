@@ -354,7 +354,7 @@ describe("POST /api/search logic", () => {
     );
 
     const response = await POST(
-      createRequest({ query: "Co povedal fico o zdravotnictve a pravde?" }),
+      createRequest({ query: "Ako sa vyjadroval lider Smeru o zdravotnictve a pravde?" }),
     );
     const data = await response.json();
 
@@ -557,6 +557,46 @@ describe("POST /api/search logic", () => {
     const response = await POST(
       createRequest({
         query: "robert fico vojna ukrajina",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(understandQuery).not.toHaveBeenCalled();
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: "Robert Fico",
+      }),
+    );
+  });
+
+  it("maps unique surname-only queries to the full politician name", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: String(args.filter_meno ?? "Robert Fico"),
+              strana: "Smer-SD",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "fico vojna ukrajina",
         page: 1,
         page_size: 5,
       }),
