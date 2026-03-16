@@ -612,7 +612,7 @@ async function runPhase2Batch(
   batch: Phase2Batch,
   model: string,
   retries = 2,
-): Promise<string[]> {
+): Promise<{ texts: string[]; usedPhase1Fallback: boolean }> {
   const prompt = `Oprav diakritiku v nasledujúcich ${batch.texts.length} slovenských textoch.
 Každý text má formát [VÝROK] ... [ODÔVODNENIE] ...
 Vráť opravené texty ako JSON pole reťazcov v rovnakom poradí.
@@ -630,10 +630,16 @@ ${batch.texts.map((t, i) => `--- ${i + 1} ---\n${t}`).join("\n\n")}`;
         return runPhase2Batch(batch, model, retries - 1);
       }
       console.warn(`  Batch size mismatch after retries, using Phase 1 output`);
-      return batch.texts;
+      return {
+        texts: batch.texts,
+        usedPhase1Fallback: true,
+      };
     }
 
-    return parsed.map((item: unknown) => (typeof item === "string" ? item : ""));
+    return {
+      texts: parsed.map((item: unknown) => (typeof item === "string" ? item : "")),
+      usedPhase1Fallback: false,
+    };
   } catch (error) {
     if (retries > 0) {
       console.warn(`  Batch failed: ${(error as Error).message.slice(0, 100)}. Retrying...`);
@@ -641,8 +647,58 @@ ${batch.texts.map((t, i) => `--- ${i + 1} ---\n${t}`).join("\n\n")}`;
       return runPhase2Batch(batch, model, retries - 1);
     }
     console.error(`  Batch failed after retries, using Phase 1 output`);
-    return batch.texts;
+    return {
+      texts: batch.texts,
+      usedPhase1Fallback: true,
+    };
   }
+}
+
+function splitPhase2Batch(batch: Phase2Batch): [Phase2Batch, Phase2Batch] {
+  const midpoint = Math.ceil(batch.texts.length / 2);
+
+  return [
+    {
+      batchNumber: batch.batchNumber,
+      indices: batch.indices.slice(0, midpoint),
+      texts: batch.texts.slice(0, midpoint),
+    },
+    {
+      batchNumber: batch.batchNumber,
+      indices: batch.indices.slice(midpoint),
+      texts: batch.texts.slice(midpoint),
+    },
+  ];
+}
+
+async function runPhase2BatchWithSplitting(
+  batch: Phase2Batch,
+  model: string,
+): Promise<{ texts: string[]; usedPhase1Fallback: boolean }> {
+  const result = await runPhase2Batch(batch, model);
+
+  if (!result.usedPhase1Fallback || batch.texts.length === 1) {
+    return result;
+  }
+
+  const [left, right] = splitPhase2Batch(batch);
+  console.warn(
+    `  Batch ${batch.batchNumber} fell back at size ${batch.texts.length}, splitting into ${left.texts.length}+${right.texts.length}...`,
+  );
+
+  const combinedTexts: string[] = [];
+  let usedPhase1Fallback = false;
+
+  for (const part of [left, right]) {
+    const partResult = await runPhase2BatchWithSplitting(part, model);
+    combinedTexts.push(...partResult.texts);
+    usedPhase1Fallback ||= partResult.usedPhase1Fallback;
+  }
+
+  return {
+    texts: combinedTexts,
+    usedPhase1Fallback,
+  };
 }
 
 function applyPhase2Result(record: VyrokyRecord, correctedCombined: string): void {
@@ -819,15 +875,21 @@ async function main(): Promise<void> {
         `  Worker ${workerId} starting batch ${batch.batchNumber}/${batches.length} (${batch.indices.length} records)`,
       );
 
-      const corrected = await runPhase2Batch(batch, args.model);
-      applyBatchResult(records, batch, corrected);
-      checkpoint.completedBatches[String(batch.batchNumber)] = corrected;
+      const result = await runPhase2BatchWithSplitting(batch, args.model);
+      applyBatchResult(records, batch, result.texts);
+      checkpoint.completedBatches[String(batch.batchNumber)] = result.texts;
       writePhase2Checkpoint(args.checkpointFile, checkpoint);
 
       processed += batch.indices.length;
       console.log(
         `  Batch ${batch.batchNumber}/${batches.length} done (${processed}/${records.length} records checkpointed)`,
       );
+
+      if (result.usedPhase1Fallback) {
+        console.warn(
+          `  Batch ${batch.batchNumber} still contains Phase 1 fallback text after split retries.`,
+        );
+      }
 
       if (queueIndex < targetBatches.length) {
         await sleep(100);
