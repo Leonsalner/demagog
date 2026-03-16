@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { VERDICTS } from "@/lib/utils";
 import type { Verdict } from "@/types";
@@ -24,8 +25,20 @@ const initialFormState: FormState = {
   odovodnenie: "",
 };
 
-export default function AddStatementPage() {
-  const [form, setForm] = useState<FormState>(initialFormState);
+function AddStatementForm() {
+  const searchParams = useSearchParams();
+  const [form, setForm] = useState<FormState>(() => {
+    const vyrok = searchParams.get("vyrok");
+    return vyrok ? { ...initialFormState, vyrok } : initialFormState;
+  });
+
+  useEffect(() => {
+    const vyrok = searchParams.get("vyrok");
+    if (vyrok) {
+      setForm((current) => (current.vyrok ? current : { ...current, vyrok }));
+    }
+  }, [searchParams]);
+
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">(
     "idle",
   );
@@ -266,5 +279,13 @@ export default function AddStatementPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function AddStatementPage() {
+  return (
+    <Suspense fallback={null}>
+      <AddStatementForm />
+    </Suspense>
   );
 }

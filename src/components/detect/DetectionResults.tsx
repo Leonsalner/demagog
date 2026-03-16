@@ -155,6 +155,12 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
     result.matches.filter((match) => match.classification === "UNRELATED"),
   );
   const status = statusConfig[result.overall_status];
+  const addHref = `/add?vyrok=${encodeURIComponent(result.input_statement)}`;
+  const showAddButton =
+    result.overall_status === "NEW_CLAIM" ||
+    result.overall_status === "RELATED_ONLY" ||
+    result.overall_status === "DUPLICATE_FOUND";
+  const isNewClaim = result.overall_status === "NEW_CLAIM";
 
   return (
     <section className="space-y-5">
@@ -163,11 +169,28 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-base font-semibold text-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
             {status.icon}
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {status.title} - {status.description}
             </h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{status.detail}</p>
+            {showAddButton ? (
+              <div className="mt-3">
+                <a
+                  href={addHref}
+                  className={
+                    isNewClaim
+                      ? "inline-flex items-center gap-1.5 rounded-full bg-[#e03e1a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c73414]"
+                      : "inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
+                  }
+                >
+                  <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                    <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
+                  </svg>
+                  Pridať výrok
+                </a>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
