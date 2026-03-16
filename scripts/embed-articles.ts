@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
+
+loadEnvConfig(process.cwd(), true);
 
 type ArticleRow = {
   id: number;
@@ -21,7 +24,7 @@ type RpcError = {
 };
 
 const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 200;
 const MAX_BACKOFF_MS = 30_000;
 const INDEX_NAME = "idx_clanky_embedding";
