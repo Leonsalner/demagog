@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { loadEnvConfig } from "@next/env";
+import { pathToFileURL } from "node:url";
 
 import { getGeminiModel } from "@/lib/gemini";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -15,10 +16,12 @@ type ClankyRow = {
 
 const BATCH_SIZE = 10;
 const RETRY_DELAYS_MS = [2_000, 5_000] as const;
-const MAX_TITLE_CHARS = 78;
-const TITLE_MODEL_OPTIONS = new Set(["flash", "lite"]);
+const MAX_TITLE_BODY_CHARS = 77;
+const MAX_TITLE_CHARS = 80;
+const TITLE_ELLIPSIS = "...";
+const TITLE_MODEL_OPTIONS = new Set(["flash", "lite", "pro"]);
 
-type TitleModelKind = "flash" | "lite";
+type TitleModelKind = "flash" | "lite" | "pro";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,7 +46,7 @@ function parseArgs(): {
   }
 
   if (!TITLE_MODEL_OPTIONS.has(modelValue)) {
-    throw new Error(`Invalid --model value: ${modelArg}. Use --model=lite or --model=flash.`);
+    throw new Error(`Invalid --model value: ${modelArg}. Use --model=lite, --model=flash, or --model=pro.`);
   }
 
   return { dryRun, force, fromId, model: modelValue as TitleModelKind };
@@ -104,11 +107,16 @@ async function fetchPendingBatch(
   return (data ?? []) as ClankyRow[];
 }
 
-function sanitizeTitle(rawTitle: string): string {
-  const cleaned = rawTitle
-    .replace(/\s+/g, " ")
+export function sanitizeTitle(rawTitle: string): string {
+  const normalizedWhitespace = rawTitle.replace(/\s+/g, " ").trim();
+  const hasTrailingEllipsis = normalizedWhitespace.endsWith(TITLE_ELLIPSIS);
+  const titleBody = hasTrailingEllipsis
+    ? normalizedWhitespace.slice(0, -TITLE_ELLIPSIS.length)
+    : normalizedWhitespace;
+  const cleanedBody = titleBody
     .replace(/^["'„“]+|["'“”.,:;!?]+$/g, "")
     .trim();
+  const cleaned = hasTrailingEllipsis ? `${cleanedBody}${TITLE_ELLIPSIS}` : cleanedBody;
 
   if (!cleaned) {
     return "";
@@ -118,11 +126,24 @@ function sanitizeTitle(rawTitle: string): string {
     return cleaned;
   }
 
-  return `${cleaned.slice(0, MAX_TITLE_CHARS - 1).trim()}…`;
+  return `${cleaned.slice(0, MAX_TITLE_BODY_CHARS).trim()}${TITLE_ELLIPSIS}`;
 }
 
 async function generateTitle(text: string, modelKind: TitleModelKind): Promise<string> {
   const model = getGeminiModel(modelKind);
+  const generationConfig =
+    modelKind === "pro"
+      ? {
+          temperature: 0.2,
+          maxOutputTokens: 500,
+        }
+      : {
+          temperature: 0.2,
+          maxOutputTokens: 80,
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        };
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -137,10 +158,17 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
             {
               text: [
                 "Vytváraš krátke navigačné názvy pre fact-check články v slovenčine.",
+                "Tieto názvy slúžia analytikom v internom rozhraní, nie širokej verejnosti.",
+                "Majú pôsobiť profesionálne, vecne a opisne.",
                 "Vráť iba samotný názov bez úvodzoviek, bodky alebo komentára.",
                 "Názov nesmie byť zhrnutie, má len pomôcť orientácii v bočnom paneli a v hlavičke článku.",
+                "Pomenuj presný overovaný nárok, tému alebo zavádzajúce tvrdenie.",
                 "Buď konkrétny, stručný a opisný.",
-                "Najviac 77 znakov.",
+                "Uprednostni 3 až 8 slov.",
+                "Nepoužívaj clickbait, emotívne formulácie ani publicistický štýl.",
+                "Nevracaj neúplné fragmenty, jedno písmeno, jednu slabiku ani meta text ako '77 characters'.",
+                "Ak sa názov nezmestí, skráť ho na najviac 77 znakov a pridaj na koniec tri bodky (...).",
+                "Celý výsledok vrátane troch bodiek môže mať najviac 80 znakov.",
               ].join(" "),
             },
           ],
@@ -149,15 +177,12 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
           {
             parts: [
               {
-                text: `Text článku:\n${text.slice(0, 5000)}\n\nKrátky názov:`,
+                text: `Text článku:\n${text}\n\nKrátky názov:`,
               },
             ],
           },
         ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 80,
-        },
+        generationConfig,
       }),
     },
   );
@@ -167,7 +192,12 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
   }
 
   const payload = (await response.json()) as {
+    promptFeedback?: {
+      blockReason?: string;
+      blockReasonMessage?: string;
+    };
     candidates?: Array<{
+      finishReason?: string;
       content?: {
         parts?: Array<{
           text?: string;
@@ -178,7 +208,19 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
   const title = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
   if (!title) {
-    throw new Error("Gemini title request returned no content");
+    const blockReason = payload.promptFeedback?.blockReason;
+    const blockReasonMessage = payload.promptFeedback?.blockReasonMessage;
+    const finishReason = payload.candidates?.[0]?.finishReason;
+    throw new Error(
+      [
+        "Gemini title request returned no content",
+        blockReason ? `blockReason=${blockReason}` : null,
+        blockReasonMessage ? `blockReasonMessage=${blockReasonMessage}` : null,
+        finishReason ? `finishReason=${finishReason}` : null,
+      ]
+        .filter(Boolean)
+        .join("; "),
+    );
   }
 
   return sanitizeTitle(title);
@@ -258,7 +300,9 @@ async function main(): Promise<void> {
   console.log(dryRun ? "Dry run complete." : "Title backfill complete.");
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}
