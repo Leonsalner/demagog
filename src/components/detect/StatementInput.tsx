@@ -93,6 +93,12 @@ export default function StatementInput({
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
       <div className="relative">
+        <label
+          htmlFor="statement"
+          className="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-100"
+        >
+          Politický výrok
+        </label>
         <textarea
           id="statement"
           value={value}
