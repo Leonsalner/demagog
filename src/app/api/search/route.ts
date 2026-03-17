@@ -885,7 +885,7 @@ export async function POST(request: NextRequest) {
         let embedding: number[];
         const embedStartedAt = performance.now();
         try {
-          embedding = await embedText(semanticQuery);
+          embedding = await embedText(semanticQuery, "search");
         } catch {
           return NextResponse.json(
             { error: "Embedding service unavailable" },

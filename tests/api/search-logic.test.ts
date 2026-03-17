@@ -526,7 +526,7 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(understandQuery).toHaveBeenCalled();
-    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina", "search");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
@@ -572,7 +572,7 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(understandQuery).toHaveBeenCalled();
-    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina", "search");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({

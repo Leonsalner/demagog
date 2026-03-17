@@ -29,6 +29,8 @@ const ARTICLE_EMBEDDING_DIMENSIONS = 2048;
 const BATCH_SIZE = 32;
 const BATCH_DELAY_MS = 0;
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
+// Index-time instruction prefix for Qwen3-Embedding (English per Qwen guidance).
+const INDEX_PREFIX = "Slovak fact-check article analyzing political claims: ";
 const INDEX_NAME = "idx_clanky_embedding";
 // HNSW caps at 2000d; 2048d will fail, so we skip automatic index creation.
 // Sequential scan on ~285 rows is fine.
@@ -322,7 +324,7 @@ async function main(): Promise<void> {
     let embeddings: number[][];
     try {
       embeddings = await requestEmbeddings(
-        rows.map((row) => row.text_content),
+        rows.map((row) => INDEX_PREFIX + row.text_content),
         embeddingUrl,
         embeddingModel,
       );

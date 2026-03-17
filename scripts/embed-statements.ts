@@ -59,6 +59,8 @@ const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
 const STATEMENT_EMBEDDING_DIMENSIONS = 2048;
 const BATCH_SIZE = 32; // Smaller batches suit a local Ollama/GPU inference loop.
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
+// Index-time instruction prefix for Qwen3-Embedding (English per Qwen guidance).
+const INDEX_PREFIX = "Slovak political fact-check statement: ";
 const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
 ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
@@ -366,7 +368,7 @@ async function main(): Promise<void> {
     let embeddings: number[][];
     try {
       embeddings = await requestEmbeddings(
-        rows.map((row) => row.vyrok),
+        rows.map((row) => INDEX_PREFIX + row.vyrok),
         embeddingUrl,
         embeddingModel,
       );

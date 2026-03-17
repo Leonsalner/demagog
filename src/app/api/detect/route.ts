@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
 
   if (await canUseMatchStatementsRpc(supabase)) {
     try {
-      embedding = await embedText(statement);
+      embedding = await embedText(statement, "detect");
     } catch {
       return NextResponse.json(
         { error: "Embedding service unavailable" },
