@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { StatementCardProps, StatementSource } from "@/types";
 
@@ -17,6 +17,55 @@ function extractDomain(url: string): string {
 
 function SourcesList({ sources, className }: { sources: StatementSource[]; className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [titles, setTitles] = useState<Record<number, string>>({});
+  const [enriching, setEnriching] = useState(false);
+  const enrichedRef = useRef(false);
+
+  // Check if any sources already have titles from the API response.
+  const hasAllTitles = sources.every((s) => s.title || titles[s.id]);
+
+  const enrichTitles = useCallback(async () => {
+    if (enrichedRef.current || hasAllTitles) return;
+    enrichedRef.current = true;
+
+    // Collect IDs that don't have a title yet (neither from API nor from a previous enrich call).
+    const missingIds = sources
+      .filter((s) => !s.title && !titles[s.id])
+      .map((s) => s.id);
+
+    if (missingIds.length === 0) return;
+
+    setEnriching(true);
+    try {
+      const response = await fetch("/api/sources/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: missingIds }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.titles) {
+          setTitles((prev) => ({ ...prev, ...data.titles }));
+        }
+      }
+    } catch {
+      // Silently fail — labels + domain still show as fallback.
+    } finally {
+      setEnriching(false);
+    }
+  }, [sources, titles, hasAllTitles]);
+
+  // Fetch titles when the dropdown is first opened.
+  useEffect(() => {
+    if (isOpen && !enrichedRef.current) {
+      void enrichTitles();
+    }
+  }, [isOpen, enrichTitles]);
+
+  function getTitle(source: StatementSource): string | null {
+    return source.title || titles[source.id] || null;
+  }
 
   return (
     <div className={className}>
@@ -36,29 +85,37 @@ function SourcesList({ sources, className }: { sources: StatementSource[]; class
       </button>
       {isOpen ? (
         <ul className="mt-2 space-y-1">
-          {sources.map((source) => (
-            <li key={source.id}>
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="mt-0.5 h-3 w-3 shrink-0 text-slate-400 group-hover:text-[#e03e1a] dark:group-hover:text-[#ff8c71]">
-                  <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
-                  <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
-                </svg>
-                <span className="flex flex-col">
-                  <span className="font-medium text-slate-700 group-hover:text-[#e03e1a] dark:text-slate-300 dark:group-hover:text-[#ff8c71]">
-                    {source.label}
+          {sources.map((source) => {
+            const title = getTitle(source);
+            return (
+              <li key={source.id}>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="mt-0.5 h-3 w-3 shrink-0 text-slate-400 group-hover:text-[#e03e1a] dark:group-hover:text-[#ff8c71]">
+                    <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                    <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+                  </svg>
+                  <span className="flex flex-col">
+                    <span className="font-medium text-slate-700 group-hover:text-[#e03e1a] dark:text-slate-300 dark:group-hover:text-[#ff8c71]">
+                      {title ?? source.label}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {extractDomain(source.url)}
+                    </span>
                   </span>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                    {extractDomain(source.url)}
-                  </span>
-                </span>
-              </a>
+                </a>
+              </li>
+            );
+          })}
+          {enriching ? (
+            <li className="px-2 py-1 text-[11px] text-slate-400 dark:text-slate-500">
+              Načítavam názvy stránok…
             </li>
-          ))}
+          ) : null}
         </ul>
       ) : null}
     </div>

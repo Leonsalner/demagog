@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS statement_sources (
   position INTEGER NOT NULL,
   label TEXT NOT NULL,
   url TEXT NOT NULL,
+  title TEXT,
   UNIQUE(statement_id, position)
 );
 

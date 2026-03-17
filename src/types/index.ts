@@ -8,6 +8,7 @@ export interface StatementSource {
   position: number;
   label: string;
   url: string;
+  title?: string | null;
 }
 
 export interface Statement {
