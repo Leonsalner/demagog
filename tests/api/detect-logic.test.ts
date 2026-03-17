@@ -106,8 +106,8 @@ describe("POST /api/detect logic", () => {
     vi.mocked(embedText).mockResolvedValue([0.4, 0.5, 0.6]);
   });
 
-  it("retrieves 30 candidates for classification but returns only top_k results", async () => {
-    const rows = Array.from({ length: 30 }, (_, index) =>
+  it("retrieves 60 candidates for thorough classification but returns only top_k results", async () => {
+    const rows = Array.from({ length: 60 }, (_, index) =>
       buildRow(index + 1, Number((0.89 - index * 0.01).toFixed(2))),
     );
     const supabase = createSupabaseMock(rows);
@@ -133,7 +133,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_statements",
       expect.objectContaining({
-        match_count: 30,
+        match_count: 60,
       }),
     );
     expect(getGeminiModel).toHaveBeenCalledWith("pro");
@@ -146,18 +146,20 @@ describe("POST /api/detect logic", () => {
     expect(data.overall_status).toBe("RELATED_ONLY");
   });
 
-  it("uses the fast Gemini model when mode is fast", async () => {
-    const rows = [buildRow(1, 0.89)];
+  it("uses the fast Gemini model and a 20-candidate shortlist when mode is fast", async () => {
+    const rows = Array.from({ length: 20 }, (_, index) =>
+      buildRow(index + 1, Number((0.89 - index * 0.01).toFixed(2))),
+    );
     const supabase = createSupabaseMock(rows);
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
-    vi.mocked(classifyMatches).mockResolvedValue([
-      {
-        id: 1,
+    vi.mocked(classifyMatches).mockResolvedValue(
+      rows.map((row) => ({
+        id: row.id,
         classification: "RELATED",
         explanation: "Rychle porovnanie.",
-      },
-    ]);
+      })),
+    );
 
     const response = await POST(
       createRequest({
@@ -170,7 +172,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_statements",
       expect.objectContaining({
-        match_count: 10,
+        match_count: 20,
       }),
     );
     expect(getGeminiModel).toHaveBeenCalledWith("flash");
@@ -205,7 +207,7 @@ describe("POST /api/detect logic", () => {
       ["DUPLICATE", "RELATED", "UNRELATED"],
     );
     expect(data.matches[0].explanation).toBe(
-      "Klasifikácia nedostupná - vysoká zhoda.",
+      "Vysoká sémantická zhoda.",
     );
     expect(data.overall_status).toBe("DUPLICATE_FOUND");
   });

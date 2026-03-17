@@ -121,16 +121,18 @@ describe("detect page flow", () => {
 
     expect(detect).toHaveBeenCalledWith(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "thorough",
+      "fast",
     );
   }, 20_000);
 
-  it("forwards the selected fast mode", () => {
+  it("forwards the selected research mode", () => {
     const { detect } = mockUseDetectReturn();
 
     render(<Home />);
     openDetectTab();
-    fireEvent.click(screen.getByRole("button", { name: "Rýchly" }));
+    fireEvent.change(screen.getByLabelText("Režim porovnania"), {
+      target: { value: "thorough" },
+    });
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -138,7 +140,7 @@ describe("detect page flow", () => {
 
     expect(detect).toHaveBeenCalledWith(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "fast",
+      "thorough",
     );
   }, 20_000);
 

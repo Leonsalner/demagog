@@ -51,6 +51,8 @@ interface SourceRow {
 
 const LEXICAL_DETECT_CANDIDATE_LIMIT = 120;
 const LEXICAL_DETECT_ROWS_PER_TERM = 40;
+const FAST_DETECT_RETRIEVAL_COUNT = 20;
+const THOROUGH_DETECT_RETRIEVAL_COUNT = 60;
 let matchStatementsRpcAvailable: boolean | null = null;
 const DETECT_FALLBACK_IGNORED_TERMS = new Set([
   "asi",
@@ -107,7 +109,7 @@ function buildFallbackClassification(row: MatchRow): {
     return {
       id: row.id,
       classification: "DUPLICATE",
-      explanation: "Klasifikácia nedostupná - vysoká zhoda.",
+      explanation: "Vysoká sémantická zhoda.",
     };
   }
 
@@ -115,14 +117,14 @@ function buildFallbackClassification(row: MatchRow): {
     return {
       id: row.id,
       classification: "RELATED",
-      explanation: "Klasifikácia nedostupná.",
+      explanation: "Podobná téma alebo rámec tvrdenia.",
     };
   }
 
   return {
     id: row.id,
     classification: "UNRELATED",
-    explanation: "Klasifikácia nedostupná.",
+    explanation: "Len slabá povrchová zhoda.",
   };
 }
 
@@ -294,7 +296,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const retrievalCount = Math.max(topK, mode === "fast" ? 6 : 30);
+  const retrievalCount = Math.max(
+    topK,
+    mode === "fast" ? FAST_DETECT_RETRIEVAL_COUNT : THOROUGH_DETECT_RETRIEVAL_COUNT
+  );
   let rows: MatchRow[];
   let embedding: number[] | null = null;
   let usedLexicalFallback = false;

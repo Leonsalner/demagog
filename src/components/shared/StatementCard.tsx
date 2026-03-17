@@ -276,7 +276,9 @@ export default function StatementCard({
               ? statement.sources && statement.sources.length > 0
                 ? "Skryť analýzu a zdroje"
                 : "Skryť odôvodnenie"
-              : "Zobraziť odôvodnenie"}
+              : statement.sources && statement.sources.length > 0
+                ? "Zobraziť analýzu a zdroje"
+                : "Zobraziť odôvodnenie"}
           </button>
 
           {isReasoningOpen ? (
@@ -294,7 +296,10 @@ export default function StatementCard({
       ) : null}
 
       {explanation ? (
-        <p className="mt-4 text-sm italic leading-6 text-slate-500 dark:text-slate-400">✦ AI: {explanation}</p>
+        <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">Dôvod zaradenia:</span>{" "}
+          {explanation}
+        </p>
       ) : null}
     </article>
   );

@@ -117,7 +117,7 @@ export function useDetect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const detect = useCallback(async (statement: string, mode: DetectMode = "thorough") => {
+  const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
     setLoading(true);
     setError(null);
     setResult(null);
