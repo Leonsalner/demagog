@@ -9,6 +9,7 @@
 
 const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
 const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
+const DEFAULT_EMBEDDING_DIMENSIONS = 2048;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export async function embedText(text: string): Promise<number[]> {
@@ -28,6 +29,7 @@ export async function embedText(text: string): Promise<number[]> {
       body: JSON.stringify({
         model,
         input: [text],
+        dimensions: Number(process.env.EMBEDDING_DIMENSIONS) || DEFAULT_EMBEDDING_DIMENSIONS,
       }),
       signal: controller.signal,
     });

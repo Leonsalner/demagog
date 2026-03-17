@@ -135,7 +135,7 @@ Feature flags / debugging:
 - `useSearch.ts` tracks model-owned filters so LLM-generated filters can be applied and later cleared safely.
 - Detect supports mock mode through `NEXT_PUBLIC_USE_DETECT_MOCK`; search has a separate mock mode through `NEXT_PUBLIC_USE_SEARCH_MOCK`.
 - `/add` provides the analyst-side entry flow for saving a new statement after review.
-- The embedding stack expects 1024-dimensional vectors; keep runtime code, scripts, and Supabase schema aligned.
+- The embedding stack uses 2048-dimensional Qwen3 vectors via local Ollama; keep runtime code, scripts, and Supabase schema aligned.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` specifically.
 - Run `scripts/setup-supabase.sql` in a SQL client; do not execute it with `tsx`.
 

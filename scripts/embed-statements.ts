@@ -56,17 +56,15 @@ type RpcError = {
 
 const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
 const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
-const STATEMENT_EMBEDDING_DIMENSIONS = 4096;
+const STATEMENT_EMBEDDING_DIMENSIONS = 2048;
 const BATCH_SIZE = 32; // Smaller batches suit a local Ollama/GPU inference loop.
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
-const INDEX_SQL =
-  "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
 const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
 ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 DROP INDEX IF EXISTS idx_vyroky_embedding;
 
-The script will recreate the HNSW index after embedding completes.`;
+Note: ${STATEMENT_EMBEDDING_DIMENSIONS}d exceeds the 2000d pgvector HNSW limit. Sequential scan is used.`;
 
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
@@ -151,6 +149,7 @@ async function requestEmbeddings(
         body: JSON.stringify({
           model: embeddingModel,
           input: inputs,
+          dimensions: STATEMENT_EMBEDDING_DIMENSIONS,
         }),
       });
 
@@ -254,8 +253,17 @@ async function indexExists(supabase: SupabaseClientAny): Promise<boolean> {
   return Boolean(data);
 }
 
-async function createIndex(supabase: SupabaseClientAny): Promise<void> {
-  const { error } = await (supabase.rpc as any)("exec_sql", { query: INDEX_SQL });
+async function ensureIndex(supabase: SupabaseClientAny): Promise<void> {
+  if (STATEMENT_EMBEDDING_DIMENSIONS > 2000) {
+    console.log(
+      `Skipping HNSW index creation: ${STATEMENT_EMBEDDING_DIMENSIONS}d exceeds the 2000d pgvector HNSW limit. Sequential scan is used.`,
+    );
+    return;
+  }
+
+  const indexSql =
+    "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
+  const { error } = await (supabase.rpc as any)("exec_sql", { query: indexSql });
   if (error) {
     if (await indexExists(supabase)) {
       console.warn(
@@ -265,7 +273,7 @@ async function createIndex(supabase: SupabaseClientAny): Promise<void> {
     }
 
     throw new Error(
-      `Failed to create the ${STATEMENT_EMBEDDING_DIMENSIONS}d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
+      `Failed to create HNSW index: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
     );
   }
 }
@@ -312,7 +320,7 @@ async function main(): Promise<void> {
   if (total === 0) {
     console.log("No statements pending embedding. Ensuring HNSW index exists.");
     if (!dryRun) {
-      await createIndex(supabase);
+      await ensureIndex(supabase);
     }
     return;
   }
@@ -390,7 +398,7 @@ async function main(): Promise<void> {
     // page from offset 0, so rangeFrom stays at 0.
   }
 
-  await createIndex(supabase);
+  await ensureIndex(supabase);
   console.log(`Completed embedding ${processed} statements in ${Math.round((Date.now() - startedAt) / 1000)}s.`);
 }
 
