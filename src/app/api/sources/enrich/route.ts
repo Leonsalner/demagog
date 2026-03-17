@@ -74,6 +74,12 @@ async function fetchPageTitle(url: string): Promise<string | null> {
   }
 }
 
+interface SourceForEnrich {
+  id: number;
+  url: string;
+  title?: string | null;
+}
+
 export async function POST(request: NextRequest) {
   const adminError = getSupabaseAdminConfigError();
   if (adminError) {
@@ -101,17 +107,33 @@ export async function POST(request: NextRequest) {
 
   const supabase = supabaseAdmin();
 
-  // Fetch all requested sources.
-  const { data: sources, error: fetchError } = await supabase
+  // Try selecting with title column; fall back to id+url if column doesn't exist yet.
+  let sources: SourceForEnrich[] = [];
+  let titleColumnExists = true;
+
+  const { data: withTitle, error: withTitleError } = await supabase
     .from("statement_sources")
     .select("id, url, title")
     .in("id", ids);
 
-  if (fetchError || !sources) {
-    return NextResponse.json({ error: "Failed to fetch sources" }, { status: 500 });
+  if (withTitleError) {
+    // Column likely doesn't exist yet — retry without title.
+    titleColumnExists = false;
+    const { data: withoutTitle, error: fallbackError } = await supabase
+      .from("statement_sources")
+      .select("id, url")
+      .in("id", ids);
+
+    if (fallbackError || !withoutTitle) {
+      return NextResponse.json({ error: "Failed to fetch sources" }, { status: 500 });
+    }
+
+    sources = withoutTitle.map((s) => ({ ...s, title: null }));
+  } else {
+    sources = (withTitle ?? []) as SourceForEnrich[];
   }
 
-  // Separate sources that already have titles from those that need fetching.
+  // Separate sources that already have cached titles from those that need fetching.
   const needsFetching = sources.filter((s) => !s.title);
   const alreadyHave = sources.filter((s) => s.title);
 
@@ -123,7 +145,7 @@ export async function POST(request: NextRequest) {
     }),
   );
 
-  // Collect successfully fetched titles and save to DB.
+  // Collect all titles into the response map.
   const titlesMap: Record<number, string> = {};
 
   for (const entry of alreadyHave) {
@@ -140,8 +162,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Batch-update all newly fetched titles.
-  if (updates.length > 0) {
+  // Persist fetched titles to DB if the column exists.
+  if (updates.length > 0 && titleColumnExists) {
     await Promise.allSettled(
       updates.map((u) =>
         supabase

@@ -54,7 +54,6 @@ interface SourceRow {
   position: number;
   label: string;
   url: string;
-  title: string | null;
 }
 
 interface ArticleMatchRow {
@@ -571,7 +570,7 @@ async function fetchSourcesForIds(
 
   const { data } = await supabase
     .from("statement_sources")
-    .select("id, statement_id, position, label, url, title")
+    .select("id, statement_id, position, label, url")
     .in("statement_id", ids)
     .order("position");
 
@@ -579,7 +578,7 @@ async function fetchSourcesForIds(
 
   for (const row of (data ?? []) as SourceRow[]) {
     const list = map.get(row.statement_id) ?? [];
-    list.push({ id: row.id, position: row.position, label: row.label, url: row.url, title: row.title });
+    list.push({ id: row.id, position: row.position, label: row.label, url: row.url });
     map.set(row.statement_id, list);
   }
 
