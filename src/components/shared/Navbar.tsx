@@ -55,7 +55,7 @@ export default function Navbar() {
                 aria-current={activeHomeTab === "search" ? "page" : undefined}
                 className={`relative z-10 rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   activeHomeTab === "search"
-                    ? "text-white"
+                    ? "!text-white visited:!text-white hover:!text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
@@ -71,7 +71,7 @@ export default function Navbar() {
                 aria-current={activeHomeTab === "detect" ? "page" : undefined}
                 className={`relative z-10 rounded-full px-4 py-3 text-center text-sm font-semibold transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   activeHomeTab === "detect"
-                    ? "text-white"
+                    ? "!text-white visited:!text-white hover:!text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
