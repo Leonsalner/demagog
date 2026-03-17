@@ -33,6 +33,7 @@ type StatementSourceRow = {
   position: number;
   label: string;
   url: string;
+  title: string | null;
 };
 
 // RPCs return a projected subset of columns (no embedding, no oblast).

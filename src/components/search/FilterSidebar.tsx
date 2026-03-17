@@ -278,19 +278,17 @@ export default function FilterSidebar({
               }
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-[#e03e1a]/35 hover:text-[#b53015] dark:border-slate-700 dark:text-slate-300 dark:hover:border-[#ff3300]/45 dark:hover:text-[#ff8c71]"
             >
-              Tipy s fotkami
+              Rýchly výber
               <svg
                 aria-hidden="true"
                 viewBox="0 0 20 20"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
-                className={`h-4 w-4 transition-transform duration-200 ${
-                  isPickerOpen ? "rotate-180" : ""
-                }`}
+                className="h-4 w-4"
               >
                 <path
-                  d="m5 8 5 5 5-5"
+                  d="m8 5 5 5-5 5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -298,7 +296,7 @@ export default function FilterSidebar({
             </button>
           }
         >
-          <div className="space-y-3">
+          <div className="relative space-y-3">
             <input
               type="text"
               value={personQuery}

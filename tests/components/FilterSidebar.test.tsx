@@ -71,13 +71,12 @@ describe("FilterSidebar", () => {
       }),
     );
 
-    expect(
-      screen.getByRole("button", { name: /Peter Pellegrini Hlas/i }),
-    ).toBeInTheDocument();
+    const pickerButton = screen.getByRole("button", {
+      name: /Peter Pellegrini Hlas/i,
+    });
+    expect(pickerButton).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: /Peter Pellegrini Hlas/i }),
-    );
+    await user.click(pickerButton);
 
     expect(
       screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0],

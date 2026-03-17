@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import Navbar from "@/components/shared/Navbar";
 import "./globals.css";
 
@@ -23,6 +24,18 @@ export const metadata: Metadata = {
   },
 };
 
+function NavbarFallback() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/90">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="h-14 w-16 rounded-md border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/80 sm:h-16 sm:w-20" />
+        <div className="hidden h-11 w-full max-w-md rounded-full border border-slate-200 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-800/70 lg:block" />
+        <div className="h-9 w-9 rounded-full border border-slate-300/90 bg-white/90 dark:border-slate-700 dark:bg-slate-900/85" />
+      </div>
+    </header>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,8 +47,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}
       >
         <div className="noise-overlay min-h-screen">
-          <Navbar />
-          <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <Suspense fallback={<NavbarFallback />}>
+            <Navbar />
+          </Suspense>
+          <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
             {children}
           </main>
         </div>

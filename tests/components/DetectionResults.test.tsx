@@ -18,7 +18,6 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
           vyrok: "Existujúci výrok",
           vyhodnotenie: "Pravda",
           odovodnenie: "Odôvodnenie.",
-          oblast: "Ekonomika",
           datum: "2026-01-01",
           meno: "Politik",
           strana: "Strana",
@@ -51,4 +50,21 @@ describe("DetectionResults", () => {
       screen.getByText("Krátky článok s doplňujúcim kontextom."),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    ["DUPLICATE_FOUND", "border-red-300/80", "text-red-950", "dark:text-white"],
+    ["RELATED_ONLY", "border-amber-300/80", "text-amber-950", "dark:text-white"],
+    ["NEW_CLAIM", "border-green-300/80", "text-green-950", "dark:text-white"],
+  ] as const)(
+    "styles the add button to match the %s status",
+    (overallStatus, borderClass, textClass, darkTextClass) => {
+      render(<DetectionResults result={buildResult({ overall_status: overallStatus })} />);
+
+      const addButton = screen.getByRole("link", { name: "Pridať výrok" });
+
+      expect(addButton).toHaveClass(borderClass);
+      expect(addButton).toHaveClass(textClass);
+      expect(addButton).toHaveClass(darkTextClass);
+    },
+  );
 });

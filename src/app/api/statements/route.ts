@@ -61,7 +61,7 @@ async function embedAndStoreStatementEmbedding(
   vyrok: string,
 ) {
   try {
-    const embedding = await embedText(vyrok);
+    const embedding = await embedText(vyrok, "index-statement");
     const { error } = await supabaseAdmin()
       .from("vyroky")
       .update({ embedding })

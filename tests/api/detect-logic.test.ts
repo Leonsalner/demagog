@@ -16,7 +16,7 @@ vi.mock("@/lib/gemini", () => ({
   getGeminiModel: vi.fn((kind: string) => `mock-${kind}`),
 }));
 
-const { POST } = await import("@/app/api/detect/route");
+const { POST, resetDetectRouteStateForTests } = await import("@/app/api/detect/route");
 const { supabasePublic, getSupabasePublicConfigError } = await import("@/lib/supabase");
 const { embedText } = await import("@/lib/jina");
 const { classifyMatches, getGeminiModel } = await import("@/lib/gemini");
@@ -101,12 +101,13 @@ function createSupabaseMock(
 describe("POST /api/detect logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetDetectRouteStateForTests();
     vi.mocked(getSupabasePublicConfigError).mockReturnValue(null);
     vi.mocked(embedText).mockResolvedValue([0.4, 0.5, 0.6]);
   });
 
-  it("retrieves 30 candidates for classification but returns only top_k results", async () => {
-    const rows = Array.from({ length: 30 }, (_, index) =>
+  it("retrieves 60 candidates for thorough classification but returns only top_k results", async () => {
+    const rows = Array.from({ length: 60 }, (_, index) =>
       buildRow(index + 1, Number((0.89 - index * 0.01).toFixed(2))),
     );
     const supabase = createSupabaseMock(rows);
@@ -132,7 +133,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_statements",
       expect.objectContaining({
-        match_count: 30,
+        match_count: 60,
       }),
     );
     expect(getGeminiModel).toHaveBeenCalledWith("pro");
@@ -145,18 +146,20 @@ describe("POST /api/detect logic", () => {
     expect(data.overall_status).toBe("RELATED_ONLY");
   });
 
-  it("uses the fast Gemini model when mode is fast", async () => {
-    const rows = [buildRow(1, 0.89)];
+  it("uses the fast Gemini model and a 20-candidate shortlist when mode is fast", async () => {
+    const rows = Array.from({ length: 20 }, (_, index) =>
+      buildRow(index + 1, Number((0.89 - index * 0.01).toFixed(2))),
+    );
     const supabase = createSupabaseMock(rows);
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
-    vi.mocked(classifyMatches).mockResolvedValue([
-      {
-        id: 1,
+    vi.mocked(classifyMatches).mockResolvedValue(
+      rows.map((row) => ({
+        id: row.id,
         classification: "RELATED",
         explanation: "Rychle porovnanie.",
-      },
-    ]);
+      })),
+    );
 
     const response = await POST(
       createRequest({
@@ -169,7 +172,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_statements",
       expect.objectContaining({
-        match_count: 10,
+        match_count: 20,
       }),
     );
     expect(getGeminiModel).toHaveBeenCalledWith("flash");
@@ -204,7 +207,7 @@ describe("POST /api/detect logic", () => {
       ["DUPLICATE", "RELATED", "UNRELATED"],
     );
     expect(data.matches[0].explanation).toBe(
-      "Klasifikácia nedostupná - vysoká zhoda.",
+      "Vysoká sémantická zhoda.",
     );
     expect(data.overall_status).toBe("DUPLICATE_FOUND");
   });
@@ -256,6 +259,85 @@ describe("POST /api/detect logic", () => {
       }),
     );
     expect(data.related_articles).toEqual(articles);
+  });
+
+  it("falls back to lexical candidate matching when the match RPC is unavailable", async () => {
+    const lexicalRows = [
+      buildRow(15, 0.9, {
+        vyrok: "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      }),
+      buildRow(16, 0.4, {
+        vyrok: "Nemocnice riešia personálne problémy v iných odboroch.",
+      }),
+    ];
+    const lexicalQuery = {
+      select: vi.fn().mockReturnThis(),
+      ilike: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({
+        data: lexicalRows.map((row) => {
+          const candidate = { ...row };
+          delete candidate.similarity;
+          return candidate;
+        }),
+        error: null,
+      }),
+    };
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const supabase = {
+      from: vi.fn((table: string) =>
+        table === "statement_sources" ? sourcesQuery : lexicalQuery
+      ),
+      rpc: vi.fn(async (fn: string) => {
+        if (fn === "match_statements") {
+          return {
+            data: null,
+            error: {
+              code: "PGRST202",
+              message: "missing rpc",
+              details: "schema cache mismatch",
+            },
+          };
+        }
+
+        if (fn === "match_articles") {
+          return { data: [], error: null };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      {
+        id: 15,
+        classification: "DUPLICATE",
+        explanation: "Takmer totožná formulácia.",
+      },
+      {
+        id: 16,
+        classification: "UNRELATED",
+        explanation: "Iná téma.",
+      },
+    ]);
+
+    const response = await POST(
+      createRequest({
+        statement: "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+        top_k: 2,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(embedText).not.toHaveBeenCalled();
+    expect(lexicalQuery.ilike).toHaveBeenCalled();
+    expect(data.overall_status).toBe("DUPLICATE_FOUND");
+    expect(data.matches[0].statement.id).toBe(15);
   });
 
   it("rejects zero or negative top_k values", async () => {

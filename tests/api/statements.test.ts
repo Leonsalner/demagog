@@ -134,7 +134,7 @@ describe("POST /api/statements", () => {
       analysis_date: null,
       scraped_at: null,
     });
-    expect(embedText).toHaveBeenCalledWith("Nový výrok o zdravotníctve.");
+    expect(embedText).toHaveBeenCalledWith("Nový výrok o zdravotníctve.", "index-statement");
     expect(supabase.update).toHaveBeenCalledWith({
       embedding: [0.1, 0.2, 0.3],
     });

@@ -357,7 +357,7 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      3,
+      4,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Robert Fico",
@@ -366,7 +366,7 @@ describe("POST /api/search logic", () => {
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
-      5,
+      6,
       "search_statements",
       expect.objectContaining({
         filter_meno: "Peter Pellegrini",
@@ -526,7 +526,7 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(understandQuery).toHaveBeenCalled();
-    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina", "search");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
@@ -572,7 +572,7 @@ describe("POST /api/search logic", () => {
 
     expect(response.status).toBe(200);
     expect(understandQuery).toHaveBeenCalled();
-    expect(embedText).toHaveBeenCalledWith("vojna ukrajina");
+    expect(embedText).toHaveBeenCalledWith("vojna ukrajina", "search");
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
@@ -736,5 +736,84 @@ describe("POST /api/search logic", () => {
     );
 
     errorSpy.mockRestore();
+  });
+
+  it("falls back to lexical search when the semantic RPC is unavailable", async () => {
+    const lexicalRows = [
+      buildRow(1, {
+        vyrok: "Vlada schvalila dalsi konsolidacny balicek pre verejne financie.",
+        strana: "Hlas",
+      }),
+      buildRow(2, {
+        vyrok: "Tema skolstva bez suvisu s konsolidaciou.",
+        strana: "SaS",
+      }),
+    ];
+    const lexicalQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      ilike: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({
+        data: lexicalRows,
+        error: null,
+      }),
+    };
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const supabase = {
+      from: vi.fn((table: string) =>
+        table === "statement_sources" ? sourcesQuery : lexicalQuery
+      ),
+      rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+        if (fn === "list_distinct_values") {
+          if (args.col === "meno") {
+            return { data: [{ value: "Robert Fico" }], error: null };
+          }
+
+          return { data: [{ value: "Hlas" }], error: null };
+        }
+
+        if (fn === "search_statements") {
+          return {
+            data: null,
+            error: {
+              code: "PGRST202",
+              message: "missing rpc",
+              details: "schema cache mismatch",
+            },
+          };
+        }
+
+        if (fn === "count_statements") {
+          return { data: 0, error: null };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        query: "konsolidačný balíček",
+        page: 1,
+        page_size: 10,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(embedText).not.toHaveBeenCalled();
+    expect(lexicalQuery.ilike).toHaveBeenCalled();
+    expect(data.results).toHaveLength(2);
+    expect(data.results[0].id).toBe(1);
+    expect(data.results[0].similarity).toBeGreaterThan(data.results[1].similarity);
   });
 });

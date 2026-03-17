@@ -8,6 +8,7 @@ export interface StatementSource {
   position: number;
   label: string;
   url: string;
+  title?: string | null;
 }
 
 export interface Statement {
@@ -110,7 +111,6 @@ export interface FiltersResponse {
 
 export interface StatementCardProps {
   statement: Statement;
-  highlight_query?: string;
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
   explanation?: string;
