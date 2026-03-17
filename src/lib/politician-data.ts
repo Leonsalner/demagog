@@ -36,6 +36,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/1721116438621_20240716_BLAHA_Lubos_SK_005.jpg/330px-1721116438621_20240716_BLAHA_Lubos_SK_005.jpg",
       },
+      {
+        meno: "Juraj Blanár",
+        strana: "Smer",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Juraj_Blan%C3%A1r_%282023%29.jpg/330px-Juraj_Blan%C3%A1r_%282023%29.jpg",
+      },
     ],
   },
   {
@@ -58,6 +64,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         strana: "Hlas",
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Denisa_Sakov%C3%A1_at_the_European_Commission_-_P062694-503037.jpg/330px-Denisa_Sakov%C3%A1_at_the_European_Commission_-_P062694-503037.jpg",
+      },
+      {
+        meno: "Erik Tomáš",
+        strana: "Hlas",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Erik_Tom%C3%A1%C5%A1_%282024%29.jpg/330px-Erik_Tom%C3%A1%C5%A1_%282024%29.jpg",
       },
     ],
   },
@@ -82,6 +94,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Tom%C3%A1%C5%A1_Val%C3%A1%C5%A1ek_%282017%29.jpg/330px-Tom%C3%A1%C5%A1_Val%C3%A1%C5%A1ek_%282017%29.jpg",
       },
+      {
+        meno: "Irena Bihariová",
+        strana: "PS",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Irena_Biharlov%C3%A1_%282023%29.jpg/330px-Irena_Biharlov%C3%A1_%282023%29.jpg",
+      },
     ],
   },
   {
@@ -104,6 +122,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         strana: "SaS",
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/M%C3%A1ria_Kol%C3%ADkov%C3%A1_%282025-10-16%29.jpg/330px-M%C3%A1ria_Kol%C3%ADkov%C3%A1_%282025-10-16%29.jpg",
+      },
+      {
+        meno: "Jana Bittó Cigániková",
+        strana: "SaS",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Jana_Bitt%C3%B3_Cig%C3%A1nikov%C3%A1_%282020%29.jpg/330px-Jana_Bitt%C3%B3_Cig%C3%A1nikov%C3%A1_%282020%29.jpg",
       },
     ],
   },
@@ -128,6 +152,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Viliam_Karas%2C_June_2025.png/330px-Viliam_Karas%2C_June_2025.png",
       },
+      {
+        meno: "Igor Janckulík",
+        strana: "KDH",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Igor_Jancul%C3%ADk_%282023%29.jpg/330px-Igor_Jancul%C3%ADk_%282023%29.jpg",
+      },
     ],
   },
   {
@@ -150,6 +180,12 @@ export const PARTY_GROUPS: PartyGroup[] = [
         strana: "OĽaNO",
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Jozef_Pro%C4%8Dko_2015.jpg/330px-Jozef_Pro%C4%8Dko_2015.jpg",
+      },
+      {
+        meno: "Eduard Heger",
+        strana: "OĽaNO",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Eduard_Heger_in_2022.jpg/330px-Eduard_Heger_in_2022.jpg",
       },
     ],
   },

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import type { PartyGroup } from "@/lib/politician-data";
 
@@ -23,12 +24,32 @@ export default function PoliticianPickerPanel({
   selected,
   onToggle,
 }: PoliticianPickerPanelProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => setMounted(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!mounted) return null;
 
   return (
     <div
       id="politician-picker-panel"
-      className="absolute left-full top-0 z-50 ml-3 w-[420px] max-h-[600px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700/70 dark:bg-slate-900"
+      className={`absolute left-full top-0 z-50 ml-3 w-[420px] max-h-[600px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700/70 dark:bg-slate-900 transition-all duration-200 ease-out origin-left ${
+        visible
+          ? "scale-100 opacity-100 translate-x-0"
+          : "scale-95 opacity-0 -translate-x-2"
+      }`}
     >
       <div className="grid gap-5 pr-1">
         {partyGroups.map((group) => (
