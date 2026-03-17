@@ -4,6 +4,16 @@ import { Suspense } from "react";
 import Navbar from "@/components/shared/Navbar";
 import "./globals.css";
 
+const themeInitScript = `
+  (() => {
+    const storedTheme = window.localStorage.getItem("demagog-theme");
+    const theme = storedTheme === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.classList.toggle("dark", theme === "dark");
+  })();
+`;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -42,7 +52,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="sk" suppressHydrationWarning>
+    <html lang="sk" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}
       >
