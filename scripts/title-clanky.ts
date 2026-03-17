@@ -15,23 +15,38 @@ type ClankyRow = {
 
 const BATCH_SIZE = 10;
 const RETRY_DELAYS_MS = [2_000, 5_000] as const;
+const MAX_TITLE_CHARS = 78;
+const TITLE_MODEL_OPTIONS = new Set(["flash", "lite"]);
+
+type TitleModelKind = "flash" | "lite";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function parseArgs(): { dryRun: boolean; force: boolean; fromId: number } {
+function parseArgs(): {
+  dryRun: boolean;
+  force: boolean;
+  fromId: number;
+  model: TitleModelKind;
+} {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const force = args.includes("--force");
   const fromIdArg = args.find((arg) => arg.startsWith("--from-id="));
+  const modelArg = args.find((arg) => arg.startsWith("--model="));
   const fromId = fromIdArg ? Number.parseInt(fromIdArg.split("=")[1] ?? "", 10) : 0;
+  const modelValue = modelArg?.split("=")[1]?.trim().toLocaleLowerCase() ?? "lite";
 
   if (fromIdArg && (!Number.isInteger(fromId) || fromId < 0)) {
     throw new Error(`Invalid --from-id value: ${fromIdArg}`);
   }
 
-  return { dryRun, force, fromId };
+  if (!TITLE_MODEL_OPTIONS.has(modelValue)) {
+    throw new Error(`Invalid --model value: ${modelArg}. Use --model=lite or --model=flash.`);
+  }
+
+  return { dryRun, force, fromId, model: modelValue as TitleModelKind };
 }
 
 async function countPending(force: boolean, fromId: number): Promise<number> {
@@ -89,8 +104,25 @@ async function fetchPendingBatch(
   return (data ?? []) as ClankyRow[];
 }
 
-async function generateTitle(text: string): Promise<string> {
-  const model = getGeminiModel("lite");
+function sanitizeTitle(rawTitle: string): string {
+  const cleaned = rawTitle
+    .replace(/\s+/g, " ")
+    .replace(/^["'„“]+|["'“”.,:;!?]+$/g, "")
+    .trim();
+
+  if (!cleaned) {
+    return "";
+  }
+
+  if (cleaned.length <= MAX_TITLE_CHARS) {
+    return cleaned;
+  }
+
+  return `${cleaned.slice(0, MAX_TITLE_CHARS - 1).trim()}…`;
+}
+
+async function generateTitle(text: string, modelKind: TitleModelKind): Promise<string> {
+  const model = getGeminiModel(modelKind);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -106,8 +138,9 @@ async function generateTitle(text: string): Promise<string> {
               text: [
                 "Vytváraš krátke navigačné názvy pre fact-check články v slovenčine.",
                 "Vráť iba samotný názov bez úvodzoviek, bodky alebo komentára.",
-                "Názov nesmie byť zhrnutie, má len pomôcť orientácii v bočnom paneli.",
-                "Maximálne 60 znakov.",
+                "Názov nesmie byť zhrnutie, má len pomôcť orientácii v bočnom paneli a v hlavičke článku.",
+                "Buď konkrétny, stručný a opisný.",
+                "Najviac 77 znakov.",
               ].join(" "),
             },
           ],
@@ -148,16 +181,19 @@ async function generateTitle(text: string): Promise<string> {
     throw new Error("Gemini title request returned no content");
   }
 
-  return title.replace(/^["'„]+|["'“”]+$/g, "").slice(0, 60).trim();
+  return sanitizeTitle(title);
 }
 
-async function generateTitleWithRetry(text: string): Promise<string> {
+async function generateTitleWithRetry(text: string, modelKind: TitleModelKind): Promise<string> {
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
-      return await generateTitle(text);
+      const title = await generateTitle(text, modelKind);
+      if (title) {
+        return title;
+      }
     } catch (error) {
       if (attempt >= RETRY_DELAYS_MS.length) {
-        return extractPseudoTitle(text);
+        return sanitizeTitle(extractPseudoTitle(text));
       }
 
       const delayMs = RETRY_DELAYS_MS[attempt];
@@ -168,7 +204,7 @@ async function generateTitleWithRetry(text: string): Promise<string> {
     }
   }
 
-  return extractPseudoTitle(text);
+  return sanitizeTitle(extractPseudoTitle(text));
 }
 
 async function updateTitle(id: number, title: string): Promise<void> {
@@ -181,15 +217,15 @@ async function updateTitle(id: number, title: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const { dryRun, force, fromId } = parseArgs();
+  const { dryRun, force, fromId, model } = parseArgs();
 
   if (!process.env.GEMINI_API_KEY?.trim()) {
-    throw new Error("Missing GEMINI_API_KEY");
+    throw new Error("Missing GEMINI_API_KEY. Set it in .env.local or the shell environment.");
   }
 
   const total = await countPending(force, fromId);
   console.log(
-    `Preparing titles for ${total} clanky row(s)${dryRun ? " (dry run)" : ""}${force ? " with --force" : ""}.`,
+    `Preparing titles for ${total} clanky row(s) with Gemini ${model}${dryRun ? " (dry run)" : ""}${force ? " with --force" : ""}.`,
   );
 
   let processed = 0;
@@ -204,7 +240,7 @@ async function main(): Promise<void> {
     const results = await Promise.all(
       rows.map(async (row) => ({
         id: row.id,
-        title: await generateTitleWithRetry(row.text_content),
+        title: await generateTitleWithRetry(row.text_content, model),
       })),
     );
 
