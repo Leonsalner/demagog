@@ -111,7 +111,6 @@ export interface FiltersResponse {
 
 export interface StatementCardProps {
   statement: Statement;
-  highlight_query?: string;
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
   explanation?: string;

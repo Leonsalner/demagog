@@ -58,7 +58,6 @@ function RelatedResultsSection({
             >
               <StatementCard
                 statement={statement}
-                highlight_query={query || undefined}
                 show_similarity={Boolean(query)}
               />
             </div>
@@ -249,7 +248,6 @@ export default function SearchResults({
           <StatementCard
             key={statement.id}
             statement={statement}
-            highlight_query={query || undefined}
             show_similarity={Boolean(query)}
           />
         ))}

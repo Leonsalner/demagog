@@ -100,16 +100,4 @@ describe("StatementCard", () => {
       screen.getByText(/Rovnaký nárok o konsolidácii\./i),
     ).toBeInTheDocument();
   });
-
-  it("highlights query terms in the statement text", () => {
-    render(
-      <StatementCard
-        statement={fullStatement}
-        highlight_query="konsolidácie"
-      />,
-    );
-
-    const highlighted = screen.getByText("konsolidácie");
-    expect(highlighted.tagName).toBe("MARK");
-  });
 });

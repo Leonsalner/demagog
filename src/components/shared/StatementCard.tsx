@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { StatementCardProps, StatementSource } from "@/types";
 
@@ -137,10 +137,6 @@ const classificationLabels = {
   },
 } as const;
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function formatDate(date: string | null) {
   if (!date) {
     return null;
@@ -173,44 +169,11 @@ function similarityTone(similarity: number) {
 
 export default function StatementCard({
   statement,
-  highlight_query,
   show_similarity = false,
   classification,
   explanation,
 }: StatementCardProps) {
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
-
-  const highlightedStatement = useMemo(() => {
-    const queryWords = (highlight_query ?? "")
-      .split(/\s+/)
-      .map((word) => word.trim())
-      .filter((word) => word.length >= 2);
-
-    if (queryWords.length === 0) {
-      return statement.vyrok;
-    }
-
-    const uniqueWords = Array.from(new Set(queryWords));
-    const matcher = new RegExp(`(${uniqueWords.map(escapeRegExp).join("|")})`, "gi");
-    const parts = statement.vyrok.split(matcher);
-
-    return parts.map((part, index) => {
-      const matched = uniqueWords.some((word) => part.toLowerCase() === word.toLowerCase());
-
-      if (!matched) {
-        return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
-      }
-
-      return (
-        <mark
-          key={`${part}-${index}`}
-          className="rounded bg-yellow-200 px-1 text-slate-900 dark:bg-yellow-500/20 dark:text-yellow-200"
-        >
-          {part}
-        </mark>
-      );
-    });
-  }, [highlight_query, statement.vyrok]);
 
   const speakerName = (
     <span key="meno" className="font-semibold text-slate-700 dark:text-slate-300">
@@ -267,7 +230,7 @@ export default function StatementCard({
         </div>
       )}
 
-      <p className="text-base leading-7 text-slate-900 dark:text-slate-100 sm:text-lg">{highlightedStatement}</p>
+      <p className="text-base leading-7 text-slate-900 dark:text-slate-100 sm:text-lg">{statement.vyrok}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
         <VerdictBadge verdict={statement.vyhodnotenie} size="sm" />

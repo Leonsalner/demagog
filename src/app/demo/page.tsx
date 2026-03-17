@@ -239,7 +239,6 @@ export default function DemoPage() {
                   <StatementCard
                     key={statement.id}
                     statement={statement}
-                    highlight_query={state.displayedQuery}
                     show_similarity={true}
                   />
                 ))}
