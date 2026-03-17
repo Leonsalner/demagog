@@ -31,8 +31,7 @@ CREATE TABLE IF NOT EXISTS clanky (
   datum TIMESTAMPTZ,
   autor TEXT,
   text_content TEXT,
-  -- clanky embeddings remain at 1024d (unchanged in Wave 2).
-  embedding vector(1024)
+  embedding vector(2048)
 );
 
 CREATE TABLE IF NOT EXISTS statement_sources (
@@ -229,7 +228,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION match_articles(
-  query_embedding vector(1024),
+  query_embedding vector(2048),
   match_count int DEFAULT 3
 ) RETURNS TABLE (
   id int,
