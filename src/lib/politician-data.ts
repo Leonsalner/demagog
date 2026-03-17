@@ -40,7 +40,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Juraj Blanár",
         strana: "Smer",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Juraj_Blan%C3%A1r_%282023%29.jpg/330px-Juraj_Blan%C3%A1r_%282023%29.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Minister_zahrani%C4%8Dn%C3%BDch_vec%C3%AD_Juraj_Blan%C3%A1r.jpg/330px-Minister_zahrani%C4%8Dn%C3%BDch_vec%C3%AD_Juraj_Blan%C3%A1r.jpg",
       },
     ],
   },
@@ -69,7 +69,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Erik Tomáš",
         strana: "Hlas",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Erik_Tom%C3%A1%C5%A1_%282024%29.jpg/330px-Erik_Tom%C3%A1%C5%A1_%282024%29.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Erik_Tom%C3%A1%C5%A1_%282025-11-26%29_2.jpg/330px-Erik_Tom%C3%A1%C5%A1_%282025-11-26%29_2.jpg",
       },
     ],
   },
@@ -98,7 +98,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Irena Bihariová",
         strana: "PS",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Irena_Biharlov%C3%A1_%282023%29.jpg/330px-Irena_Biharlov%C3%A1_%282023%29.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Irena_Bihariov%C3%A1.jpg/330px-Irena_Bihariov%C3%A1.jpg",
       },
     ],
   },
@@ -127,7 +127,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Jana Bittó Cigániková",
         strana: "SaS",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Jana_Bitt%C3%B3_Cig%C3%A1nikov%C3%A1_%282020%29.jpg/330px-Jana_Bitt%C3%B3_Cig%C3%A1nikov%C3%A1_%282020%29.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/0/06/Jana_Bitt%C3%B3_Cig%C3%A1nikov%C3%A1_%28Nov%C3%AD_poslanci_a_%C5%BEupan_zlo%C5%BEili_svoj_s%C4%BEub%2C_38119506474%29.jpg",
       },
     ],
   },
@@ -155,8 +155,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
       {
         meno: "Igor Janckulík",
         strana: "KDH",
-        photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Igor_Jancul%C3%ADk_%282023%29.jpg/330px-Igor_Jancul%C3%ADk_%282023%29.jpg",
+        photoUrl: "",
       },
     ],
   },
@@ -185,7 +184,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Eduard Heger",
         strana: "OĽaNO",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Eduard_Heger_in_2022.jpg/330px-Eduard_Heger_in_2022.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Eduard_Heger_in_Finland%2C_2022_%28cropped%29.jpg/330px-Eduard_Heger_in_Finland%2C_2022_%28cropped%29.jpg",
       },
     ],
   },

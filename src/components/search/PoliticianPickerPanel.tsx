@@ -26,6 +26,7 @@ export default function PoliticianPickerPanel({
 }: PoliticianPickerPanelProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -64,6 +65,8 @@ export default function PoliticianPickerPanel({
             <div className="grid grid-cols-4 gap-3">
               {group.politicians.map((politician) => {
                 const isSelected = selected.includes(politician.meno);
+                const showFallback =
+                  !politician.photoUrl || failedImages[politician.meno];
 
                 return (
                   <button
@@ -78,14 +81,31 @@ export default function PoliticianPickerPanel({
                         : "border-slate-200 bg-white hover:border-[#e03e1a]/35 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900 dark:hover:border-[#e03e1a]/45"
                     }`}
                   >
-                    <Image
-                      src={politician.photoUrl}
-                      alt=""
-                      width={64}
-                      height={64}
-                      unoptimized
-                      className="h-16 w-16 rounded-full object-cover"
-                    />
+                    {showFallback ? (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                        {politician.meno
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join("")
+                          .toUpperCase()}
+                      </div>
+                    ) : (
+                      <Image
+                        src={politician.photoUrl}
+                        alt=""
+                        width={64}
+                        height={64}
+                        unoptimized
+                        onError={() =>
+                          setFailedImages((current) => ({
+                            ...current,
+                            [politician.meno]: true,
+                          }))
+                        }
+                        className="h-16 w-16 rounded-full object-cover"
+                      />
+                    )}
                     <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
                       {shortName(politician.meno)}
                     </span>
