@@ -103,26 +103,31 @@ function TextStage() {
       </div>
 
       <div className="rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {[
             {
               label: "1",
-              title: "Napíšte otázku alebo vložte výrok",
+              title: "Začnite prirodzenou otázkou alebo témou.",
             },
             {
               label: "2",
-              title: "Sledujte filtre, zhody a výsledky",
+              title: "Sledujte filtre, zhody a relevantné výsledky.",
             },
             {
               label: "3",
-              title: "Keď treba, pokračujte cez Preskúmať alebo Pridať nový výrok",
+              title: "Pokračujte cez Preskúmať alebo Pridať nový výrok.",
             },
           ].map((item) => (
-            <div key={item.label} className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <div
+              key={item.label}
+              className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/60"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">
                 {item.label}
               </div>
-              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item.title}</p>
+              <p className="pt-0.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {item.title}
+              </p>
             </div>
           ))}
         </div>
