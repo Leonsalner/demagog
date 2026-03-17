@@ -25,9 +25,11 @@ export default function ResearchWorkspace({
   onRetry,
 }: ResearchWorkspaceProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const resolvedSelectedId =
+    data?.items.some((item) => item.id === selectedId) ? selectedId : data?.items[0]?.id ?? null;
   const selectedItem = useMemo(
-    () => data?.items.find((item) => item.id === selectedId) ?? data?.items[0] ?? null,
-    [data, selectedId],
+    () => data?.items.find((item) => item.id === resolvedSelectedId) ?? null,
+    [data, resolvedSelectedId],
   );
 
   useEffect(() => {
@@ -57,10 +59,6 @@ export default function ResearchWorkspace({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  useEffect(() => {
-    setSelectedId(data?.items[0]?.id ?? null);
-  }, [data]);
 
   if (!isOpen) {
     return null;
@@ -102,7 +100,7 @@ export default function ResearchWorkspace({
           <div className="min-h-[180px] lg:min-h-0">
             <ResearchSidebar
               items={data?.items ?? []}
-              selectedId={selectedItem?.id ?? null}
+              selectedId={resolvedSelectedId}
               onSelect={setSelectedId}
             />
           </div>

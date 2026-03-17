@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
+import HomeOnboarding from "@/components/home/HomeOnboarding";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
 import FilterSidebar from "@/components/search/FilterSidebar";
@@ -267,6 +268,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
           void retryResearch();
         }}
       />
+      <HomeOnboarding />
     </div>
   );
 }
