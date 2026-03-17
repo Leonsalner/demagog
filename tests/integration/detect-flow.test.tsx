@@ -88,6 +88,7 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
 
   vi.mocked(useDetect).mockReturnValue({
     result: null,
+    resultMode: null,
     loading: false,
     error: null,
     detect,

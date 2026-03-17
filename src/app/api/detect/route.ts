@@ -37,6 +37,7 @@ interface ArticleMatchRow {
   datum: string | null;
   autor: string | null;
   text_content: string | null;
+  title: string | null;
   similarity: number;
 }
 
@@ -87,6 +88,7 @@ function toArticle(row: ArticleMatchRow): Article {
     datum: row.datum ?? "",
     autor: row.autor ?? "Demagog.sk",
     text: row.text_content?.trim() ?? "",
+    title: row.title ?? null,
   };
 }
 

@@ -220,6 +220,7 @@ describe("POST /api/detect logic", () => {
         autor: "Demagog.sk",
         datum: "2026-02-14T12:00:00.000Z",
         text: "Článok o rovnakom tvrdení a jeho kontexte.",
+        title: null,
       },
     ];
     const supabase = createSupabaseMock(

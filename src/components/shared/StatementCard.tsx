@@ -2,18 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
+import { extractDomain, formatSlovakDate } from "@/lib/utils";
 import { StatementCardProps, StatementSource } from "@/types";
 
 import VerdictBadge from "./VerdictBadge";
-
-function extractDomain(url: string): string {
-  try {
-    const hostname = new URL(url).hostname.replace(/^www\./, "");
-    return hostname;
-  } catch {
-    return url;
-  }
-}
 
 function SourcesList({ sources, className }: { sources: StatementSource[]; className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -137,26 +129,6 @@ const classificationLabels = {
   },
 } as const;
 
-function formatDate(date: string | null) {
-  if (!date) {
-    return null;
-  }
-
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-
-  if (!match) {
-    return null;
-  }
-
-  const [, year, month, day] = match;
-
-  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("sk-SK", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 function similarityTone(similarity: number) {
   if (similarity > 0.8) {
     return "bg-green-500";
@@ -172,6 +144,7 @@ export default function StatementCard({
   show_similarity = false,
   classification,
   explanation,
+  onOpenResearch,
 }: StatementCardProps) {
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
 
@@ -197,7 +170,7 @@ export default function StatementCard({
     <span key="strana">{statement.strana}</span>,
   ].filter(Boolean);
 
-  const formattedDate = formatDate(statement.datum);
+  const formattedDate = formatSlovakDate(statement.datum);
   const similarity = statement.similarity;
 
   return (
@@ -265,7 +238,20 @@ export default function StatementCard({
         ) : null}
       </div>
 
-      {(statement.odovodnenie?.trim() || (statement.sources && statement.sources.length > 0)) ? (
+      {onOpenResearch ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => onOpenResearch(statement.id)}
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)]"
+          >
+            Preskúmať
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path d="M9.72 2.22a.75.75 0 1 0-1.06 1.06l2.97 2.97H3.75a.75.75 0 0 0 0 1.5h7.88L8.66 10.72a.75.75 0 1 0 1.06 1.06l4.25-4.25a.75.75 0 0 0 0-1.06L9.72 2.22Z" />
+            </svg>
+          </button>
+        </div>
+      ) : (statement.odovodnenie?.trim() || (statement.sources && statement.sources.length > 0)) ? (
         <div className="mt-4">
           <button
             type="button"

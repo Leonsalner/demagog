@@ -100,4 +100,20 @@ describe("StatementCard", () => {
       screen.getByText(/Rovnaký nárok o konsolidácii\./i),
     ).toBeInTheDocument();
   });
+
+  it("renders the research trigger when onOpenResearch is provided", () => {
+    const onOpenResearch = vi.fn();
+
+    render(
+      <StatementCard
+        statement={fullStatement}
+        onOpenResearch={onOpenResearch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /preskúmať/i }));
+
+    expect(onOpenResearch).toHaveBeenCalledWith(fullStatement.id);
+    expect(screen.queryByRole("button", { name: /odôvodnenie/i })).toBeNull();
+  });
 });

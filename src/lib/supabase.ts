@@ -25,6 +25,7 @@ type ArticleRow = {
   autor: string | null;
   text_content: string;
   embedding: number[] | null;
+  title: string | null;
 };
 
 type StatementSourceRow = {
@@ -61,6 +62,7 @@ type MatchArticleRow = {
   datum: string | null;
   autor: string | null;
   text_content: string | null;
+  title: string | null;
   similarity: number;
 };
 

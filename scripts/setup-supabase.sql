@@ -238,6 +238,7 @@ CREATE OR REPLACE FUNCTION match_articles(
   datum timestamptz,
   autor text,
   text_content text,
+  title text,
   similarity float
 ) LANGUAGE plpgsql AS $$
 BEGIN
@@ -247,6 +248,7 @@ BEGIN
     c.datum,
     c.autor,
     c.text_content,
+    c.title,
     (1 - (c.embedding <=> query_embedding))::float AS similarity
   FROM clanky c
   WHERE c.embedding IS NOT NULL

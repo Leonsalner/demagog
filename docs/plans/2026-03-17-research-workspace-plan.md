@@ -4,6 +4,15 @@ This document captures the agreed direction for replacing the current inline res
 
 The database migration that adds `clanky.title` has already been applied and is intentionally not repeated here.
 
+## Implementation Status
+
+Status as of 2026-03-17:
+
+- Completed: shared `ResearchWorkspace` overlay, statement-scoped research API, aggregate detect research API, `useResearch` hook, search integration, detect fast/thorough integration, `clanky.title` plumbing, and the `scripts/title-clanky.ts` backfill script.
+- Verified: `npm run typecheck:all` and `npm test` pass after the rollout.
+- Remaining operational follow-up: deploy the updated `match_articles` RPC from `scripts/setup-supabase.sql` before relying on Supabase to return `clanky.title` in runtime article matches.
+- Known limitation: the title backfill script was added but not executed in this workspace, so existing `clanky` rows still depend on UI fallback titles until the script is run.
+
 ## Summary
 
 Replace the current expandable research UI with a near-full-screen `ResearchWorkspace` overlay. In search and detect quick mode, the workspace opens for a single selected statement and shows:

@@ -138,4 +138,23 @@ describe("SearchResults", () => {
       screen.getByText(/Zobrazené sú len najrelevantnejšie výsledky\./i),
     ).toBeInTheDocument();
   });
+
+  it("passes the research trigger through to result cards", () => {
+    const onOpenResearch = vi.fn();
+
+    render(
+      <SearchResults
+        results={buildResults()}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+        onOpenResearch={onOpenResearch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /preskúmať/i }));
+
+    expect(onOpenResearch).toHaveBeenCalledWith(1);
+  });
 });

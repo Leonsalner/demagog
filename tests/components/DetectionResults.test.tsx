@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import DetectionResults from "@/components/detect/DetectionResults";
 import type { DetectResponse } from "@/types";
@@ -29,26 +29,37 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
 }
 
 describe("DetectionResults", () => {
-  it("renders related articles when the detect response includes them", () => {
+  it("shows the aggregate research trigger in thorough mode", () => {
+    const onOpenAggregateResearch = vi.fn();
+
     render(
       <DetectionResults
         result={buildResult({
-          related_articles: [
-            {
-              id: 11,
-              autor: "Demagog.sk",
-              datum: "2026-02-01T12:00:00.000Z",
-              text: "Krátky článok s doplňujúcim kontextom.",
-            },
-          ],
         })}
+        resultMode="thorough"
+        onOpenAggregateResearch={onOpenAggregateResearch}
       />,
     );
 
-    expect(screen.getByText("Súvisiace články (1)")).toBeInTheDocument();
-    expect(
-      screen.getByText("Krátky článok s doplňujúcim kontextom."),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /otvoriť prieskum/i }));
+
+    expect(onOpenAggregateResearch).toHaveBeenCalledWith([1]);
+  });
+
+  it("passes the per-statement research trigger in fast mode", () => {
+    const onOpenStatementResearch = vi.fn();
+
+    render(
+      <DetectionResults
+        result={buildResult()}
+        resultMode="fast"
+        onOpenStatementResearch={onOpenStatementResearch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /preskúmať/i }));
+
+    expect(onOpenStatementResearch).toHaveBeenCalledWith(1);
   });
 
   it.each([

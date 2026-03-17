@@ -30,6 +30,35 @@ export interface Article {
   datum: string;
   autor: string;
   text: string;
+  title?: string | null;
+}
+
+export type ResearchWorkspaceMode = "statement" | "aggregate";
+export type ResearchItemKind = "analysis" | "clanky_article" | "external_source";
+
+export interface ResearchStatementRef {
+  statement_id: number;
+  vyrok: string;
+  meno: string;
+  strana: string;
+}
+
+export interface ResearchItem {
+  id: string;
+  kind: ResearchItemKind;
+  title: string;
+  body: string | null;
+  url: string | null;
+  domain: string | null;
+  author: string | null;
+  date: string | null;
+  statement_refs: ResearchStatementRef[];
+  verdict?: Verdict | null;
+}
+
+export interface ResearchWorkspaceResponse {
+  mode: ResearchWorkspaceMode;
+  items: ResearchItem[];
 }
 
 // ============== API REQUEST TYPES ==============
@@ -116,6 +145,7 @@ export interface StatementCardProps {
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
   explanation?: string;
+  onOpenResearch?: (statementId: number) => void;
 }
 
 export interface FilterState {

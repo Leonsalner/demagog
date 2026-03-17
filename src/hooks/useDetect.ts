@@ -114,6 +114,7 @@ function createMockResponse(input: string, topK: number): DetectResponse {
 
 export function useDetect() {
   const [result, setResult] = useState<DetectResponse | null>(null);
+  const [resultMode, setResultMode] = useState<DetectMode | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,6 +122,7 @@ export function useDetect() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setResultMode(mode);
 
     try {
       if (USE_MOCK) {
@@ -143,6 +145,7 @@ export function useDetect() {
       setResult(data);
     } catch (error) {
       setResult(null);
+      setResultMode(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
       setLoading(false);
@@ -151,8 +154,9 @@ export function useDetect() {
 
   const reset = useCallback(() => {
     setResult(null);
+    setResultMode(null);
     setError(null);
   }, []);
 
-  return { result, loading, error, detect, reset };
+  return { result, resultMode, loading, error, detect, reset };
 }

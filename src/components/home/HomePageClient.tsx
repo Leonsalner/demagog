@@ -2,12 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
+import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
 import FilterSidebar from "@/components/search/FilterSidebar";
 import SearchBar from "@/components/search/SearchBar";
 import SearchResults from "@/components/search/SearchResults";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useDetect } from "@/hooks/useDetect";
+import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 
 export type HomeTab = "search" | "detect";
@@ -36,11 +38,22 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   } = useSearch();
   const {
     result: detectResult,
+    resultMode,
     loading: detectLoading,
     error: detectError,
     detect,
     reset: resetDetect,
   } = useDetect();
+  const {
+    data: researchData,
+    loading: researchLoading,
+    error: researchError,
+    isOpen: isResearchOpen,
+    openStatementResearch,
+    openAggregateResearch,
+    retry: retryResearch,
+    close: closeResearch,
+  } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
 
@@ -167,10 +180,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   <SearchResults
                     results={results}
                     relatedResults={results.related_results}
-                    relatedArticles={results.related_articles}
                     queryUnderstanding={results.query_understanding}
                     query={query}
                     onPageChange={handlePageChange}
+                    onOpenResearch={(statementId) => {
+                      void openStatementResearch(statementId);
+                    }}
                   />
                 ) : null}
               </div>
@@ -226,12 +241,32 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               ) : null}
 
               {!detectLoading && detectResult ? (
-                <DetectionResults result={detectResult} />
+                <DetectionResults
+                  result={detectResult}
+                  resultMode={resultMode}
+                  onOpenStatementResearch={(statementId) => {
+                    void openStatementResearch(statementId);
+                  }}
+                  onOpenAggregateResearch={(statementIds) => {
+                    void openAggregateResearch(statementIds);
+                  }}
+                />
               ) : null}
             </div>
           </div>
         </section>
       </div>
+
+      <ResearchWorkspace
+        isOpen={isResearchOpen}
+        data={researchData}
+        loading={researchLoading}
+        error={researchError}
+        onClose={closeResearch}
+        onRetry={() => {
+          void retryResearch();
+        }}
+      />
     </div>
   );
 }
