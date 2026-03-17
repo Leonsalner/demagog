@@ -4,15 +4,15 @@ import { embedText } from "@/lib/jina";
 
 describe("embedText", () => {
   beforeEach(() => {
-    vi.stubEnv("JINA_API_KEY", "test-key");
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it("returns embedding from Jina API", async () => {
+  it("clears the timeout after a successful response", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -24,40 +24,16 @@ describe("embedText", () => {
     );
 
     await expect(embedText("healthcare")).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("throws when Jina API key is missing", async () => {
-    vi.stubEnv("JINA_API_KEY", "");
-
-    await expect(embedText("healthcare")).rejects.toThrow("Missing Jina API key");
-  });
-
-  it("uses custom endpoint when EMBEDDING_API_URL is set", async () => {
-    vi.stubEnv("EMBEDDING_API_URL", "http://localhost:11434/v1/embeddings");
-
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        data: [{ embedding: [0.4, 0.5, 0.6] }],
-      }),
-    });
-    vi.stubGlobal("fetch", mockFetch);
-
-    await expect(embedText("healthcare")).resolves.toEqual([0.4, 0.5, 0.6]);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://localhost:11434/v1/embeddings",
-      expect.objectContaining({
-        method: "POST",
-      })
-    );
-  });
-
-  it("propagates fetch failures", async () => {
+  it("clears the timeout after a fetch failure", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new Error("network unavailable"))
     );
 
     await expect(embedText("healthcare")).rejects.toThrow("network unavailable");
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -54,15 +54,14 @@ type RpcError = {
   message: string;
 };
 
-const DEFAULT_EMBEDDING_URL = "https://api.jina.ai/v1/embeddings";
-const DEFAULT_EMBEDDING_MODEL = "jina-embeddings-v5-text-small";
-const STATEMENT_EMBEDDING_DIMENSIONS = 1024;
-const BATCH_SIZE = 100;
+const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
+const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
+const STATEMENT_EMBEDDING_DIMENSIONS = 4096;
+const BATCH_SIZE = 32; // Smaller batches suit a local Ollama/GPU inference loop.
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
-const BATCH_DELAY_MS = 200;
 const INDEX_SQL =
   "CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);";
-const EMBEDDING_MIGRATION_REMINDER = `Ensure the DB column matches ${STATEMENT_EMBEDDING_DIMENSIONS}d:
+const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
 ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(${STATEMENT_EMBEDDING_DIMENSIONS}) USING NULL::vector(${STATEMENT_EMBEDDING_DIMENSIONS});
 DROP INDEX IF EXISTS idx_vyroky_embedding;
@@ -141,25 +140,17 @@ async function requestEmbeddings(
   inputs: string[],
   embeddingUrl: string,
   embeddingModel: string,
-  apiKey: string | undefined,
 ): Promise<number[][]> {
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-
-      if (apiKey) {
-        headers.Authorization = `Bearer ${apiKey}`;
-      }
-
       const response = await fetch(embeddingUrl, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           model: embeddingModel,
           input: inputs,
-          ...(embeddingModel.startsWith("jina-") ? { dimensions: STATEMENT_EMBEDDING_DIMENSIONS, task: "text-matching" } : {}),
         }),
       });
 
@@ -296,7 +287,6 @@ async function main(): Promise<void> {
 
   const embeddingUrl = process.env.EMBEDDING_API_URL?.trim() || DEFAULT_EMBEDDING_URL;
   const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
-  const apiKey = process.env.JINA_API_KEY?.trim() || process.env.EMBEDDING_API_KEY?.trim();
 
   console.log(EMBEDDING_MIGRATION_REMINDER);
 
@@ -371,7 +361,6 @@ async function main(): Promise<void> {
         rows.map((row) => row.vyrok),
         embeddingUrl,
         embeddingModel,
-        apiKey,
       );
     } catch (embedError) {
       console.error(
@@ -399,8 +388,6 @@ async function main(): Promise<void> {
     }
     // In incremental mode the IS NULL filter always fetches the next un-embedded
     // page from offset 0, so rangeFrom stays at 0.
-
-    await sleep(BATCH_DELAY_MS);
   }
 
   await createIndex(supabase);
