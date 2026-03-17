@@ -67,6 +67,8 @@ const statusConfig = {
     title: "Nájdený duplicitný výrok",
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
+    button:
+      "border-red-300/80 bg-red-200 text-red-950 shadow-[0_10px_25px_-18px_rgba(185,28,28,0.85)] hover:border-red-400 hover:bg-red-300 dark:border-red-500/60 dark:bg-red-600 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(248,113,113,0.65)] dark:hover:bg-red-500",
   },
   RELATED_ONLY: {
     container: "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/40",
@@ -74,6 +76,8 @@ const statusConfig = {
     title: "Nájdené súvisiace výroky",
     description: "Odporúčame kontrolu existujúcich overení.",
     detail: "Nižšie nájdete výroky na podobnú tému.",
+    button:
+      "border-amber-300/80 bg-amber-200 text-amber-950 shadow-[0_10px_25px_-18px_rgba(180,83,9,0.85)] hover:border-amber-400 hover:bg-amber-300 dark:border-amber-500/60 dark:bg-amber-500 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(251,191,36,0.65)] dark:hover:bg-amber-400",
   },
   NEW_CLAIM: {
     container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
@@ -81,6 +85,8 @@ const statusConfig = {
     title: "Nový výrok",
     description: "V databáze sa nenašiel podobný overený nárok.",
     detail: "Tento výrok vyžaduje úplné overenie.",
+    button:
+      "border-green-300/80 bg-green-200 text-green-950 shadow-[0_10px_25px_-18px_rgba(21,128,61,0.85)] hover:border-green-400 hover:bg-green-300 dark:border-green-500/60 dark:bg-green-600 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(74,222,128,0.65)] dark:hover:bg-green-500",
   },
 } as const;
 
@@ -160,7 +166,6 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
     result.overall_status === "NEW_CLAIM" ||
     result.overall_status === "RELATED_ONLY" ||
     result.overall_status === "DUPLICATE_FOUND";
-  const isNewClaim = result.overall_status === "NEW_CLAIM";
 
   return (
     <section className="space-y-5">
@@ -178,11 +183,7 @@ export default function DetectionResults({ result }: DetectionResultsProps) {
               <div className="mt-3">
                 <a
                   href={addHref}
-                  className={
-                    isNewClaim
-                      ? "inline-flex items-center gap-1.5 rounded-full bg-[#e03e1a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c73414]"
-                      : "inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white dark:border-slate-600 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-800"
-                  }
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${status.button}`}
                 >
                   <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                     <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
