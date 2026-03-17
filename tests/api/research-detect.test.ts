@@ -149,7 +149,7 @@ describe("POST /api/research/detect", () => {
   it("returns 400 for invalid statement id lists", async () => {
     vi.mocked(supabasePublic).mockReturnValue(createSupabaseMock() as never);
 
-    const response = await POST(createRequest({ statement_ids: [] }));
+    const response = await POST(createRequest({ statement_ids: [1, "x", -2] }));
 
     expect(response.status).toBe(400);
   });

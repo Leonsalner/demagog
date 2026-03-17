@@ -115,7 +115,7 @@ export function toAnalysisResearchItem(options: {
   return {
     id: `analysis:${options.statementRef.statement_id}`,
     kind: "analysis",
-    title: "Analýza",
+    title: "Analýza výroku",
     body: buildAnalysisBody(options.analysisParagraphs, options.fallbackReasoning),
     url: null,
     domain: null,

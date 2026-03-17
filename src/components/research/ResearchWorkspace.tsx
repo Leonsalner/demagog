@@ -77,9 +77,9 @@ export default function ResearchWorkspace({
         role="dialog"
         aria-modal="true"
         aria-label="Research workspace"
-        className="relative z-10 flex h-full max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-[#f4f0e8] shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+        className="relative z-10 flex h-full max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
       >
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:px-6">
+        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
             <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -98,7 +98,7 @@ export default function ResearchWorkspace({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
           <div className="min-h-[180px] lg:min-h-0">
             <ResearchSidebar
               items={data?.items ?? []}
@@ -107,7 +107,7 @@ export default function ResearchWorkspace({
             />
           </div>
 
-          <main className="min-h-0 overflow-y-auto rounded-3xl bg-[#ebe5da] p-2 dark:bg-slate-900/70">
+          <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             {loading ? (
               <div className="flex min-h-[280px] items-center justify-center rounded-3xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-950/70 dark:text-slate-400">
                 Načítavam prieskum…

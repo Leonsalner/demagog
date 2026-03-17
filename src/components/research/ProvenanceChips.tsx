@@ -11,6 +11,16 @@ export default function ProvenanceChips({ refs }: ProvenanceChipsProps) {
     return null;
   }
 
+  if (refs.length === 1) {
+    const ref = refs[0];
+
+    return (
+      <p className="text-right text-sm font-medium text-slate-500 dark:text-slate-400">
+        Výrok od {ref.meno} ({ref.strana})
+      </p>
+    );
+  }
+
   if (refs.length >= 4) {
     const tooltip = refs.map((ref) => `${ref.meno} (${ref.strana})`).join(", ");
 

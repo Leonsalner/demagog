@@ -59,7 +59,7 @@ async function countPending(force: boolean, fromId: number): Promise<number> {
 }
 
 async function fetchPendingBatch(
-  offset: number,
+  afterId: number,
   force: boolean,
   fromId: number,
 ): Promise<ClankyRow[]> {
@@ -69,14 +69,15 @@ async function fetchPendingBatch(
     .select("id, text_content, title")
     .not("text_content", "is", null)
     .order("id", { ascending: true })
-    .range(offset, offset + BATCH_SIZE - 1);
+    .limit(BATCH_SIZE);
 
   if (!force) {
     query = query.is("title", null);
   }
 
-  if (fromId > 0) {
-    query = query.gte("id", fromId);
+  const lowerBound = Math.max(afterId, fromId > 0 ? fromId - 1 : 0);
+  if (lowerBound > 0) {
+    query = query.gt("id", lowerBound);
   }
 
   const { data, error } = await query;
@@ -192,10 +193,10 @@ async function main(): Promise<void> {
   );
 
   let processed = 0;
-  let offset = 0;
+  let lastProcessedId = 0;
 
   while (true) {
-    const rows = await fetchPendingBatch(offset, force, fromId);
+    const rows = await fetchPendingBatch(lastProcessedId, force, fromId);
     if (rows.length === 0) {
       break;
     }
@@ -215,7 +216,7 @@ async function main(): Promise<void> {
       }
     }
 
-    offset += rows.length;
+    lastProcessedId = rows[rows.length - 1]?.id ?? lastProcessedId;
   }
 
   console.log(dryRun ? "Dry run complete." : "Title backfill complete.");

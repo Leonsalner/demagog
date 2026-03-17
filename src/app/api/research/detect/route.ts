@@ -60,17 +60,11 @@ function parseStatementIds(value: unknown): number[] | null {
     return null;
   }
 
-  const uniqueIds = Array.from(
-    new Set(
-      value.filter((item): item is number => typeof item === "number" && Number.isInteger(item) && item > 0),
-    ),
-  );
-
-  if (uniqueIds.length === 0) {
+  if (!value.every((item) => typeof item === "number" && Number.isInteger(item) && item > 0)) {
     return null;
   }
 
-  return uniqueIds;
+  return Array.from(new Set(value));
 }
 
 export async function POST(request: NextRequest) {

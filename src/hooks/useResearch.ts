@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import type { ResearchWorkspaceResponse } from "@/types";
 
@@ -16,11 +16,13 @@ type ResearchRequest =
 
 async function fetchResearch(
   request: ResearchRequest,
+  signal?: AbortSignal,
 ): Promise<ResearchWorkspaceResponse> {
   const response = await fetch(request.endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request.body),
+    signal,
   });
 
   if (!response.ok) {
@@ -32,23 +34,44 @@ async function fetchResearch(
 
 export function useResearch() {
   const [data, setData] = useState<ResearchWorkspaceResponse | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRequest, setLastRequest] = useState<ResearchRequest | null>(null);
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const open = useCallback(async (request: ResearchRequest) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLastRequest(request);
+    setIsOpen(true);
     setLoading(true);
     setError(null);
     setData(null);
 
     try {
-      const nextData = await fetchResearch(request);
+      const nextData = await fetchResearch(request, controller.signal);
+
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
+
       setData(nextData);
     } catch (nextError) {
+      if (controller.signal.aborted || requestIdRef.current !== requestId) {
+        return;
+      }
+
       setError(nextError instanceof Error ? nextError.message : "Nepodarilo sa načítať prieskum.");
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -81,6 +104,10 @@ export function useResearch() {
   }, [lastRequest, open]);
 
   const close = useCallback(() => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsOpen(false);
     setData(null);
     setError(null);
     setLoading(false);
@@ -88,9 +115,9 @@ export function useResearch() {
 
   return {
     data,
+    isOpen,
     loading,
     error,
-    isOpen: loading || Boolean(error) || Boolean(data),
     openStatementResearch,
     openAggregateResearch,
     retry,
