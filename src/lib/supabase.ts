@@ -108,9 +108,9 @@ type Database = {
           query_embedding: number[];
           match_count?: number;
           match_offset?: number;
-          filter_strana?: string | null;
-          filter_vyhodnotenie?: string | null;
-          filter_meno?: string | null;
+          filter_strana?: string[] | null;
+          filter_vyhodnotenie?: string[] | null;
+          filter_meno?: string[] | null;
           filter_datum_od?: string | null;
           filter_datum_do?: string | null;
         };
@@ -118,9 +118,9 @@ type Database = {
       };
       count_statements: {
         Args: {
-          filter_strana?: string | null;
-          filter_vyhodnotenie?: string | null;
-          filter_meno?: string | null;
+          filter_strana?: string[] | null;
+          filter_vyhodnotenie?: string[] | null;
+          filter_meno?: string[] | null;
           filter_datum_od?: string | null;
           filter_datum_do?: string | null;
           require_embedding?: boolean;

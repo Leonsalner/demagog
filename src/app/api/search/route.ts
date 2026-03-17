@@ -14,6 +14,7 @@ import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
   Article,
   QueryUnderstanding,
+  MultiValueFilter,
   SearchRequest,
   SearchResponse,
   Statement,
@@ -127,27 +128,69 @@ function coerceOptionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function coerceOptionalStringOrArray(
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function toFilterArray<T>(value: MultiValueFilter<T> | null | undefined): T[] | null {
+  if (value == null) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function flattenFilterValues(
+  values: Array<string | string[] | null | undefined>
+): string[] {
+  return dedupeStrings(
+    values.flatMap((value) => {
+      if (Array.isArray(value)) {
+        return value;
+      }
+
+      return value ? [value] : [];
+    }),
+  );
+}
+
+function coerceOptionalStringArray(
   value: unknown
-): string | string[] | undefined {
+): string[] | undefined {
   if (Array.isArray(value)) {
     const items = value
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim())
       .filter(Boolean);
 
-    return items.length > 0 ? items : undefined;
+    return items.length > 0 ? dedupeStrings(items) : undefined;
   }
 
-  return coerceOptionalString(value);
+  const singleValue = coerceOptionalString(value);
+  return singleValue ? [singleValue] : undefined;
 }
 
-function coerceOptionalVerdict(value: unknown): Verdict | undefined {
-  if (typeof value !== "string") {
-    return undefined;
+function coerceOptionalVerdictArray(value: unknown):
+  | { value: Verdict[] | undefined; invalid: boolean }
+  | { value: undefined; invalid: boolean } {
+  const values = Array.isArray(value) ? value : [value];
+  const normalizedValues = values
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (normalizedValues.length === 0) {
+    return { value: undefined, invalid: false };
   }
 
-  return VERDICTS.includes(value as Verdict) ? (value as Verdict) : undefined;
+  const verdicts = normalizedValues.filter((item): item is Verdict =>
+    VERDICTS.includes(item as Verdict)
+  );
+
+  return {
+    value: verdicts.length > 0 ? dedupeStrings(verdicts) as Verdict[] : undefined,
+    invalid: verdicts.length !== normalizedValues.length,
+  };
 }
 
 function coercePositiveInteger(
@@ -175,9 +218,9 @@ function coercePositiveInteger(
 
 function buildFilterParams(body: SearchRequest) {
   return {
-    filter_strana: body.strana ?? null,
-    filter_vyhodnotenie: body.vyhodnotenie ?? null,
-    filter_meno: Array.isArray(body.meno) ? (body.meno[0] ?? null) : body.meno ?? null,
+    filter_strana: toFilterArray(body.strana),
+    filter_vyhodnotenie: toFilterArray(body.vyhodnotenie),
+    filter_meno: toFilterArray(body.meno),
     filter_datum_od: body.datum_od ?? null,
     filter_datum_do: body.datum_do ?? null,
   };
@@ -191,8 +234,7 @@ function mergeQueryFilters(
     ...body,
     meno: body.meno ?? extractedFilters.meno ?? undefined,
     strana: body.strana ?? extractedFilters.strana ?? undefined,
-    vyhodnotenie:
-      body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
+    vyhodnotenie: body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
     datum_od: body.datum_od ?? extractedFilters.datum_od ?? undefined,
     datum_do: body.datum_do ?? extractedFilters.datum_do ?? undefined,
   };
@@ -321,11 +363,15 @@ function findUniqueNameSurnameInQuery(query: string, candidates: string[]): stri
   return null;
 }
 
-function findNameInQuery(query: string, candidates: string[]): string | null {
-  return (
-    findExactCandidateInQuery(query, candidates) ??
-    findUniqueNameSurnameInQuery(query, candidates)
+function findNamesInQuery(query: string, candidates: string[]): string[] | null {
+  const matches = dedupeStrings(
+    [
+      findExactCandidateInQuery(query, candidates),
+      findUniqueNameSurnameInQuery(query, candidates),
+    ].filter((value): value is string => Boolean(value)),
   );
+
+  return matches.length > 0 ? matches : null;
 }
 
 function getNameAliases(name: string | null | undefined): string[] {
@@ -343,16 +389,19 @@ function getNameAliases(name: string | null | undefined): string[] {
   return [name, surname];
 }
 
-function stripMatchedTerms(query: string, values: Array<string | null | undefined>): string {
+function getNameAliasesForList(names: string[] | null | undefined): string[] {
+  return names?.flatMap((name) => getNameAliases(name)) ?? [];
+}
+
+function stripMatchedTerms(
+  query: string,
+  values: Array<string | string[] | null | undefined>
+): string {
   const originalTokens = query.trim().split(/\s+/u).filter(Boolean);
   const normalizedTokens = originalTokens.map((token) => normalizeForMatching(token));
   const ignoredIndexes = new Set<number>();
-  const sequences = values
+  const sequences = flattenFilterValues(values)
     .flatMap((value) => {
-      if (!value) {
-        return [];
-      }
-
       const tokens = tokenizeForMatching(value);
       return tokens.length > 0 ? [tokens] : [];
     })
@@ -380,26 +429,27 @@ function stripMatchedTerms(query: string, values: Array<string | null | undefine
   return originalTokens.filter((_, index) => !ignoredIndexes.has(index)).join(" ").trim();
 }
 
-function detectVerdictFromQuery(query: string): Verdict | null {
+function detectVerdictsFromQuery(query: string): Verdict[] | null {
   const normalizedQuery = normalizeForMatching(query);
+  const detected: Verdict[] = [];
 
   if (normalizedQuery.includes("neoveritelne")) {
-    return "Neoveriteľné";
+    detected.push("Neoveriteľné");
   }
 
   if (normalizedQuery.includes("zavadzajuce")) {
-    return "Zavádzajúce";
+    detected.push("Zavádzajúce");
   }
 
   if (normalizedQuery.includes("nepravda")) {
-    return "Nepravda";
+    detected.push("Nepravda");
   }
 
   if (normalizedQuery.includes("pravda")) {
-    return "Pravda";
+    detected.push("Pravda");
   }
 
-  return null;
+  return detected.length > 0 ? dedupeStrings(detected) as Verdict[] : null;
 }
 
 function buildFastQueryUnderstanding(
@@ -408,27 +458,32 @@ function buildFastQueryUnderstanding(
   availableNames: string[],
   availableParties: string[]
 ): QueryUnderstanding {
-  const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
-  const detectedName = selectedName ?? findNameInQuery(query, availableNames);
-  const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
-  const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
+  const detectedNames = toFilterArray(body.meno) ?? findNamesInQuery(query, availableNames);
+  const detectedParties =
+    toFilterArray(body.strana) ??
+    (() => {
+      const match = findExactCandidateInQuery(query, availableParties);
+      return match ? [match] : null;
+    })();
+  const detectedVerdicts =
+    toFilterArray(body.vyhodnotenie) ?? detectVerdictsFromQuery(query);
   const detectedDates = extractDateFiltersFromQuery(query);
   const semanticQuery =
     stripMatchedTerms(query, [
-      ...getNameAliases(detectedName),
-      detectedParty,
-      detectedVerdict,
-      ...(Array.isArray(body.meno) ? body.meno : [body.meno]),
-      body.strana,
-      body.vyhodnotenie,
+      getNameAliasesForList(detectedNames),
+      detectedParties,
+      detectedVerdicts,
+      toFilterArray(body.meno),
+      toFilterArray(body.strana),
+      toFilterArray(body.vyhodnotenie),
     ]) || query;
 
   return {
     semantic_query: semanticQuery,
     filters: {
-      meno: detectedName,
-      strana: detectedParty,
-      vyhodnotenie: detectedVerdict,
+      meno: detectedNames,
+      strana: detectedParties,
+      vyhodnotenie: detectedVerdicts,
       datum_od: detectedDates.datum_od,
       datum_do: detectedDates.datum_do,
     },
@@ -465,6 +520,24 @@ function resolveAvailableValue(
   return fuzzyMatch ?? null;
 }
 
+function resolveAvailableValues(
+  values: string[] | null,
+  availableValues: string[],
+  maxCount = 3
+): string[] | null {
+  if (!values || values.length === 0) {
+    return null;
+  }
+
+  const resolved = dedupeStrings(
+    values
+      .map((value) => resolveAvailableValue(value, availableValues))
+      .filter((value): value is string => Boolean(value)),
+  ).slice(0, maxCount);
+
+  return resolved.length > 0 ? resolved : null;
+}
+
 function validateExtractedFilters(
   query: string,
   filters: QueryUnderstanding["filters"],
@@ -477,9 +550,12 @@ function validateExtractedFilters(
   });
 
   return {
-    meno: resolveAvailableValue(filters.meno, availableNames),
-    strana: resolveAvailableValue(filters.strana, availableParties),
-    vyhodnotenie: filters.vyhodnotenie,
+    meno: resolveAvailableValues(filters.meno, availableNames),
+    strana: resolveAvailableValues(filters.strana, availableParties),
+    vyhodnotenie:
+      filters.vyhodnotenie && filters.vyhodnotenie.length > 0
+        ? dedupeStrings(filters.vyhodnotenie).slice(0, 3) as Verdict[]
+        : null,
     datum_od: normalizedDates.datum_od,
     datum_do: normalizedDates.datum_do,
   };
@@ -613,14 +689,16 @@ function applyStatementFilters<
 ): T {
   let nextQuery = query;
 
-  if (body.strana) {
-    nextQuery = nextQuery.eq("strana", body.strana) as typeof nextQuery;
+  const strany = toFilterArray(body.strana);
+  if (strany) {
+    nextQuery = nextQuery.in("strana", strany) as typeof nextQuery;
   }
-  if (body.vyhodnotenie) {
-    nextQuery = nextQuery.eq("vyhodnotenie", body.vyhodnotenie) as typeof nextQuery;
+  const verdicts = toFilterArray(body.vyhodnotenie);
+  if (verdicts) {
+    nextQuery = nextQuery.in("vyhodnotenie", verdicts) as typeof nextQuery;
   }
-  if (body.meno) {
-    const mena = Array.isArray(body.meno) ? body.meno : [body.meno];
+  const mena = toFilterArray(body.meno);
+  if (mena) {
     nextQuery = nextQuery.in("meno", mena) as typeof nextQuery;
   }
   if (body.datum_od) {
@@ -712,8 +790,8 @@ async function runLexicalSearchFallback(
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
   return {
     filter_strana: null,
-    filter_vyhodnotenie: body.vyhodnotenie ?? null,
-    filter_meno: meno,
+    filter_vyhodnotenie: toFilterArray(body.vyhodnotenie),
+    filter_meno: [meno],
     filter_datum_od: body.datum_od ?? null,
     filter_datum_do: body.datum_do ?? null,
   };
@@ -805,13 +883,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const rawVerdict = parsedBody.vyhodnotenie;
-  const coercedVerdict = coerceOptionalVerdict(rawVerdict);
-  if (
-    typeof rawVerdict === "string" &&
-    rawVerdict.trim().length > 0 &&
-    coercedVerdict === undefined
-  ) {
+  const coercedVerdict = coerceOptionalVerdictArray(parsedBody.vyhodnotenie);
+  if (coercedVerdict.invalid) {
     return NextResponse.json(
       { error: "Invalid verdict value" },
       { status: 400 }
@@ -820,9 +893,9 @@ export async function POST(request: NextRequest) {
 
   const body: SearchRequest = {
     query: coerceOptionalString(parsedBody.query),
-    strana: coerceOptionalString(parsedBody.strana),
-    vyhodnotenie: coercedVerdict,
-    meno: coerceOptionalStringOrArray(parsedBody.meno),
+    strana: coerceOptionalStringArray(parsedBody.strana),
+    vyhodnotenie: coercedVerdict.value,
+    meno: coerceOptionalStringArray(parsedBody.meno),
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
     page: coercePositiveInteger(parsedBody.page, 1),

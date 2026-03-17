@@ -35,9 +35,9 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
     ],
     query_understanding: {
       extracted_filters: {
-        meno: "Robert Fico",
-        strana: "Smer-SD",
-        vyhodnotenie: "Nepravda",
+        meno: ["Robert Fico"],
+        strana: ["Smer-SD"],
+        vyhodnotenie: ["Nepravda"],
         datum_od: null,
         datum_do: null,
       },

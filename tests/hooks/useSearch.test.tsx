@@ -56,7 +56,7 @@ describe("useSearch", () => {
           buildResponse({
             query_understanding: {
               extracted_filters: {
-                meno: "Robert Fico",
+                meno: ["Robert Fico"],
                 strana: null,
                 vyhodnotenie: null,
                 datum_od: "2022-01-01",
@@ -208,6 +208,47 @@ describe("useSearch", () => {
 
     expect(result.current.filters.datum_od).toBeNull();
     expect(result.current.filters.datum_do).toBeNull();
+  });
+
+  it("applies multi-value extracted filters as arrays", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        buildResponse({
+          query_understanding: {
+            extracted_filters: {
+              meno: ["Robert Fico", "Peter Pellegrini"],
+              strana: ["Smer-SD", "Hlas"],
+              vyhodnotenie: ["Nepravda", "Zavádzajúce"],
+              datum_od: null,
+              datum_do: null,
+            },
+            related_politicians: [],
+          },
+        }),
+    } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("koalícia nepravdivé alebo zavádzajúce výroky");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.meno).toEqual([
+        "Robert Fico",
+        "Peter Pellegrini",
+      ]);
+      expect(result.current.filters.strana).toEqual(["Smer-SD", "Hlas"]);
+      expect(result.current.filters.vyhodnotenie).toEqual([
+        "Nepravda",
+        "Zavádzajúce",
+      ]);
+    });
   });
 
   it("surfaces API failures instead of falling back to mock search results", async () => {

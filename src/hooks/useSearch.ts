@@ -75,7 +75,7 @@ function applyExtractedFilters(
     nextOwnedFields.add("vyhodnotenie");
   }
   if (clearedFilters.meno === null && extractedFilters.meno !== null) {
-    nextFilters.meno = [extractedFilters.meno];
+    nextFilters.meno = extractedFilters.meno;
     nextOwnedFields.add("meno");
   }
   if (clearedFilters.datum_od === null && extractedFilters.datum_od !== null) {
@@ -137,12 +137,22 @@ function runMockSearch(request: SearchRequest): SearchResponse {
   const startedAt = performance.now();
 
   let filtered = mockStatements.filter((statement) => {
-    if (request.strana && statement.strana !== request.strana) {
-      return false;
+    if (request.strana) {
+      const parties = Array.isArray(request.strana)
+        ? request.strana
+        : [request.strana];
+      if (!parties.includes(statement.strana)) {
+        return false;
+      }
     }
 
-    if (request.vyhodnotenie && statement.vyhodnotenie !== request.vyhodnotenie) {
-      return false;
+    if (request.vyhodnotenie) {
+      const verdicts = Array.isArray(request.vyhodnotenie)
+        ? request.vyhodnotenie
+        : [request.vyhodnotenie];
+      if (!verdicts.includes(statement.vyhodnotenie)) {
+        return false;
+      }
     }
 
     if (request.meno) {

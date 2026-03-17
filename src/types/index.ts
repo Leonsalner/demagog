@@ -2,6 +2,7 @@
 
 export type Verdict = "Pravda" | "Nepravda" | "Zavádzajúce" | "Neoveriteľné";
 export type DetectMode = "thorough" | "fast";
+export type MultiValueFilter<T> = T | T[];
 
 export interface StatementSource {
   id: number;
@@ -65,9 +66,9 @@ export interface ResearchWorkspaceResponse {
 
 export interface SearchRequest {
   query?: string;
-  strana?: string;
-  vyhodnotenie?: Verdict;
-  meno?: string | string[];
+  strana?: MultiValueFilter<string>;
+  vyhodnotenie?: MultiValueFilter<Verdict>;
+  meno?: MultiValueFilter<string>;
   datum_od?: string;
   datum_do?: string;
   page?: number;
@@ -100,9 +101,9 @@ export interface SearchResponse {
 export interface QueryUnderstanding {
   semantic_query: string;
   filters: {
-    meno: string | null;
-    strana: string | null;
-    vyhodnotenie: Verdict | null;
+    meno: string[] | null;
+    strana: string[] | null;
+    vyhodnotenie: Verdict[] | null;
     datum_od: string | null;
     datum_do: string | null;
   };
@@ -149,8 +150,8 @@ export interface StatementCardProps {
 }
 
 export interface FilterState {
-  strana: string | null;
-  vyhodnotenie: Verdict | null;
+  strana: string[] | null;
+  vyhodnotenie: Verdict[] | null;
   meno: string[] | null;
   datum_od: string | null;
   datum_do: string | null;

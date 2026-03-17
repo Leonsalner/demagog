@@ -139,6 +139,25 @@ function toOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function toOptionalStringArray(value: unknown): string[] | null {
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => toOptionalString(item))
+      .filter((item): item is string => Boolean(item));
+
+    return items.length > 0 ? Array.from(new Set(items)) : null;
+  }
+
+  const singleValue = toOptionalString(value);
+  return singleValue ? [singleValue] : null;
+}
+
+function toVerdictArray(value: unknown): Verdict[] | null {
+  const values = Array.isArray(value) ? value : [value];
+  const verdicts = values.filter(isVerdict);
+  return verdicts.length > 0 ? Array.from(new Set(verdicts)) : null;
+}
+
 function getCurrentDateInTimeZone(timeZone: string): string {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -296,23 +315,39 @@ DNEŠNÝ DÁTUM V ČASOVEJ ZÓNE EUROPE/BRATISLAVA: ${currentDate}
 DOSTUPNÉ MENÁ POLITIKOV (presné hodnoty z DB): ${availableNames.join(", ")}
 DOSTUPNÉ STRANY (presné hodnoty z DB): ${availableParties.join(", ")}
 DOSTUPNÉ HODNOTENIA: Pravda, Nepravda, Zavádzajúce, Neoveriteľné
+AKTUÁLNY SLOVENSKÝ VLÁDNY BLOK, AK DOPYT NEHOVORÍ O INOM OBDOBÍ: Smer-SD, Hlas-SD, SNS
+AKTUÁLNA OPOZÍCIA, AK DOPYT NEHOVORÍ O INOM OBDOBÍ: Progresívne Slovensko, KDH, SaS, Slovensko
 
 Urč:
 1. semantic_query: vyčistená verzia dopytu pre sémantické vyhľadávanie (odstráň mená, strany, hodnotenia — ponechaj len vecný obsah tvrdenia)
-2. filters.meno: ak dopyt obsahuje meno politika, vyber PRESNÉ meno z dostupných mien, inak null
-3. filters.strana: ak dopyt obsahuje názov strany, vyber PRESNÉ meno strany z dostupných strán, inak null
-4. filters.vyhodnotenie: ak dopyt obsahuje hodnotenie (napr. "nepravda", "zavádzajúce"), vráť presnú hodnotu, inak null
+2. filters.meno: pole 0-3 politikov. Ak dopyt explicitne menuje viac politikov, vráť všetkých. Používaj PRESNÉ mená z dostupných mien. Ak žiadny politik nie je relevantný filter, vráť null.
+3. filters.strana: pole 0-3 strán. Ak dopyt explicitne menuje viac strán, vráť všetky. Ak používa skratky ako "koalícia", "opozícia", "vláda", "vládne strany", môžeš inferovať príslušné aktuálne strany, ak dopyt neurčuje iné obdobie. Používaj PRESNÉ názvy z dostupných strán. Ak nie je vhodný stranícky filter, vráť null.
+4. filters.vyhodnotenie: pole 0-3 hodnotení. Ak dopyt žiada viac kategórií naraz, vráť všetky relevantné presné hodnoty. Môžeš inferovať kombinácie hodnotení z formulácií ako "problematické", "sporné", "nepravdivé alebo zavádzajúce", ale nevracaj zbytočne široké pole.
 5. filters.datum_od: ak dopyt obsahuje začiatok časového intervalu, vráť dátum vo formáte YYYY-MM-DD, inak null
 6. filters.datum_do: ak dopyt obsahuje koniec časového intervalu, vráť dátum vo formáte YYYY-MM-DD, inak null
-7. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
+7. related_politicians: 0-3 politici súvisiaci s témou alebo stranami dopytu, ale nie sú to aktívne filtre. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
+
+Dôležité pravidlá:
+- related_politicians nie je to isté ako filters.meno
+- ak dopyt explicitne pomenuje politika, uprednostni filters.meno pred všeobecným straníckym inferovaním
+- ak dopyt explicitne pomenuje politika AJ stranu, môžeš vrátiť oboje
+- ak sú strany iba voľne inferované z pojmov ako "koalícia" alebo "opozícia" a zároveň máš presných politikov, radšej ponechaj filters.meno a filters.strana nechaj null alebo úzky
+- vracaj len presné hodnoty, ktoré sú realistické filtre; nie vysvetlenia
+
+Príklady:
+- "Fico a Pellegrini zdravotníctvo" -> filters.meno obsahuje oboch politikov
+- "nepravdivé alebo zavádzajúce výroky o konsolidácii" -> filters.vyhodnotenie môže obsahovať Nepravda aj Zavádzajúce
+- "výroky koalície o Ukrajine" -> filters.strana môže obsahovať aktuálne koaličné strany
+- "opozícia a konsolidačný balíček" -> filters.strana môže obsahovať aktuálne opozičné strany
+- "PS a SaS k daniam" -> filters.strana obsahuje obe explicitne menované strany
 
 Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
 {
   "semantic_query": "...",
   "filters": {
-    "meno": "..." | null,
-    "strana": "..." | null,
-    "vyhodnotenie": "..." | null,
+    "meno": ["..."] | null,
+    "strana": ["..."] | null,
+    "vyhodnotenie": ["..."] | null,
     "datum_od": "YYYY-MM-DD" | null,
     "datum_do": "YYYY-MM-DD" | null
   },
@@ -328,9 +363,9 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
       }
 
       const semanticQuery = toOptionalString(value.semantic_query);
-      const meno = toOptionalString(value.filters.meno);
-      const strana = toOptionalString(value.filters.strana);
-      const verdict = value.filters.vyhodnotenie;
+      const meno = toOptionalStringArray(value.filters.meno);
+      const strana = toOptionalStringArray(value.filters.strana);
+      const verdicts = toVerdictArray(value.filters.vyhodnotenie);
       const datum_od = toOptionalString(value.filters.datum_od);
       const datum_do = toOptionalString(value.filters.datum_do);
 
@@ -368,7 +403,7 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
         filters: {
           meno,
           strana,
-          vyhodnotenie: isVerdict(verdict) ? verdict : null,
+          vyhodnotenie: verdicts,
           datum_od,
           datum_do,
         },

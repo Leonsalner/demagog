@@ -95,9 +95,9 @@ CREATE OR REPLACE FUNCTION search_statements(
   query_embedding vector(2048),
   match_count int DEFAULT 20,
   match_offset int DEFAULT 0,
-  filter_strana text DEFAULT NULL,
-  filter_vyhodnotenie text DEFAULT NULL,
-  filter_meno text DEFAULT NULL,
+  filter_strana text[] DEFAULT NULL,
+  filter_vyhodnotenie text[] DEFAULT NULL,
+  filter_meno text[] DEFAULT NULL,
   filter_datum_od date DEFAULT NULL,
   filter_datum_do date DEFAULT NULL
 ) RETURNS TABLE (
@@ -126,9 +126,9 @@ BEGIN
     v.speaker_url,
     (1 - (v.embedding <=> query_embedding))::float AS similarity
   FROM vyroky v
-  WHERE (filter_strana IS NULL OR v.strana = filter_strana)
-    AND (filter_vyhodnotenie IS NULL OR v.vyhodnotenie = filter_vyhodnotenie)
-    AND (filter_meno IS NULL OR v.meno = filter_meno)
+  WHERE (filter_strana IS NULL OR COALESCE(array_length(filter_strana, 1), 0) = 0 OR v.strana = ANY(filter_strana))
+    AND (filter_vyhodnotenie IS NULL OR COALESCE(array_length(filter_vyhodnotenie, 1), 0) = 0 OR v.vyhodnotenie = ANY(filter_vyhodnotenie))
+    AND (filter_meno IS NULL OR COALESCE(array_length(filter_meno, 1), 0) = 0 OR v.meno = ANY(filter_meno))
     AND (filter_datum_od IS NULL OR v.datum >= filter_datum_od)
     AND (filter_datum_do IS NULL OR v.datum <= filter_datum_do)
     AND v.embedding IS NOT NULL
@@ -139,9 +139,9 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION count_statements(
-  filter_strana text DEFAULT NULL,
-  filter_vyhodnotenie text DEFAULT NULL,
-  filter_meno text DEFAULT NULL,
+  filter_strana text[] DEFAULT NULL,
+  filter_vyhodnotenie text[] DEFAULT NULL,
+  filter_meno text[] DEFAULT NULL,
   filter_datum_od date DEFAULT NULL,
   filter_datum_do date DEFAULT NULL,
   require_embedding boolean DEFAULT false
@@ -151,9 +151,9 @@ DECLARE
 BEGIN
   SELECT COUNT(*)::int INTO result
   FROM vyroky v
-  WHERE (filter_strana IS NULL OR v.strana = filter_strana)
-    AND (filter_vyhodnotenie IS NULL OR v.vyhodnotenie = filter_vyhodnotenie)
-    AND (filter_meno IS NULL OR v.meno = filter_meno)
+  WHERE (filter_strana IS NULL OR COALESCE(array_length(filter_strana, 1), 0) = 0 OR v.strana = ANY(filter_strana))
+    AND (filter_vyhodnotenie IS NULL OR COALESCE(array_length(filter_vyhodnotenie, 1), 0) = 0 OR v.vyhodnotenie = ANY(filter_vyhodnotenie))
+    AND (filter_meno IS NULL OR COALESCE(array_length(filter_meno, 1), 0) = 0 OR v.meno = ANY(filter_meno))
     AND (filter_datum_od IS NULL OR v.datum >= filter_datum_od)
     AND (filter_datum_do IS NULL OR v.datum <= filter_datum_do)
     AND (NOT require_embedding OR v.embedding IS NOT NULL);
@@ -292,8 +292,8 @@ $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON TABLE vyroky TO anon, authenticated;
 GRANT SELECT ON TABLE statement_sources TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text, text, text, date, date) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION count_statements(text, text, text, date, date, boolean) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION search_statements(vector, int, int, text[], text[], text[], date, date) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION count_statements(text[], text[], text[], date, date, boolean) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION list_distinct_values(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_statements(vector, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_articles(vector, int) TO anon, authenticated;

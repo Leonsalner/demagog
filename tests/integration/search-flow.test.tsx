@@ -177,7 +177,7 @@ describe("search page flow", () => {
 
     expect(setFilters).toHaveBeenCalledWith({
       ...emptyFilters,
-      strana: "Hlas",
+      strana: ["Hlas"],
     });
   });
 
@@ -265,7 +265,7 @@ describe("search page flow", () => {
         results: buildResults({
           query_understanding: {
             extracted_filters: {
-              meno: "Milan Majerský",
+              meno: ["Milan Majerský"],
               strana: null,
               vyhodnotenie: null,
               datum_od: "2022-01-01",
