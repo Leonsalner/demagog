@@ -1,93 +1,87 @@
-# AI vyhľadávanie pre Demagog.sk
+# AI vyhľadávanie a kontrola duplicít pre Demagog.sk
 
-Táto ukážka predstavuje, ako sa dá archív Demagogu sprístupniť tak, aby bol užitočný nielen pri čítaní, ale aj pri každodennej analytickej práci. Namiesto klasického hľadania podľa presných slov ponúka prirodzenejší spôsob, ako sa dostať k relevantným overeniam, rýchlo odhaliť duplicity a plynulo pokračovať pri novom výroku.
+Táto ukážka je o tom, ako spraviť archív Demagogu prístupnejší pre bežné hľadanie aj pre redakčnú prácu. Namiesto presného dohľadávania starších formulácií pomáha nájsť relevantné overenia podľa významu, rýchlo preveriť nový výrok a plynulo pokračovať tam, kde treba.
 
-## Čo táto ukážka robí
+## Čo si z tejto ukážky odniesť
 
-**Sémantické vyhľadávanie**
+- Vyhľadávanie rozumie aj voľne napísanej otázke, nielen presnej citácii.
+- Systém vie z dopytu sám odvodiť základné filtre a zúžiť výsledky.
+- Pri novom výroku rýchlo ukáže, či už bol overený, či je len podobný, alebo či ide o nový prípad.
+- Z nájdeného výsledku sa dá hneď prejsť do detailu a pokračovať v ďalšej práci.
+- Ak sa zhoda nenájde, formulár na pridanie nového výroku nadväzuje bez zbytočného prerušovania.
 
-Rozumie bežnej otázke, téme aj voľnej formulácii a vie z archívu vytiahnuť výroky, ktoré k nej skutočne patria.
+## Ako to vyzerá v praxi
 
-**Automatické spresnenie výsledkov**
+### 1. Stačí napísať, čo hľadáte
 
-Z dopytu si samo odvodí, koho sa používateľ pýta, o akej téme hovorí a aké časové alebo hodnotiace obmedzenia treba použiť.
-
-**Detekcia duplicít**
-
-Pri novom výroku okamžite ukáže, či ide o už overené tvrdenie, len príbuznú tému, alebo o skutočne nový prípad.
-
-**Prieskum a doplnenie databázy**
-
-Ak sa zhoda nájde, analytik dostane rýchly štart. Ak sa nenájde, môže rovno pokračovať do formulára na pridanie nového výroku.
-
-## Veľká ukážka
-
-### 1. Vyhľadávanie rozumie téme aj bez presnej citácie
-
-Pri dopyte `fico vojna na ukrajine nepravda` systém neberie slová iba doslova. Sám rozpozná, že ide o Roberta Fica, tému vojny na Ukrajine a výroky označené ako nepravdivé. Výsledkom je prehľad, ktorý je okamžite užitočný bez ďalšieho manuálneho filtrovania.
+Pri dopyte „fico vojna na ukrajine nepravda“ systém pochopí, že ide o Roberta Fica, tému vojny na Ukrajine a výroky vyhodnotené ako nepravdivé. Používateľ tak nemusí ručne nastavovať každý filter zvlášť.
 
 <p align="center">
-  <img src="docs/images/semantic-search-fico-ukrajina-nepravda.png" alt="Sémantické vyhľadávanie automaticky vybralo Roberta Fica a hodnotenie Nepravda pri téme vojny na Ukrajine." width="1100" />
+  <img src="docs/images/semantic-search-fico-ukrajina-nepravda.png" alt="Vyhľadávanie automaticky vybralo Roberta Fica a hodnotenie Nepravda pri téme vojny na Ukrajine." width="1100" />
 </p>
 
-To je dôležité práve preto, že čitateľ alebo analytik si často nepamätá presné znenie výroku. Potrebuje sa dostať k správnemu okruhu tvrdení čo najkratšou cestou.
+Takýto typ hľadania je užitočný vtedy, keď si človek pamätá tému a smer výroku, ale nie jeho presné znenie.
 
-### 2. Prirodzená otázka sa mení na použiteľný rešeršný vstup
+### 2. Fungujú aj celé otázky
 
-Otázka `Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?` ukazuje druhý typ hodnoty. Nástroj si sám odvodí stranu, časový rámec a vráti širší, ale stále relevantný výber výrokov naprieč viacerými politikmi.
+Nástroj si poradí aj s prirodzenou otázkou typu „Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?“. Sám rozpozná stranu aj časový rámec a vráti výsledky naprieč viacerými politikmi.
 
 <p align="center">
-  <img src="docs/images/semantic-search-smer-ukrajina-2022.png" alt="Vyhľadávanie rozumie prirodzene položenej otázke o členoch SMER-u a vojne na Ukrajine od roku 2022." width="1100" />
+  <img src="docs/images/semantic-search-smer-ukrajina-2022.png" alt="Vyhľadávanie rozumie celej otázke o členoch SMER-u a vojne na Ukrajine od roku 2022." width="1100" />
 </p>
 
-Takýto scenár je vhodný pre novinársku prípravu, rešerš pred debatou aj rýchle zorientovanie sa v tom, ako strana o téme hovorí v čase.
+To je praktické najmä pri rešerši, keď človek ešte nehľadá jeden konkrétny výrok, ale chce sa zorientovať v širšej téme.
 
-### 3. Detektor duplicít vie rozpoznať, že výrok už v archíve je
+### 3. Z výsledku sa dá okamžite prejsť do detailu
 
-Keď analytik vloží výrok, ktorý už bol overený, systém ho označí ako duplicitu a hneď ukáže najbližšiu zhodu. Namiesto opakovaného dohľadávania sa dá okamžite nadviazať na existujúcu prácu.
+Tlačidlo „Preskúmať“ otvorí pracovný pohľad s analýzou, článkami Demagogu a ďalšími zdrojmi. Používateľ tak nemusí preskakovať medzi viacerými miestami a môže pokračovať priamo z výsledku, ktorý ho zaujal.
+
+<p align="center">
+  <img src="docs/images/search-research-workspace.png" alt="Po kliknutí na Preskúmať sa otvorí detailný pracovný pohľad s analýzou a zdrojmi." width="1100" />
+</p>
+
+Práve tu sa ukazuje, že nejde len o vyhľadávač, ale o nástroj, ktorý pomáha aj s ďalším krokom.
+
+### 4. Pri novom výroku systém najprv skontroluje, či už nebol overený
+
+Ak analytik vloží výrok, ktorý už v archíve existuje, detektor duplicít ho označí a hneď ukáže najbližšiu zhodu. To šetrí čas a znižuje riziko, že sa rovnaká práca začne od nuly.
 
 <p align="center">
   <img src="docs/images/detect-duplicate-exact-match.png" alt="Detektor duplicít našiel presnú zhodu s už overeným výrokom." width="1100" />
 </p>
 
-Prínos nie je iba v úspore času. Dôležité je aj to, že redakcia pracuje konzistentnejšie a lepšie využíva vlastný archív.
+Takýto výsledok je dôležitý hlavne pre redakciu, ktorá potrebuje rýchlo zistiť, či už má k dispozícii použiteľný základ.
 
-### 4. Režim prieskumu ukazuje širší kontext zhôd
+### 5. Keď treba širší pohľad, je tu režim Prieskum
 
-Popri rýchlom režime je pripravený aj režim `Prieskum`, ktorý je vhodný v situáciách, keď analytik nechce len najbližší zásah, ale širší obraz o súvisiacich výrokoch a ďalšom kontexte.
+Popri rýchlom vyhodnotení je pripravený aj režim „Prieskum“. Ten je vhodný vtedy, keď nestačí iba najbližšia zhoda a treba si pozrieť širší súbor súvisiacich výrokov.
 
 <p align="center">
-  <img src="docs/images/detect-thorough-mode.png" alt="Rozšírený režim prieskumu pri detekcii duplicít so súhrnným prieskumom zhôd." width="1100" />
+  <img src="docs/images/detect-thorough-mode.png" alt="Rozšírený režim Prieskum pri detekcii duplicít so súhrnným prieskumom zhôd." width="1100" />
 </p>
 
-Tento pohľad je cenný najmä vtedy, keď sa výrok neopakuje doslova, ale vracia sa v mierne zmenenej forme, v inom čase alebo u iného politika.
+Takýto pohľad je užitočný najmä pri výrokoch, ktoré sa v čase vracajú v mierne pozmenenej podobe.
 
-### 5. Ak sa zhoda nenájde, systém jasne povie, že ide o nový prípad
+### 6. Ak sa zhoda nenájde, workflow pokračuje prirodzene
 
-Nástroj nemá len hľadať podobnosti. Rovnako dôležité je vedieť povedať, že v databáze sa nič podobné nenašlo a treba začať s novým záznamom.
+Nástroj vie rovnako jasne povedať aj to, že sa nič podobné nenašlo. V takom prípade ponúkne pokračovanie na pridanie nového výroku do databázy.
 
 <p align="center">
   <img src="docs/images/detect-no-match-new-claim.png" alt="Detektor duplicít označil výrok ako nový a ponúkol pokračovanie na pridanie do databázy." width="1100" />
 </p>
 
-Takýto moment je praktický, pretože analytik nemusí rozmýšľať, čo ďalej. Produkt ho prirodzene posunie do ďalšieho kroku.
-
-### 6. Pridanie nového výroku nadväzuje priamo na detekciu
-
-Po kliknutí na pridanie nového výroku sa otvorí formulár s predvyplneným textom. Celý prechod pôsobí ako jeden súvislý workflow, nie ako presun do odpojenej internej časti.
+Po kliknutí sa otvorí formulár s predvyplneným textom výroku, takže používateľ nemusí začínať odznova.
 
 <p align="center">
   <img src="docs/images/add-statement-prefilled.png" alt="Formulár na pridanie nového výroku s predvyplneným textom z predchádzajúcej detekcie." width="1100" />
 </p>
 
-To je presne moment, kde sa ukazuje rozdiel medzi efektnou ukážkou a reálne použiteľným nástrojom. Produkt neskončí pri odpovedi, ale pomôže aj s tým, čo má redakcia urobiť ďalej.
+Celý prechod tak pôsobí ako jedna súvislá práca, nie ako presun do iného, odpojeného nástroja.
 
-## Ako túto ukážku čítať
+## Pre koho je to užitočné
 
-Najsilnejšia hodnota nie je v jednom samostatnom prvku. Je v tom, že celý archív Demagogu začne fungovať ako živý pracovný nástroj.
+- Pre čitateľa alebo novinára, ktorý si chce rýchlo nájsť relevantné overenia k téme.
+- Pre analytika, ktorý potrebuje zistiť, či už redakcia podobný výrok riešila.
+- Pre tím, ktorý chce z archívu spraviť aktívne používaný pracovný nástroj, nie iba miesto na ukladanie starších výstupov.
 
-- Čitateľ sa vie dostať k relevantným overeniam aj bez presnej citácie.
-- Analytik rýchlo zistí, či už má redakcia hotový základ.
-- Nový výrok sa dá bez zbytočných prestupov posunúť do evidencie.
-
-Ukážky vyššie boli vytvorené na reálnych dopytoch a výsledkoch z bežiacej aplikácie, aby bolo vidieť správanie produktu v praxi, nie iba ilustračné obrazovky.
+Ukážky vyššie vznikli na reálnych dopytoch a výsledkoch z bežiacej aplikácie, aby bolo vidieť, ako sa produkt správa v praxi.
