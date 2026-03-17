@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { classifyMatches, getGeminiModel } from "@/lib/gemini";
 import { embedText } from "@/lib/jina";
+import {
+  buildKeywordTerms,
+  normalizeForMatching,
+  scoreTextAgainstQuery,
+} from "@/lib/lexical-match";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord } from "@/lib/utils";
 import type {
@@ -43,6 +48,22 @@ interface SourceRow {
   url: string;
   title: string | null;
 }
+
+const LEXICAL_DETECT_CANDIDATE_LIMIT = 120;
+const LEXICAL_DETECT_ROWS_PER_TERM = 40;
+let matchStatementsRpcAvailable: boolean | null = null;
+const DETECT_FALLBACK_IGNORED_TERMS = new Set([
+  "asi",
+  "dnes",
+  "kabinet",
+  "plan",
+  "pripravuje",
+  "slovenska",
+  "slovensko",
+  "tri",
+  "vlada",
+  "vyrazne",
+]);
 
 function toStatement(row: MatchRow): Statement {
   return {
@@ -90,7 +111,7 @@ function buildFallbackClassification(row: MatchRow): {
     };
   }
 
-  if (row.similarity >= 0.62) {
+  if (row.similarity >= 0.5) {
     return {
       id: row.id,
       classification: "RELATED",
@@ -128,6 +149,100 @@ async function fetchSourcesForIds(
   }
 
   return map;
+}
+
+function isRpcUnavailable(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === "PGRST202";
+}
+
+async function canUseMatchStatementsRpc(
+  supabase: ReturnType<typeof supabasePublic>
+): Promise<boolean> {
+  if (matchStatementsRpcAvailable !== null) {
+    return matchStatementsRpcAvailable;
+  }
+
+  const probe = await supabase.rpc("match_statements", {
+    query_embedding: [0.01, 0.02, 0.03],
+    match_count: 1,
+  });
+
+  matchStatementsRpcAvailable = !isRpcUnavailable(probe.error);
+  return matchStatementsRpcAvailable;
+}
+
+async function runLexicalDetectFallback(
+  supabase: ReturnType<typeof supabasePublic>,
+  statement: string,
+  retrievalCount: number
+): Promise<MatchRow[]> {
+  const keywordTerms = buildKeywordTerms(statement, 8).filter(
+    (term) => !DETECT_FALLBACK_IGNORED_TERMS.has(normalizeForMatching(term))
+  );
+
+  if (keywordTerms.length === 0) {
+    return [];
+  }
+
+  const candidateMap = new Map<number, Omit<MatchRow, "similarity">>();
+  const termGroups: string[][] = [];
+
+  if (keywordTerms.length >= 2) {
+    termGroups.push(keywordTerms.slice(0, 2));
+  }
+
+  for (const term of keywordTerms.slice(0, 5)) {
+    termGroups.push([term]);
+  }
+
+  for (const terms of termGroups) {
+    let query = supabase
+      .from("vyroky")
+      .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url");
+
+    for (const term of terms) {
+      query = query.ilike("vyrok", `%${term}%`);
+    }
+
+    const { data, error } = await query.range(0, LEXICAL_DETECT_ROWS_PER_TERM - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of (data ?? []) as Omit<MatchRow, "similarity">[]) {
+      candidateMap.set(row.id, row);
+
+      if (candidateMap.size === LEXICAL_DETECT_CANDIDATE_LIMIT) {
+        break;
+      }
+    }
+
+    if (candidateMap.size === LEXICAL_DETECT_CANDIDATE_LIMIT) {
+      break;
+    }
+  }
+
+  return Array.from(candidateMap.values())
+    .map((row) => ({
+      ...row,
+      similarity: scoreTextAgainstQuery(statement, row.vyrok, row.odovodnenie),
+    }))
+    .filter((row) => row.similarity > 0)
+    .sort((left, right) => {
+      if (right.similarity !== left.similarity) {
+        return right.similarity - left.similarity;
+      }
+
+      const leftDate = left.datum ?? "";
+      const rightDate = right.datum ?? "";
+      return rightDate.localeCompare(leftDate);
+    })
+    .slice(0, retrievalCount);
+}
+
+export function resetDetectRouteStateForTests() {
+  matchStatementsRpcAvailable = null;
 }
 
 export async function POST(request: NextRequest) {
@@ -178,29 +293,46 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  let embedding: number[];
-  try {
-    embedding = await embedText(statement);
-  } catch {
-    return NextResponse.json(
-      { error: "Embedding service unavailable" },
-      { status: 502 }
-    );
-  }
 
   const retrievalCount = Math.max(topK, mode === "fast" ? 6 : 30);
-  const { data, error } = await supabase.rpc("match_statements", {
-    query_embedding: embedding,
-    match_count: retrievalCount,
-  });
+  let rows: MatchRow[];
+  let embedding: number[] | null = null;
+  let usedLexicalFallback = false;
 
-  if (error) {
-    return NextResponse.json({ error: "Database error" }, { status: 502 });
+  if (await canUseMatchStatementsRpc(supabase)) {
+    try {
+      embedding = await embedText(statement);
+    } catch {
+      return NextResponse.json(
+        { error: "Embedding service unavailable" },
+        { status: 502 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc("match_statements", {
+      query_embedding: embedding,
+      match_count: retrievalCount,
+    });
+
+    if (error) {
+      if (isRpcUnavailable(error)) {
+        matchStatementsRpcAvailable = false;
+        usedLexicalFallback = true;
+        rows = await runLexicalDetectFallback(supabase, statement, retrievalCount);
+      } else {
+        return NextResponse.json({ error: "Database error" }, { status: 502 });
+      }
+    } else {
+      rows = (data ?? []) as MatchRow[];
+    }
+  } else {
+    usedLexicalFallback = true;
+    rows = await runLexicalDetectFallback(supabase, statement, retrievalCount);
   }
 
-  const rows = (data ?? []) as MatchRow[];
+  const similarityThreshold = usedLexicalFallback ? 0.15 : 0.5;
 
-  if (rows.length === 0 || rows.every((row) => row.similarity < 0.62)) {
+  if (rows.length === 0 || rows.every((row) => row.similarity < similarityThreshold)) {
     const response: DetectResponse = {
       input_statement: statement,
       matches: [],
@@ -279,7 +411,7 @@ export async function POST(request: NextRequest) {
       : "NEW_CLAIM";
 
   let relatedArticles: Article[] | undefined;
-  if (overallStatus !== "NEW_CLAIM") {
+  if (overallStatus !== "NEW_CLAIM" && embedding) {
     try {
       const { data: articleData, error: articleError } = await supabase.rpc(
         "match_articles",

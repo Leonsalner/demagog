@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
 import { rerankResults, understandQuery } from "@/lib/gemini";
+import {
+  buildKeywordTerms,
+  normalizeForMatching,
+  scoreTextAgainstQuery,
+  tokenizeForMatching,
+} from "@/lib/lexical-match";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
@@ -15,6 +21,8 @@ import type {
 } from "@/types";
 const SEARCH_TIMINGS_FLAG = "DEBUG_SEARCH_TIMINGS";
 const SEARCH_RERANK_FLAG = "ENABLE_SEARCH_RERANK";
+const LEXICAL_SEARCH_CANDIDATE_LIMIT = 250;
+const LEXICAL_SEARCH_ROWS_PER_TERM = 40;
 
 type DistinctQueryValues = {
   meno: string[];
@@ -66,6 +74,7 @@ interface ArticleMatchRow {
 }
 
 const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
+let searchStatementsRpcAvailable: boolean | null = null;
 
 function toArticle(row: ArticleMatchRow): Article {
   return {
@@ -182,21 +191,6 @@ function mergeQueryFilters(
     vyhodnotenie:
       body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
   };
-}
-
-function normalizeForMatching(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
-    .replace(/\s+/gu, " ")
-    .trim();
-}
-
-function tokenizeForMatching(value: string): string[] {
-  const normalized = normalizeForMatching(value);
-  return normalized.length > 0 ? normalized.split(" ") : [];
 }
 
 function readBooleanEnv(name: string): boolean {
@@ -587,7 +581,142 @@ async function fetchSourcesForIds(
 }
 
 export function resetSearchRouteStateForTests() {
-  // Distinct values are loaded directly from the database per request.
+  searchStatementsRpcAvailable = null;
+}
+
+function isRpcUnavailable(error: { code?: string | null } | null | undefined): boolean {
+  return error?.code === "PGRST202";
+}
+
+async function canUseSearchStatementsRpc(
+  supabase: ReturnType<typeof supabasePublic>
+): Promise<boolean> {
+  if (searchStatementsRpcAvailable !== null) {
+    return searchStatementsRpcAvailable;
+  }
+
+  const probe = await supabase.rpc("search_statements", {
+    query_embedding: [0.01, 0.02, 0.03],
+    match_count: 1,
+    match_offset: 0,
+    filter_strana: null,
+    filter_vyhodnotenie: null,
+    filter_meno: null,
+    filter_datum_od: null,
+    filter_datum_do: null,
+  });
+
+  searchStatementsRpcAvailable = !isRpcUnavailable(probe.error);
+  return searchStatementsRpcAvailable;
+}
+
+function applyStatementFilters<
+  T extends {
+    eq: (column: string, value: string) => T;
+    in: (column: string, value: string[]) => T;
+    gte: (column: string, value: string) => T;
+    lte: (column: string, value: string) => T;
+  },
+>(
+  query: T,
+  body: SearchRequest
+): T {
+  let nextQuery = query;
+
+  if (body.strana) {
+    nextQuery = nextQuery.eq("strana", body.strana) as typeof nextQuery;
+  }
+  if (body.vyhodnotenie) {
+    nextQuery = nextQuery.eq("vyhodnotenie", body.vyhodnotenie) as typeof nextQuery;
+  }
+  if (body.meno) {
+    const mena = Array.isArray(body.meno) ? body.meno : [body.meno];
+    nextQuery = nextQuery.in("meno", mena) as typeof nextQuery;
+  }
+  if (body.datum_od) {
+    nextQuery = nextQuery.gte("datum", body.datum_od) as typeof nextQuery;
+  }
+  if (body.datum_do) {
+    nextQuery = nextQuery.lte("datum", body.datum_do) as typeof nextQuery;
+  }
+
+  return nextQuery;
+}
+
+async function runLexicalSearchFallback(
+  supabase: ReturnType<typeof supabasePublic>,
+  body: SearchRequest,
+  semanticQuery: string,
+  page: number,
+  pageSize: number
+): Promise<{
+  results: Statement[];
+  totalCount: number;
+  hasMore: boolean;
+}> {
+  const keywordTerms = buildKeywordTerms(semanticQuery, 3);
+
+  if (keywordTerms.length === 0) {
+    return { results: [], totalCount: 0, hasMore: false };
+  }
+
+  const candidateMap = new Map<number, SearchRow>();
+
+  for (const term of keywordTerms) {
+    const query = applyStatementFilters(
+      supabase
+        .from("vyroky")
+        .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url"),
+      body
+    );
+    const { data, error } = await query
+      .ilike("vyrok", `%${term}%`)
+      .range(0, LEXICAL_SEARCH_ROWS_PER_TERM - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of (data ?? []) as SearchRow[]) {
+      candidateMap.set(row.id, row);
+
+      if (candidateMap.size === LEXICAL_SEARCH_CANDIDATE_LIMIT) {
+        break;
+      }
+    }
+
+    if (candidateMap.size === LEXICAL_SEARCH_CANDIDATE_LIMIT) {
+      break;
+    }
+  }
+
+  const scoredRows = Array.from(candidateMap.values())
+    .map((row) => ({
+      row,
+      similarity: scoreTextAgainstQuery(semanticQuery, row.vyrok, row.odovodnenie),
+    }))
+    .filter((candidate) => candidate.similarity > 0)
+    .sort((left, right) => {
+      if (right.similarity !== left.similarity) {
+        return right.similarity - left.similarity;
+      }
+
+      const leftDate = left.row.datum ?? "";
+      const rightDate = right.row.datum ?? "";
+      return rightDate.localeCompare(leftDate);
+    });
+
+  const offset = (page - 1) * pageSize;
+  const pagedResults = scoredRows
+    .slice(offset, offset + pageSize)
+    .map(({ row, similarity }) => toStatement({ ...row, similarity }));
+  const totalCount = scoredRows.length;
+
+  return {
+    results: pagedResults,
+    totalCount,
+    hasMore: offset + pagedResults.length < totalCount,
+  };
 }
 
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
@@ -752,124 +881,130 @@ export async function POST(request: NextRequest) {
       );
       const mergedBody = mergeQueryFilters(body, validatedFilters);
       const semanticQuery = understanding.semantic_query.trim() || body.query;
-
-      let embedding: number[];
-      const embedStartedAt = performance.now();
-      try {
-        embedding = await embedText(semanticQuery);
-      } catch {
-        return NextResponse.json(
-          { error: "Embedding service unavailable" },
-          { status: 502 }
-        );
-      }
-      recordStageTiming(timings, "embed_text_ms", embedStartedAt);
-
-      const filterParams = buildFilterParams(mergedBody);
-      const searchStartedAt = performance.now();
-      const [searchResult, countResult] = await Promise.all([
-        supabase.rpc("search_statements", {
-          query_embedding: embedding,
-          match_count: pageSize,
-          match_offset: offset,
-          ...filterParams,
-        }),
-        supabase.rpc("count_statements", {
-          ...filterParams,
-          require_embedding: true,
-        }),
-      ]);
-      recordStageTiming(timings, "search_statements_ms", searchStartedAt);
-
-      if (searchResult.error || countResult.error) {
-        console.error(
-          "[search] semantic search RPC error:",
-          searchResult.error?.code ?? countResult.error?.code,
-          searchResult.error?.message ?? countResult.error?.message,
-          searchResult.error?.details ?? countResult.error?.details
-        );
-        return NextResponse.json({ error: "Database error" }, { status: 502 });
-      }
-
-      const semanticRows = ((searchResult.data ?? []) as SearchRow[]).map(toStatement);
-      let orderedRows = semanticRows;
-
-      if (readBooleanEnv(SEARCH_RERANK_FLAG) && semanticRows.length > 5) {
-        const rerankStartedAt = performance.now();
-        const rerankedIds = await rerankResults(
-          body.query,
-          semanticRows.map((row) => ({ id: row.id, vyrok: row.vyrok }))
-        );
-        recordStageTiming(timings, "rerank_ms", rerankStartedAt);
-        const rowsById = new Map(semanticRows.map((row) => [row.id, row]));
-        orderedRows = rerankedIds
-          .map((id) => rowsById.get(id))
-          .filter((row): row is Statement => Boolean(row));
-      }
-
-      results = orderedRows;
-      totalCount = countResult.data ?? 0;
-      hasMore = offset + results.length < totalCount;
-      const relatedResultsStartedAt = performance.now();
-      relatedResults = await fetchRelatedResults(
-        supabase,
-        embedding,
-        mergedBody,
-        validatedRelatedPoliticians,
-        new Set(results.map((statement) => statement.id))
-      );
-      recordStageTiming(timings, "related_results_ms", relatedResultsStartedAt);
-
-      const articlesStartedAt = performance.now();
-      try {
-        const { data: articleData, error: articleError } = await supabase.rpc(
-          "match_articles",
-          { query_embedding: embedding, match_count: 5 }
-        );
-
-        if (!articleError) {
-          relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
-            .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
-            .map(toArticle)
-            .filter((article) => article.text.length > 0);
-
-          if (relatedArticles.length === 0) {
-            relatedArticles = undefined;
-          }
+      if (await canUseSearchStatementsRpc(supabase)) {
+        let embedding: number[];
+        const embedStartedAt = performance.now();
+        try {
+          embedding = await embedText(semanticQuery);
+        } catch {
+          return NextResponse.json(
+            { error: "Embedding service unavailable" },
+            { status: 502 }
+          );
         }
-      } catch {
-        // Article context is best-effort; do not fail the search.
+        recordStageTiming(timings, "embed_text_ms", embedStartedAt);
+
+        const filterParams = buildFilterParams(mergedBody);
+        const searchStartedAt = performance.now();
+        const [searchResult, countResult] = await Promise.all([
+          supabase.rpc("search_statements", {
+            query_embedding: embedding,
+            match_count: pageSize,
+            match_offset: offset,
+            ...filterParams,
+          }),
+          supabase.rpc("count_statements", {
+            ...filterParams,
+            require_embedding: true,
+          }),
+        ]);
+        recordStageTiming(timings, "search_statements_ms", searchStartedAt);
+
+        if (searchResult.error || countResult.error) {
+          if (isRpcUnavailable(searchResult.error) || isRpcUnavailable(countResult.error)) {
+            searchStatementsRpcAvailable = false;
+          } else {
+            console.error(
+              "[search] semantic search RPC error:",
+              searchResult.error?.code ?? countResult.error?.code,
+              searchResult.error?.message ?? countResult.error?.message,
+              searchResult.error?.details ?? countResult.error?.details
+            );
+            return NextResponse.json({ error: "Database error" }, { status: 502 });
+          }
+        } else {
+          const semanticRows = ((searchResult.data ?? []) as SearchRow[]).map(toStatement);
+          let orderedRows = semanticRows;
+
+          if (readBooleanEnv(SEARCH_RERANK_FLAG) && semanticRows.length > 5) {
+            const rerankStartedAt = performance.now();
+            const rerankedIds = await rerankResults(
+              body.query,
+              semanticRows.map((row) => ({ id: row.id, vyrok: row.vyrok }))
+            );
+            recordStageTiming(timings, "rerank_ms", rerankStartedAt);
+            const rowsById = new Map(semanticRows.map((row) => [row.id, row]));
+            orderedRows = rerankedIds
+              .map((id) => rowsById.get(id))
+              .filter((row): row is Statement => Boolean(row));
+          }
+
+          results = orderedRows;
+          totalCount = countResult.data ?? 0;
+          hasMore = offset + results.length < totalCount;
+          const relatedResultsStartedAt = performance.now();
+          relatedResults = await fetchRelatedResults(
+            supabase,
+            embedding,
+            mergedBody,
+            validatedRelatedPoliticians,
+            new Set(results.map((statement) => statement.id))
+          );
+          recordStageTiming(timings, "related_results_ms", relatedResultsStartedAt);
+
+          const articlesStartedAt = performance.now();
+          try {
+            const { data: articleData, error: articleError } = await supabase.rpc(
+              "match_articles",
+              { query_embedding: embedding, match_count: 5 }
+            );
+
+            if (!articleError) {
+              relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+                .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
+                .map(toArticle)
+                .filter((article) => article.text.length > 0);
+
+              if (relatedArticles.length === 0) {
+                relatedArticles = undefined;
+              }
+            }
+          } catch {
+            // Article context is best-effort; do not fail the search.
+          }
+          recordStageTiming(timings, "related_articles_ms", articlesStartedAt);
+        }
       }
-      recordStageTiming(timings, "related_articles_ms", articlesStartedAt);
+
+      if (!results.length && totalCount === 0 && hasMore === undefined) {
+        const fallbackStartedAt = performance.now();
+        const fallback = await runLexicalSearchFallback(
+          supabase,
+          mergedBody,
+          semanticQuery,
+          page,
+          pageSize
+        );
+        recordStageTiming(timings, "search_statements_ms", fallbackStartedAt);
+        results = fallback.results;
+        totalCount = fallback.totalCount;
+        hasMore = fallback.hasMore;
+      }
 
       queryUnderstanding = {
         extracted_filters: validatedFilters,
         related_politicians: validatedRelatedPoliticians,
       };
     } else {
-      let query = supabase
-        .from("vyroky")
-        .select(
-          "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
-          { count: "exact" }
-        );
-
-      if (body.strana) {
-        query = query.eq("strana", body.strana);
-      }
-      if (body.vyhodnotenie) {
-        query = query.eq("vyhodnotenie", body.vyhodnotenie);
-      }
-      if (body.meno) {
-        const mena = Array.isArray(body.meno) ? body.meno : [body.meno];
-        query = query.in("meno", mena);
-      }
-      if (body.datum_od) {
-        query = query.gte("datum", body.datum_od);
-      }
-      if (body.datum_do) {
-        query = query.lte("datum", body.datum_do);
-      }
+      const query = applyStatementFilters(
+        supabase
+          .from("vyroky")
+          .select(
+            "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
+            { count: "exact" }
+          ),
+        body
+      );
 
       const { data, error, count } = await query
         .order("datum", { ascending: false, nullsFirst: false })
