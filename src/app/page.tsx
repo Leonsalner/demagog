@@ -234,6 +234,7 @@ export default function Home() {
                   <SearchResults
                     results={results}
                     relatedResults={results.related_results}
+                    relatedArticles={results.related_articles}
                     queryUnderstanding={results.query_understanding}
                     query={query}
                     onPageChange={handlePageChange}

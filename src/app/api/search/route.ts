@@ -5,6 +5,7 @@ import { rerankResults, understandQuery } from "@/lib/gemini";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
+  Article,
   QueryUnderstanding,
   SearchRequest,
   SearchResponse,
@@ -28,6 +29,7 @@ type SearchStageTimings = Partial<
     | "search_statements_ms"
     | "rerank_ms"
     | "related_results_ms"
+    | "related_articles_ms"
     | "sources_ms",
     number
   >
@@ -52,6 +54,25 @@ interface SourceRow {
   position: number;
   label: string;
   url: string;
+}
+
+interface ArticleMatchRow {
+  id: number;
+  datum: string | null;
+  autor: string | null;
+  text_content: string | null;
+  similarity: number;
+}
+
+const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
+
+function toArticle(row: ArticleMatchRow): Article {
+  return {
+    id: row.id,
+    datum: row.datum ?? "",
+    autor: row.autor ?? "Demagog.sk",
+    text: row.text_content?.trim() ?? "",
+  };
 }
 
 function toStatement(row: SearchRow): Statement {
@@ -698,6 +719,7 @@ export async function POST(request: NextRequest) {
     let totalCount = 0;
     let hasMore: boolean | undefined;
     let relatedResults: Statement[] | undefined;
+    let relatedArticles: Article[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
     if (body.query) {
@@ -796,6 +818,29 @@ export async function POST(request: NextRequest) {
         new Set(results.map((statement) => statement.id))
       );
       recordStageTiming(timings, "related_results_ms", relatedResultsStartedAt);
+
+      const articlesStartedAt = performance.now();
+      try {
+        const { data: articleData, error: articleError } = await supabase.rpc(
+          "match_articles",
+          { query_embedding: embedding, match_count: 5 }
+        );
+
+        if (!articleError) {
+          relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+            .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
+            .map(toArticle)
+            .filter((article) => article.text.length > 0);
+
+          if (relatedArticles.length === 0) {
+            relatedArticles = undefined;
+          }
+        }
+      } catch {
+        // Article context is best-effort; do not fail the search.
+      }
+      recordStageTiming(timings, "related_articles_ms", articlesStartedAt);
+
       queryUnderstanding = {
         extracted_filters: validatedFilters,
         related_politicians: validatedRelatedPoliticians,
@@ -860,6 +905,9 @@ export async function POST(request: NextRequest) {
       ...(typeof hasMore === "boolean" ? { has_more: hasMore } : {}),
       ...(relatedResults && relatedResults.length > 0
         ? { related_results: relatedResults }
+        : {}),
+      ...(relatedArticles && relatedArticles.length > 0
+        ? { related_articles: relatedArticles }
         : {}),
       ...(queryUnderstanding ? { query_understanding: queryUnderstanding } : {}),
     };

@@ -289,7 +289,9 @@ export async function POST(request: NextRequest) {
       );
 
       if (!articleError) {
+        const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
         relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+          .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
           .map(toArticle)
           .filter((article) => article.text.length > 0);
       }

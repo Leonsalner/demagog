@@ -60,6 +60,7 @@ export interface SearchResponse {
   query_time_ms: number;
   has_more?: boolean;
   related_results?: Statement[];
+  related_articles?: Article[];
   query_understanding?: {
     extracted_filters: QueryUnderstanding["filters"];
     related_politicians: QueryUnderstanding["related_politicians"];
