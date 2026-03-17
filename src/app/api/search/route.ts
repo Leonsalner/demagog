@@ -288,9 +288,12 @@ function mergeUnderstandingFilters(
   };
 }
 
-function containsTokenSequence(queryTokens: string[], candidateTokens: string[]): boolean {
+function findTokenSequenceStart(
+  queryTokens: string[],
+  candidateTokens: string[]
+): number {
   if (candidateTokens.length === 0 || candidateTokens.length > queryTokens.length) {
-    return false;
+    return -1;
   }
 
   for (let start = 0; start <= queryTokens.length - candidateTokens.length; start += 1) {
@@ -304,32 +307,59 @@ function containsTokenSequence(queryTokens: string[], candidateTokens: string[])
     }
 
     if (matches) {
-      return true;
+      return start;
     }
   }
 
-  return false;
+  return -1;
 }
 
-function findExactCandidateInQuery(query: string, candidates: string[]): string | null {
+function findExactCandidatesInQuery(query: string, candidates: string[]): string[] | null {
   const queryTokens = tokenizeForMatching(query);
-  const sortedCandidates = [...candidates].sort((left, right) => right.length - left.length);
+  const occupiedIndexes = new Set<number>();
+  const matches: Array<{ candidate: string; start: number }> = [];
+  const sortedCandidates = [...candidates].sort((left, right) => {
+    const leftTokens = tokenizeForMatching(left).length;
+    const rightTokens = tokenizeForMatching(right).length;
+
+    if (rightTokens !== leftTokens) {
+      return rightTokens - leftTokens;
+    }
+
+    return right.length - left.length;
+  });
 
   for (const candidate of sortedCandidates) {
     const candidateTokens = tokenizeForMatching(candidate);
+    const start = findTokenSequenceStart(queryTokens, candidateTokens);
 
-    if (containsTokenSequence(queryTokens, candidateTokens)) {
-      return candidate;
+    if (start < 0) {
+      continue;
     }
+
+    const overlaps = candidateTokens.some((_, index) =>
+      occupiedIndexes.has(start + index)
+    );
+
+    if (overlaps) {
+      continue;
+    }
+
+    candidateTokens.forEach((_, index) => occupiedIndexes.add(start + index));
+    matches.push({ candidate, start });
   }
 
-  return null;
+  const orderedMatches = matches
+    .sort((left, right) => left.start - right.start)
+    .map(({ candidate }) => candidate);
+
+  return orderedMatches.length > 0 ? orderedMatches : null;
 }
 
-function findUniqueNameSurnameInQuery(query: string, candidates: string[]): string | null {
-  const queryTokens = new Set(tokenizeForMatching(query));
+function findUniqueNameSurnamesInQuery(query: string, candidates: string[]): string[] | null {
+  const queryTokens = tokenizeForMatching(query);
 
-  if (queryTokens.size === 0) {
+  if (queryTokens.length === 0) {
     return null;
   }
 
@@ -352,24 +382,33 @@ function findUniqueNameSurnameInQuery(query: string, candidates: string[]): stri
     }
   }
 
+  const resolvedMatches: string[] = [];
+  const seenCandidates = new Set<string>();
+
   for (const token of queryTokens) {
     const matches = surnameMatches.get(token);
 
-    if (matches?.length === 1) {
-      return matches[0] ?? null;
+    if (!matches || matches.length !== 1) {
+      continue;
     }
+
+    const candidate = matches[0];
+    if (seenCandidates.has(candidate)) {
+      continue;
+    }
+
+    seenCandidates.add(candidate);
+    resolvedMatches.push(candidate);
   }
 
-  return null;
+  return resolvedMatches.length > 0 ? resolvedMatches : null;
 }
 
 function findNamesInQuery(query: string, candidates: string[]): string[] | null {
-  const matches = dedupeStrings(
-    [
-      findExactCandidateInQuery(query, candidates),
-      findUniqueNameSurnameInQuery(query, candidates),
-    ].filter((value): value is string => Boolean(value)),
-  );
+  const matches = dedupeStrings([
+    ...(findExactCandidatesInQuery(query, candidates) ?? []),
+    ...(findUniqueNameSurnamesInQuery(query, candidates) ?? []),
+  ]).slice(0, 3);
 
   return matches.length > 0 ? matches : null;
 }
@@ -467,10 +506,8 @@ function buildFastQueryUnderstanding(
   const detectedNames = toFilterArray(body.meno) ?? findNamesInQuery(query, availableNames);
   const detectedParties =
     toFilterArray(body.strana) ??
-    (() => {
-      const match = findExactCandidateInQuery(query, availableParties);
-      return match ? [match] : null;
-    })();
+    findExactCandidatesInQuery(query, availableParties)?.slice(0, 3) ??
+    null;
   const detectedVerdicts =
     toFilterArray(body.vyhodnotenie) ?? detectVerdictsFromQuery(query);
   const detectedDates = extractDateFiltersFromQuery(query);
