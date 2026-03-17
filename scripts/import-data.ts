@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { loadEnvConfig } from "@next/env";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { createReadStream, existsSync } from "node:fs";
@@ -6,6 +7,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse";
 import { createClient } from "@supabase/supabase-js";
+
+loadEnvConfig(process.cwd(), true);
 
 export type StatementVerdict =
   | "Pravda"
@@ -74,13 +77,15 @@ type StatementParseContext = {
 type ScriptArgs = {
   dryRun: boolean;
   upsert: boolean;
+  statementsOnly: boolean;
+  articlesOnly: boolean;
 };
 
 type ImportOptions = ScriptArgs;
 
 const PROJECT_ROOT = process.cwd();
-const STATEMENTS_CSV = path.join(PROJECT_ROOT, "data", "demagog_vyroky_20260125.csv");
-const ARTICLES_CSV = path.join(PROJECT_ROOT, "data", "demagog_clanky_20260126.csv");
+const STATEMENTS_CSV = path.join(PROJECT_ROOT, "data", "demagog_vyroky.csv");
+const ARTICLES_CSV = path.join(PROJECT_ROOT, "data", "demagog_clanky.csv");
 const STATEMENT_BATCH_SIZE = 500;
 const ARTICLE_BATCH_SIZE = 500;
 const MAX_STATEMENT_DIAGNOSTIC_SAMPLES = 10;
@@ -98,6 +103,19 @@ const STATEMENT_VERDICT_SET = new Set<StatementVerdict>(STATEMENT_VERDICTS);
 const STATEMENT_VERDICT_ALIASES: Record<string, StatementVerdict> = {
   Neoveritelné: "Neoveriteľné",
 };
+
+// Stripped versions for fuzzy matching when encoding is mangled
+const STRIPPED_VERDICT_MAP: Record<string, StatementVerdict> = Object.fromEntries(
+  STATEMENT_VERDICTS.map((v) => [
+    v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+    v,
+  ]),
+);
+
+function fuzzyMatchVerdict(value: string): StatementVerdict | undefined {
+  const stripped = value.normalize("NFD").replace(/[\u0300-\u036f\ufffd]/g, "").toLowerCase();
+  return STRIPPED_VERDICT_MAP[stripped];
+}
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
 function getEnv(name: string): string {
@@ -120,6 +138,8 @@ export function parseArgs(args = process.argv.slice(2)): ScriptArgs {
   return {
     dryRun: args.includes("--dry-run"),
     upsert: args.includes("--upsert"),
+    statementsOnly: args.includes("--statements-only"),
+    articlesOnly: args.includes("--articles-only"),
   };
 }
 
@@ -219,6 +239,14 @@ export function normalizeStatementVerdict(
   }
 
   if (!STATEMENT_VERDICT_SET.has(mappedVerdict as StatementVerdict)) {
+    const fuzzy = fuzzyMatchVerdict(mappedVerdict);
+    if (fuzzy) {
+      incrementFrequency(
+        diagnostics?.normalizedVerdictAliases ?? new Map(),
+        `${normalized} -> ${fuzzy} (fuzzy)`,
+      );
+      return fuzzy;
+    }
     incrementFrequency(diagnostics?.unexpectedVerdicts ?? new Map(), normalized);
     throw new Error(`Unsupported statement vyhodnotenie: ${normalized}`);
   }
@@ -274,13 +302,20 @@ async function* parseCsv(filePath: string): AsyncGenerator<string[]> {
       quote: '"',
       escape: '"',
       relax_column_count: true,
+      relax_quotes: true,
       skip_empty_lines: true,
       trim: false,
     }),
   );
 
-  for await (const record of parser) {
-    yield record as string[];
+  try {
+    for await (const record of parser) {
+      yield record as string[];
+    }
+  } catch (error) {
+    console.warn(
+      `CSV parser stopped early: ${(error as Error).message}. All rows before this point were processed.`,
+    );
   }
 }
 
@@ -602,8 +637,8 @@ function printStatementDiagnostics(diagnostics: StatementDiagnostics): void {
 
 async function main(): Promise<void> {
   const options = parseArgs();
-  requireFile(STATEMENTS_CSV);
-  requireFile(ARTICLES_CSV);
+  if (!options.articlesOnly) requireFile(STATEMENTS_CSV);
+  if (!options.statementsOnly) requireFile(ARTICLES_CSV);
 
   const supabase = options.dryRun
     ? null
@@ -620,8 +655,14 @@ async function main(): Promise<void> {
 
     await confirmTruncate();
 
+    const truncateQuery = options.statementsOnly
+      ? "TRUNCATE TABLE vyroky RESTART IDENTITY CASCADE;"
+      : options.articlesOnly
+        ? "TRUNCATE TABLE clanky RESTART IDENTITY CASCADE;"
+        : "TRUNCATE TABLE vyroky, clanky RESTART IDENTITY CASCADE;";
+
     const truncateResult = await (supabase.rpc as any)("exec_sql", {
-      query: "TRUNCATE TABLE vyroky, clanky RESTART IDENTITY CASCADE;",
+      query: truncateQuery,
     });
 
     if (truncateResult.error) {
@@ -631,12 +672,16 @@ async function main(): Promise<void> {
     }
   }
 
-  const statementResult = await importStatements(supabase, options);
-  const articleSummary = await importArticles(supabase, options);
+  if (!options.articlesOnly) {
+    const statementResult = await importStatements(supabase, options);
+    printSummary("Statements", statementResult.summary);
+    printStatementDiagnostics(statementResult.diagnostics);
+  }
 
-  printSummary("Statements", statementResult.summary);
-  printStatementDiagnostics(statementResult.diagnostics);
-  printSummary("Articles", articleSummary);
+  if (!options.statementsOnly) {
+    const articleSummary = await importArticles(supabase, options);
+    printSummary("Articles", articleSummary);
+  }
 }
 
 const isMainModule =

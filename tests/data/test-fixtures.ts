@@ -11,10 +11,10 @@ export const fullStatement: Statement = {
   vyhodnotenie: "Pravda",
   odovodnenie:
     "Podľa rozpočtových odhadov niesli domácnosti výraznú časť konsolidačných opatrení cez vyššie dane a poplatky.",
-  oblast: "Ekonomika",
   datum: "2026-01-11",
   meno: "Milan Majerský",
   strana: "KDH",
+  url: "https://demagog.sk/vyrok/101",
   similarity: 0.94,
 };
 
@@ -24,10 +24,10 @@ export const minimalStatement: Statement = {
   vyhodnotenie: "Nepravda",
   odovodnenie:
     "Ministerstvo už v tom čase zverejnilo schválený investičný harmonogram aj financovanie prvých projektov.",
-  oblast: null,
   datum: "2025-10-02",
   meno: "Mária Kolíková",
   strana: "SaS",
+  url: "https://demagog.sk/vyrok/102",
 };
 
 export const noDatumStatement: Statement = {
@@ -36,10 +36,10 @@ export const noDatumStatement: Statement = {
   vyhodnotenie: "Pravda",
   odovodnenie:
     "Dáta poisťovní aj profesijných komôr potvrdzovali dlhodobý deficit pediatrov v niekoľkých okresoch.",
-  oblast: "Zdravotníctvo",
   datum: null,
   meno: "Veronika Remišová",
   strana: "OĽaNO",
+  url: "https://demagog.sk/vyrok/103",
 };
 
 export const noReasoningStatement: Statement = {
@@ -47,10 +47,10 @@ export const noReasoningStatement: Statement = {
   vyrok: "Vláda znížila reálne investície do železníc.",
   vyhodnotenie: "Zavádzajúce",
   odovodnenie: null,
-  oblast: "Doprava",
   datum: "2025-06-09",
   meno: "Michal Šimečka",
   strana: "PS",
+  url: "https://demagog.sk/vyrok/104",
 };
 
 export const pravdaStatement: Statement = {
@@ -77,10 +77,10 @@ export const neoveritelneStatement: Statement = {
   vyhodnotenie: "Neoveriteľné",
   odovodnenie:
     "Diskusia existovala, ale bez zverejneného návrhu, rozpočtu alebo potvrdeného legislatívneho postupu.",
-  oblast: null,
   datum: "2025-03-02",
   meno: "Michal Šimečka",
   strana: "PS",
+  url: "https://demagog.sk/vyrok/108",
 };
 
 export const originalStatement: Statement = {
@@ -89,10 +89,10 @@ export const originalStatement: Statement = {
   vyhodnotenie: "Pravda",
   odovodnenie:
     "Odhady stavov ambulancií dlhodobo ukazujú deficit približne troch stoviek pediatrov v severných regiónoch.",
-  oblast: "Zdravotníctvo",
   datum: null,
   meno: "Milan Majerský",
   strana: "KDH",
+  url: "https://demagog.sk/vyrok/109",
 };
 
 export const duplicateStatement: Statement = {
@@ -101,10 +101,10 @@ export const duplicateStatement: Statement = {
   vyhodnotenie: "Pravda",
   odovodnenie:
     "Ide o parafrázu rovnakého tvrdenia o nedostatku pediatrov v severných regiónoch.",
-  oblast: "Zdravotníctvo",
   datum: "2025-12-18",
   meno: "Veronika Remišová",
   strana: "OĽaNO",
+  url: "https://demagog.sk/vyrok/110",
 };
 
 export const relatedStatement1: Statement = {
@@ -113,10 +113,10 @@ export const relatedStatement1: Statement = {
   vyhodnotenie: "Neoveriteľné",
   odovodnenie:
     "Verejne známe dokumenty neobsahovali konkrétne míľniky, podľa ktorých by bolo možné splnenie plánu overiť.",
-  oblast: "Zdravotníctvo",
   datum: "2025-07-01",
   meno: "Denisa Saková",
   strana: "Hlas",
+  url: "https://demagog.sk/vyrok/111",
 };
 
 export const relatedStatement2: Statement = {
@@ -124,10 +124,10 @@ export const relatedStatement2: Statement = {
   vyrok: "Kabinet má pripravený plán, ktorý má skrátiť čakanie na onkologické vyšetrenia na polovicu.",
   vyhodnotenie: "Neoveriteľné",
   odovodnenie: null,
-  oblast: "Zdravotníctvo",
   datum: null,
   meno: "Tomáš Drucker",
   strana: "Hlas",
+  url: "https://demagog.sk/vyrok/112",
 };
 
 export const unrelatedStatement: Statement = {
@@ -136,10 +136,10 @@ export const unrelatedStatement: Statement = {
   vyhodnotenie: "Neoveriteľné",
   odovodnenie:
     "Ide o hodnotiaci výrok bez objektívneho metra, preto ho nemožno spoľahlivo overiť ako faktické tvrdenie.",
-  oblast: "Šport",
   datum: "2025-05-19",
   meno: "Andrej Danko",
   strana: "SNS",
+  url: "https://demagog.sk/vyrok/113",
 };
 
 export const longStatement: Statement = {
@@ -149,10 +149,10 @@ export const longStatement: Statement = {
   vyhodnotenie: "Zavádzajúce",
   odovodnenie:
     "Výrok mieša priame a nepriame dopady opatrení. Časť bremena môžu zniesť firmy, časť sa však pravdepodobne prenesie na domácnosti.",
-  oblast: "Ekonomika",
   datum: "2025-11-07",
   meno: "Richard Sulík",
   strana: "SaS",
+  url: "https://demagog.sk/vyrok/114",
 };
 
 export const specialCharsStatement: Statement = {
@@ -162,10 +162,10 @@ export const specialCharsStatement: Statement = {
   vyhodnotenie: "Zavádzajúce",
   odovodnenie:
     "Citovaný výrok je presný, ale záver z neho vyvodzuje širší politický význam, ktorý z citácie priamo nevyplýva.",
-  oblast: "Ekonomika",
   datum: "2025-09-30",
   meno: "Branislav Gröhling",
   strana: "SaS",
+  url: "https://demagog.sk/vyrok/115",
 };
 
 export const fixtureStatements: Statement[] = [
@@ -263,7 +263,6 @@ export const mockDetectNew: DetectResponse = {
 
 export const mockFilters: FiltersResponse = {
   strany: ["Hlas", "KDH", "OĽaNO", "PS", "SNS", "SaS"],
-  oblasti: ["Doprava", "Ekonomika", "Zdravotníctvo", "Šport", "Školstvo"],
   mena: [
     "Andrej Danko",
     "Branislav Gröhling",

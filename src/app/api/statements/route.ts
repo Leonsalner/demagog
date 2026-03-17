@@ -42,6 +42,20 @@ function isVerdict(value: unknown): value is Verdict {
   return typeof value === "string" && VERDICTS.includes(value as Verdict);
 }
 
+function createManualStatementMetadata() {
+  const manualId = crypto.randomUUID();
+
+  return {
+    source_id: `manual:${manualId}`,
+    url: `manual://statement/${manualId}`,
+    speaker_url: null,
+    analysis_paragraphs: [] as unknown[],
+    analysis_date: null as string | null,
+    scraped_at: null as string | null,
+    numeric_id: null as number | null,
+  };
+}
+
 async function embedAndStoreStatementEmbedding(
   statementId: number,
   vyrok: string,
@@ -117,6 +131,7 @@ export async function POST(request: NextRequest) {
       datum,
       odovodnenie,
       embedding: null,
+      ...createManualStatementMetadata(),
     })
     .select("id")
     .single();

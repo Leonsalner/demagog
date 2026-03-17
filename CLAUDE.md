@@ -11,7 +11,7 @@ This is a Next.js prototype for Demagog.sk with two main user flows:
 - semantic search across archived fact-checks and statements
 - duplicate detection for newly submitted political statements
 
-The app also includes demo flows and data-import / embedding scripts for the backing archive.
+The app also includes demo flows, an add-statement flow for analysts, and the import / embedding scripts that back the archive.
 
 ## Quick Start
 
@@ -27,6 +27,7 @@ Live app defaults to `http://localhost:3000`.
 
 ## Core Entry Points
 
+- `README.md`: product-facing showcase
 - `src/app/page.tsx`: main search + detect shell
 - `src/app/detect/page.tsx`: detect route that currently redirects back to `/`
 - `src/app/demo/page.tsx`: scripted search demo
@@ -39,8 +40,8 @@ Live app defaults to `http://localhost:3000`.
 
 ### API Routes
 
-- `src/app/api/search/route.ts`: semantic search, query understanding, optional reranking, related politician results
-- `src/app/api/detect/route.ts`: duplicate detection, fast/thorough modes, Gemini classification with heuristic fallback
+- `src/app/api/search/route.ts`: semantic search, query understanding, optional reranking, related politician results, related articles, attached statement sources
+- `src/app/api/detect/route.ts`: duplicate detection, fast/thorough modes, Gemini classification with heuristic fallback, related articles, attached statement sources
 - `src/app/api/filters/route.ts`: filter metadata and date bounds
 - `src/app/api/health/route.ts`: Supabase connectivity and embedding counts
 - `src/app/api/statements/route.ts`: statement creation / retrieval helpers for the add flow
@@ -127,9 +128,13 @@ Feature flags / debugging:
 ## Working Notes
 
 - The main user experience lives on `/`; `/detect` currently redirects rather than hosting a separate page.
+- `README.md` is intentionally product-facing; keep deeper implementation guidance in `CLAUDE.md`, `demagog-plan.md`, or `docs/plans`.
 - Search can auto-extract filters from natural-language input and may return related politicians and related statements.
+- Search and detect can both attach related articles, giving analysts immediate context from nearby coverage.
+- Statement cards can expose analysis sources and outbound links for faster backtracking into the original research trail.
 - `useSearch.ts` tracks model-owned filters so LLM-generated filters can be applied and later cleared safely.
 - Detect supports mock mode through `NEXT_PUBLIC_USE_DETECT_MOCK`; search has a separate mock mode through `NEXT_PUBLIC_USE_SEARCH_MOCK`.
+- `/add` provides the analyst-side entry flow for saving a new statement after review.
 - The embedding stack expects 1024-dimensional vectors; keep runtime code, scripts, and Supabase schema aligned.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` specifically.
 - Run `scripts/setup-supabase.sql` in a SQL client; do not execute it with `tsx`.
@@ -138,4 +143,5 @@ Feature flags / debugging:
 
 - `docs/plans`: implementation notes for search intelligence and embedding upgrades
 - `demagog-plan.md`: higher-level product / implementation planning
+- `PLAN.md`: original project plan and ownership split
 - `README.md`: product overview and local usage notes

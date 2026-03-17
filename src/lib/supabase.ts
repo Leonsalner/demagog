@@ -10,6 +10,13 @@ type StatementRow = {
   meno: string;
   strana: string;
   embedding: number[] | null;
+  source_id: string;
+  numeric_id: number | null;
+  url: string;
+  speaker_url: string | null;
+  analysis_paragraphs: unknown[];
+  analysis_date: string | null;
+  scraped_at: string | null;
 };
 
 type ArticleRow = {
@@ -20,7 +27,25 @@ type ArticleRow = {
   embedding: number[] | null;
 };
 
-type SearchStatementRow = Omit<StatementRow, "embedding"> & {
+type StatementSourceRow = {
+  id: number;
+  statement_id: number;
+  position: number;
+  label: string;
+  url: string;
+};
+
+// RPCs return a projected subset of columns (no embedding, no oblast).
+type SearchStatementRow = {
+  id: number;
+  vyrok: string;
+  vyhodnotenie: string;
+  odovodnenie: string | null;
+  datum: string | null;
+  meno: string;
+  strana: string;
+  url: string;
+  speaker_url: string | null;
   similarity: number;
 };
 
@@ -53,12 +78,25 @@ type Database = {
         Update: Partial<Omit<ArticleRow, "id">>;
         Relationships: [];
       };
+      statement_sources: {
+        Row: StatementSourceRow;
+        Insert: Omit<StatementSourceRow, "id"> & { id?: number };
+        Update: Partial<Omit<StatementSourceRow, "id">>;
+        Relationships: [
+          {
+            foreignKeyName: "statement_sources_statement_id_fkey";
+            columns: ["statement_id"];
+            referencedRelation: "vyroky";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       list_distinct_values: {
         Args: {
-          col: "meno" | "strana" | "oblast";
+          col: "meno" | "strana";
         };
         Returns: DistinctValueRow[];
       };
@@ -68,7 +106,6 @@ type Database = {
           match_count?: number;
           match_offset?: number;
           filter_strana?: string | null;
-          filter_oblast?: string | null;
           filter_vyhodnotenie?: string | null;
           filter_meno?: string | null;
           filter_datum_od?: string | null;
@@ -79,7 +116,6 @@ type Database = {
       count_statements: {
         Args: {
           filter_strana?: string | null;
-          filter_oblast?: string | null;
           filter_vyhodnotenie?: string | null;
           filter_meno?: string | null;
           filter_datum_od?: string | null;

@@ -7,10 +7,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Pravda",
     odovodnenie:
       "Medziročný rast cien potravín v roku 2023 skutočne dosiahol najvyššiu úroveň v sledovanom desaťročí podľa údajov Štatistického úradu.",
-    oblast: "Ekonomika",
     datum: "2024-02-14",
     meno: "Robert Fico",
     strana: "Smer",
+    url: "https://demagog.sk/vyrok/1",
   },
   {
     id: 2,
@@ -18,10 +18,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Pravda",
     odovodnenie:
       "V čase výroku nebolo stavebné povolenie právoplatné, čo potvrdzovali aj verejné dokumenty rezortu zdravotníctva.",
-    oblast: "Zdravotníctvo",
     datum: "2024-03-09",
     meno: "Milan Majerský",
     strana: "KDH",
+    url: "https://demagog.sk/vyrok/2",
   },
   {
     id: 3,
@@ -29,10 +29,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Nepravda",
     odovodnenie:
       "Česká republika mala ku koncu sledovaného obdobia vyšší objem potvrdených platieb aj míľnikov než Slovensko.",
-    oblast: "Eurofondy",
     datum: "2024-01-25",
     meno: "Richard Sulík",
     strana: "SaS",
+    url: "https://demagog.sk/vyrok/3",
   },
   {
     id: 4,
@@ -40,10 +40,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Nepravda",
     odovodnenie:
       "Rozostavaný bol iba jeden z uvádzaných úsekov, pri ďalších dvoch ešte neprebehlo odovzdanie staveniska.",
-    oblast: "Doprava",
     datum: null,
     meno: "Peter Pellegrini",
     strana: "Hlas",
+    url: "https://demagog.sk/vyrok/4",
   },
   {
     id: 5,
@@ -51,10 +51,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Nepravda",
     odovodnenie:
       "Priemerné mzdy pedagogických zamestnancov boli podľa rezortu školstva nižšie než uvádzaná suma.",
-    oblast: "Školstvo",
     datum: "2024-04-11",
     meno: "Igor Matovič",
     strana: "OĽaNO",
+    url: "https://demagog.sk/vyrok/5",
   },
   {
     id: 6,
@@ -62,10 +62,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Nepravda",
     odovodnenie:
       "V čase výroku nebola suma pre samosprávy ani zďaleka na úrovni jednej miliardy eur.",
-    oblast: "Samospráva",
     datum: null,
     meno: "Matúš Šutaj Eštok",
     strana: "Hlas",
+    url: "https://demagog.sk/vyrok/6",
   },
   {
     id: 7,
@@ -73,10 +73,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Zavádzajúce",
     odovodnenie:
       "Miera nezamestnanosti mladých síce klesla, no historicky boli zaznamenané aj nižšie hodnoty v predpandemickom období.",
-    oblast: "Práca",
     datum: "2024-02-02",
     meno: "Michal Šimečka",
     strana: "PS",
+    url: "https://demagog.sk/vyrok/7",
   },
   {
     id: 8,
@@ -84,10 +84,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Zavádzajúce",
     odovodnenie:
       "Podporné tímy sa rozšírili, ale systém nepokrýval všetky školy a časti služieb boli iba zdieľané.",
-    oblast: "Školstvo",
     datum: null,
     meno: "Branislav Gröhling",
     strana: "SaS",
+    url: "https://demagog.sk/vyrok/8",
   },
   {
     id: 9,
@@ -95,10 +95,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Zavádzajúce",
     odovodnenie:
       "Regulácia sa týkala len časti odberateľov a obdobie garancie nebolo nastavené tak široko, ako výrok naznačuje.",
-    oblast: "Energetika",
     datum: "2024-05-19",
     meno: "Robert Kaliňák",
     strana: "Smer",
+    url: "https://demagog.sk/vyrok/9",
   },
   {
     id: 10,
@@ -106,10 +106,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Zavádzajúce",
     odovodnenie:
       "Vláda síce neohlásila novú samostatnú daň, ale navrhované zmeny v odvodoch by časť živnostníkov zasiahli.",
-    oblast: null,
     datum: null,
     meno: "Mária Kolíková",
     strana: "SaS",
+    url: "https://demagog.sk/vyrok/10",
   },
   {
     id: 11,
@@ -117,20 +117,20 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Neoveriteľné",
     odovodnenie:
       "Verejne dostupné dokumenty neobsahovali konkrétny plán s jasnými opatreniami a termínmi, preto nebolo možné výrok spoľahlivo potvrdiť.",
-    oblast: "Zdravotníctvo",
     datum: "2024-06-01",
     meno: "Denisa Saková",
     strana: "Hlas",
+    url: "https://demagog.sk/vyrok/11",
   },
   {
     id: 12,
     vyrok: "Kabinet má pripravený plán, ktorý má skrátiť čakanie na onkologické vyšetrenia na polovicu.",
     vyhodnotenie: "Neoveriteľné",
     odovodnenie: null,
-    oblast: "Zdravotníctvo",
     datum: null,
     meno: "Tomáš Drucker",
     strana: "Hlas",
+    url: "https://demagog.sk/vyrok/12",
   },
   {
     id: 13,
@@ -138,10 +138,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Neoveriteľné",
     odovodnenie:
       "Diskusia o nových finančných nástrojoch prebiehala neformálne, no bez verejného návrhu alebo potvrdeného harmonogramu.",
-    oblast: null,
     datum: "2024-02-28",
     meno: "Michal Šimečka",
     strana: "PS",
+    url: "https://demagog.sk/vyrok/13",
   },
   {
     id: 14,
@@ -149,10 +149,10 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Pravda",
     odovodnenie:
       "Odhady profesijných združení a regionálnych poisťovní ukazovali dlhodobý deficit pediatrov približne v tejto výške.",
-    oblast: "Zdravotníctvo",
     datum: null,
     meno: "Milan Majerský",
     strana: "KDH",
+    url: "https://demagog.sk/vyrok/14",
   },
   {
     id: 15,
@@ -160,26 +160,15 @@ export const mockStatements: Statement[] = [
     vyhodnotenie: "Pravda",
     odovodnenie:
       "Výrok parafrázuje rovnaké odhady nedostatku pediatrov v severných regiónoch, ktoré sa pohybovali okolo tristo miest.",
-    oblast: "Zdravotníctvo",
     datum: null,
     meno: "Veronika Remišová",
     strana: "OĽaNO",
+    url: "https://demagog.sk/vyrok/15",
   },
 ];
 
 export const mockFilters: FiltersResponse = {
   strany: ["Hlas", "KDH", "OĽaNO", "PS", "SaS", "Smer"],
-  oblasti: [
-    "Doprava",
-    "Ekonomika",
-    "Energetika",
-    "Eurofondy",
-    "Priemysel",
-    "Práca",
-    "Samospráva",
-    "Zdravotníctvo",
-    "Školstvo",
-  ],
   mena: [
     "Branislav Gröhling",
     "Denisa Saková",

@@ -19,7 +19,6 @@ describeLiveApi("GET /api/filters", () => {
       "Neoveriteľné",
     ]);
     expect(data.strany.length).toBeGreaterThan(0);
-    expect(data.oblasti.length).toBeGreaterThan(0);
     expect(data.mena.length).toBeGreaterThan(0);
     expect(data.date_range.min).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(data.date_range.max).toMatch(/^\d{4}-\d{2}-\d{2}$/);

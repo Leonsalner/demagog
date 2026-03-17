@@ -118,10 +118,14 @@ describe("scripts/import-data", () => {
   it("parses dry-run and upsert script flags", () => {
     expect(parseArgs(["--dry-run", "--upsert"])).toEqual({
       dryRun: true,
+      statementsOnly: false,
+      articlesOnly: false,
       upsert: true,
     });
     expect(parseArgs([])).toEqual({
       dryRun: false,
+      statementsOnly: false,
+      articlesOnly: false,
       upsert: false,
     });
   });

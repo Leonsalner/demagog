@@ -38,10 +38,11 @@ function buildRow(
     vyrok: string;
     vyhodnotenie: Verdict;
     odovodnenie: string | null;
-    oblast: string | null;
     datum: string | null;
     meno: string;
     strana: string;
+    url: string;
+    speaker_url: string | null;
   }>,
 ) {
   return {
@@ -49,10 +50,11 @@ function buildRow(
     vyrok: `Vyrok ${id}`,
     vyhodnotenie: "Pravda" as Verdict,
     odovodnenie: `Odovodnenie ${id}`,
-    oblast: "Ekonomika",
     datum: "2026-01-01",
     meno: `Politik ${id}`,
     strana: "Strana",
+    url: `https://demagog.sk/vyrok/${id}`,
+    speaker_url: null,
     similarity,
     ...overrides,
   };
@@ -68,7 +70,14 @@ function createSupabaseMock(
     similarity: number;
   }> = [],
 ) {
+  const sourcesQuery = {
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
+
   return {
+    from: vi.fn(() => sourcesQuery),
     rpc: vi.fn(async (fn: string) => {
       if (fn === "match_statements") {
         return {

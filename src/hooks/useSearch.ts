@@ -14,7 +14,6 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_SEARCH_MOCK === "true";
 
 const emptyFilters: FilterState = {
   strana: null,
-  oblast: null,
   vyhodnotenie: null,
   meno: null,
   datum_od: null,
@@ -23,7 +22,6 @@ const emptyFilters: FilterState = {
 
 const extractedFilterKeys = [
   "strana",
-  "oblast",
   "vyhodnotenie",
   "meno",
 ] as const satisfies Array<keyof FilterState>;
@@ -42,7 +40,6 @@ function clearModelOwnedFilters(
   return {
     ...currentFilters,
     strana: ownedFields.has("strana") ? null : currentFilters.strana,
-    oblast: ownedFields.has("oblast") ? null : currentFilters.oblast,
     vyhodnotenie: ownedFields.has("vyhodnotenie")
       ? null
       : currentFilters.vyhodnotenie,
@@ -65,10 +62,6 @@ function applyExtractedFilters(
   if (clearedFilters.strana === null && extractedFilters.strana !== null) {
     nextFilters.strana = extractedFilters.strana;
     nextOwnedFields.add("strana");
-  }
-  if (clearedFilters.oblast === null && extractedFilters.oblast !== null) {
-    nextFilters.oblast = extractedFilters.oblast;
-    nextOwnedFields.add("oblast");
   }
   if (
     clearedFilters.vyhodnotenie === null &&
@@ -133,10 +126,6 @@ function runMockSearch(request: SearchRequest): SearchResponse {
 
   let filtered = mockStatements.filter((statement) => {
     if (request.strana && statement.strana !== request.strana) {
-      return false;
-    }
-
-    if (request.oblast && statement.oblast !== request.oblast) {
       return false;
     }
 
@@ -243,7 +232,17 @@ export function useSearch() {
       setError(null);
       setHasSearched(true);
 
-      const cleanedFilters = clearModelOwnedFilters(filters, modelSetFields.current);
+      // Capture and clear model-owned filters immediately so stale
+      // auto-detected filters disappear from the UI as soon as a new
+      // search starts, rather than lingering until the response arrives.
+      const previousOwnedFields = new Set(modelSetFields.current);
+      if (previousOwnedFields.size > 0) {
+        modelSetFields.current = new Set<keyof FilterState>();
+        isModelFilterUpdateRef.current = true;
+        setFiltersState((cur) => clearModelOwnedFilters(cur, previousOwnedFields));
+      }
+
+      const cleanedFilters = clearModelOwnedFilters(filters, previousOwnedFields);
       const request = buildRequestBody(query, cleanedFilters, nextPage);
 
       try {

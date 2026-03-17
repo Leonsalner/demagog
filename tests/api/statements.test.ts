@@ -95,6 +95,7 @@ describe("POST /api/statements", () => {
   it("saves a statement and stores the background embedding", async () => {
     const supabase = createSupabaseMock();
     vi.mocked(supabaseAdmin).mockReturnValue(supabase as never);
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("statement-uuid");
 
     const response = await POST(
       createRequest({
@@ -125,6 +126,13 @@ describe("POST /api/statements", () => {
       datum: "2026-03-09",
       odovodnenie: "Stručné zdôvodnenie.",
       embedding: null,
+      source_id: "manual:statement-uuid",
+      numeric_id: null,
+      url: "manual://statement/statement-uuid",
+      speaker_url: null,
+      analysis_paragraphs: [],
+      analysis_date: null,
+      scraped_at: null,
     });
     expect(embedText).toHaveBeenCalledWith("Nový výrok o zdravotníctve.");
     expect(supabase.update).toHaveBeenCalledWith({

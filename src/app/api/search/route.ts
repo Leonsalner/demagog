@@ -5,10 +5,12 @@ import { rerankResults, understandQuery } from "@/lib/gemini";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
+  Article,
   QueryUnderstanding,
   SearchRequest,
   SearchResponse,
   Statement,
+  StatementSource,
   Verdict,
 } from "@/types";
 const SEARCH_TIMINGS_FLAG = "DEBUG_SEARCH_TIMINGS";
@@ -17,7 +19,6 @@ const SEARCH_RERANK_FLAG = "ENABLE_SEARCH_RERANK";
 type DistinctQueryValues = {
   meno: string[];
   strana: string[];
-  oblast: string[];
 };
 
 type SearchStageTimings = Partial<
@@ -27,7 +28,9 @@ type SearchStageTimings = Partial<
     | "embed_text_ms"
     | "search_statements_ms"
     | "rerank_ms"
-    | "related_results_ms",
+    | "related_results_ms"
+    | "related_articles_ms"
+    | "sources_ms",
     number
   >
 >;
@@ -37,11 +40,39 @@ interface SearchRow {
   vyrok: string;
   vyhodnotenie: Verdict;
   odovodnenie: string | null;
-  oblast: string | null;
   datum: string | null;
   meno: string;
   strana: string;
+  url: string;
+  speaker_url: string | null;
   similarity?: number | null;
+}
+
+interface SourceRow {
+  id: number;
+  statement_id: number;
+  position: number;
+  label: string;
+  url: string;
+}
+
+interface ArticleMatchRow {
+  id: number;
+  datum: string | null;
+  autor: string | null;
+  text_content: string | null;
+  similarity: number;
+}
+
+const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
+
+function toArticle(row: ArticleMatchRow): Article {
+  return {
+    id: row.id,
+    datum: row.datum ?? "",
+    autor: row.autor ?? "Demagog.sk",
+    text: row.text_content?.trim() ?? "",
+  };
 }
 
 function toStatement(row: SearchRow): Statement {
@@ -50,10 +81,11 @@ function toStatement(row: SearchRow): Statement {
     vyrok: row.vyrok,
     vyhodnotenie: row.vyhodnotenie,
     odovodnenie: row.odovodnenie,
-    oblast: row.oblast,
     datum: row.datum,
     meno: row.meno,
     strana: row.strana,
+    url: row.url,
+    speaker_url: row.speaker_url,
   };
 
   if (typeof row.similarity === "number") {
@@ -61,6 +93,16 @@ function toStatement(row: SearchRow): Statement {
   }
 
   return statement;
+}
+
+function attachSources(
+  statements: Statement[],
+  sourcesMap: Map<number, StatementSource[]>,
+): Statement[] {
+  return statements.map((statement) => {
+    const sources = sourcesMap.get(statement.id);
+    return sources && sources.length > 0 ? { ...statement, sources } : statement;
+  });
 }
 
 function coerceOptionalString(value: unknown): string | undefined {
@@ -121,7 +163,6 @@ function coercePositiveInteger(
 function buildFilterParams(body: SearchRequest) {
   return {
     filter_strana: body.strana ?? null,
-    filter_oblast: body.oblast ?? null,
     filter_vyhodnotenie: body.vyhodnotenie ?? null,
     filter_meno: Array.isArray(body.meno) ? (body.meno[0] ?? null) : body.meno ?? null,
     filter_datum_od: body.datum_od ?? null,
@@ -139,7 +180,6 @@ function mergeQueryFilters(
     strana: body.strana ?? extractedFilters.strana ?? undefined,
     vyhodnotenie:
       body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
-    oblast: body.oblast ?? extractedFilters.oblast ?? undefined,
   };
 }
 
@@ -202,7 +242,6 @@ function hasStructuredSearchFilters(body: SearchRequest): boolean {
     body.meno ||
       body.strana ||
       body.vyhodnotenie ||
-      body.oblast ||
       body.datum_od ||
       body.datum_do
   );
@@ -244,6 +283,65 @@ function findExactCandidateInQuery(query: string, candidates: string[]): string 
   }
 
   return null;
+}
+
+function findUniqueNameSurnameInQuery(query: string, candidates: string[]): string | null {
+  const queryTokens = new Set(tokenizeForMatching(query));
+
+  if (queryTokens.size === 0) {
+    return null;
+  }
+
+  const surnameMatches = new Map<string, string[]>();
+
+  for (const candidate of candidates) {
+    const candidateTokens = tokenizeForMatching(candidate);
+    const surname = candidateTokens.at(-1);
+
+    if (!surname || surname.length < 3) {
+      continue;
+    }
+
+    const matches = surnameMatches.get(surname);
+
+    if (matches) {
+      matches.push(candidate);
+    } else {
+      surnameMatches.set(surname, [candidate]);
+    }
+  }
+
+  for (const token of queryTokens) {
+    const matches = surnameMatches.get(token);
+
+    if (matches?.length === 1) {
+      return matches[0] ?? null;
+    }
+  }
+
+  return null;
+}
+
+function findNameInQuery(query: string, candidates: string[]): string | null {
+  return (
+    findExactCandidateInQuery(query, candidates) ??
+    findUniqueNameSurnameInQuery(query, candidates)
+  );
+}
+
+function getNameAliases(name: string | null | undefined): string[] {
+  if (!name) {
+    return [];
+  }
+
+  const tokens = name.trim().split(/\s+/u).filter(Boolean);
+  const surname = tokens.at(-1);
+
+  if (!surname || surname === name) {
+    return [name];
+  }
+
+  return [name, surname];
 }
 
 function stripMatchedTerms(query: string, values: Array<string | null | undefined>): string {
@@ -309,24 +407,20 @@ function buildFastQueryUnderstanding(
   body: SearchRequest,
   query: string,
   availableNames: string[],
-  availableParties: string[],
-  availableAreas: string[]
+  availableParties: string[]
 ): QueryUnderstanding {
   const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
-  const detectedName = selectedName ?? findExactCandidateInQuery(query, availableNames);
+  const detectedName = selectedName ?? findNameInQuery(query, availableNames);
   const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
   const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
-  const detectedArea = body.oblast ?? findExactCandidateInQuery(query, availableAreas);
   const semanticQuery =
     stripMatchedTerms(query, [
-      detectedName,
+      ...getNameAliases(detectedName),
       detectedParty,
       detectedVerdict,
-      detectedArea,
       ...(Array.isArray(body.meno) ? body.meno : [body.meno]),
       body.strana,
       body.vyhodnotenie,
-      body.oblast,
     ]) || query;
 
   return {
@@ -335,7 +429,6 @@ function buildFastQueryUnderstanding(
       meno: detectedName,
       strana: detectedParty,
       vyhodnotenie: detectedVerdict,
-      oblast: detectedArea,
     },
     related_politicians: [],
   };
@@ -345,22 +438,17 @@ function shouldUseFastQueryUnderstanding(
   body: SearchRequest,
   query: string,
   availableNames: string[],
-  availableParties: string[],
-  availableAreas: string[]
+  availableParties: string[]
 ): boolean {
   if (hasStructuredSearchFilters(body)) {
     return true;
   }
 
-  if (findExactCandidateInQuery(query, availableNames)) {
-    return true;
-  }
+  // Name-only detection no longer forces the fast path. When a name is
+  // the only signal, the LLM decides whether the user means statements
+  // FROM the politician or ABOUT the politician.
 
   if (findExactCandidateInQuery(query, availableParties)) {
-    return true;
-  }
-
-  if (findExactCandidateInQuery(query, availableAreas)) {
     return true;
   }
 
@@ -368,7 +456,7 @@ function shouldUseFastQueryUnderstanding(
     return true;
   }
 
-  return !queryHasSentenceShape(query);
+  return !queryHasSentenceShape(query) && !findNameInQuery(query, availableNames);
 }
 
 function resolveAvailableValue(
@@ -403,14 +491,12 @@ function resolveAvailableValue(
 function validateExtractedFilters(
   filters: QueryUnderstanding["filters"],
   availableNames: string[],
-  availableParties: string[],
-  availableAreas: string[]
+  availableParties: string[]
 ): QueryUnderstanding["filters"] {
   return {
     meno: resolveAvailableValue(filters.meno, availableNames),
     strana: resolveAvailableValue(filters.strana, availableParties),
     vyhodnotenie: filters.vyhodnotenie,
-    oblast: resolveAvailableValue(filters.oblast, availableAreas),
   };
 }
 
@@ -434,7 +520,7 @@ function validateRelatedPoliticians(
 
 async function fetchDistinctValues(
   supabase: ReturnType<typeof supabasePublic>,
-  column: "meno" | "strana" | "oblast"
+  column: "meno" | "strana"
 ): Promise<string[]> {
   const { data, error } = await supabase.rpc("list_distinct_values", {
     col: column,
@@ -466,13 +552,37 @@ async function fetchDistinctValues(
 async function fetchAvailableQueryValues(
   supabase: ReturnType<typeof supabasePublic>
 ): Promise<DistinctQueryValues> {
-  const [meno, strana, oblast] = await Promise.all([
+  const [meno, strana] = await Promise.all([
     fetchDistinctValues(supabase, "meno"),
     fetchDistinctValues(supabase, "strana"),
-    fetchDistinctValues(supabase, "oblast"),
   ]);
 
-  return { meno, strana, oblast };
+  return { meno, strana };
+}
+
+async function fetchSourcesForIds(
+  supabase: ReturnType<typeof supabasePublic>,
+  ids: number[]
+): Promise<Map<number, StatementSource[]>> {
+  if (ids.length === 0) {
+    return new Map();
+  }
+
+  const { data } = await supabase
+    .from("statement_sources")
+    .select("id, statement_id, position, label, url")
+    .in("statement_id", ids)
+    .order("position");
+
+  const map = new Map<number, StatementSource[]>();
+
+  for (const row of (data ?? []) as SourceRow[]) {
+    const list = map.get(row.statement_id) ?? [];
+    list.push({ id: row.id, position: row.position, label: row.label, url: row.url });
+    map.set(row.statement_id, list);
+  }
+
+  return map;
 }
 
 export function resetSearchRouteStateForTests() {
@@ -482,7 +592,6 @@ export function resetSearchRouteStateForTests() {
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
   return {
     filter_strana: null,
-    filter_oblast: body.oblast ?? null,
     filter_vyhodnotenie: body.vyhodnotenie ?? null,
     filter_meno: meno,
     filter_datum_od: body.datum_od ?? null,
@@ -592,7 +701,6 @@ export async function POST(request: NextRequest) {
   const body: SearchRequest = {
     query: coerceOptionalString(parsedBody.query),
     strana: coerceOptionalString(parsedBody.strana),
-    oblast: coerceOptionalString(parsedBody.oblast),
     vyhodnotenie: coercedVerdict,
     meno: coerceOptionalStringOrArray(parsedBody.meno),
     datum_od: coerceOptionalString(parsedBody.datum_od),
@@ -611,6 +719,7 @@ export async function POST(request: NextRequest) {
     let totalCount = 0;
     let hasMore: boolean | undefined;
     let relatedResults: Statement[] | undefined;
+    let relatedArticles: Article[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
     if (body.query) {
@@ -618,10 +727,7 @@ export async function POST(request: NextRequest) {
       const {
         meno: allNames,
         strana: allParties,
-        oblast: allAreas,
-      } = await fetchAvailableQueryValues(
-        supabase
-      );
+      } = await fetchAvailableQueryValues(supabase);
       recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
 
       const understandingStartedAt = performance.now();
@@ -629,17 +735,15 @@ export async function POST(request: NextRequest) {
         body,
         body.query,
         allNames,
-        allParties,
-        allAreas
+        allParties
       )
-        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties, allAreas)
+        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties)
         : await understandQuery(body.query, allNames, allParties);
       recordStageTiming(timings, "understand_query_ms", understandingStartedAt);
       const validatedFilters = validateExtractedFilters(
         understanding.filters,
         allNames,
-        allParties,
-        allAreas
+        allParties
       );
       const validatedRelatedPoliticians = validateRelatedPoliticians(
         understanding.related_politicians,
@@ -714,6 +818,29 @@ export async function POST(request: NextRequest) {
         new Set(results.map((statement) => statement.id))
       );
       recordStageTiming(timings, "related_results_ms", relatedResultsStartedAt);
+
+      const articlesStartedAt = performance.now();
+      try {
+        const { data: articleData, error: articleError } = await supabase.rpc(
+          "match_articles",
+          { query_embedding: embedding, match_count: 5 }
+        );
+
+        if (!articleError) {
+          relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+            .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
+            .map(toArticle)
+            .filter((article) => article.text.length > 0);
+
+          if (relatedArticles.length === 0) {
+            relatedArticles = undefined;
+          }
+        }
+      } catch {
+        // Article context is best-effort; do not fail the search.
+      }
+      recordStageTiming(timings, "related_articles_ms", articlesStartedAt);
+
       queryUnderstanding = {
         extracted_filters: validatedFilters,
         related_politicians: validatedRelatedPoliticians,
@@ -722,15 +849,12 @@ export async function POST(request: NextRequest) {
       let query = supabase
         .from("vyroky")
         .select(
-          "id, vyrok, vyhodnotenie, odovodnenie, oblast, datum, meno, strana",
+          "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
           { count: "exact" }
         );
 
       if (body.strana) {
         query = query.eq("strana", body.strana);
-      }
-      if (body.oblast) {
-        query = query.eq("oblast", body.oblast);
       }
       if (body.vyhodnotenie) {
         query = query.eq("vyhodnotenie", body.vyhodnotenie);
@@ -758,6 +882,20 @@ export async function POST(request: NextRequest) {
       totalCount = count ?? 0;
     }
 
+    // Fetch and attach statement sources for all result IDs.
+    const sourcesStartedAt = performance.now();
+    const allIds = [
+      ...results.map((s) => s.id),
+      ...(relatedResults ?? []).map((s) => s.id),
+    ];
+    const sourcesMap = await fetchSourcesForIds(supabase, allIds);
+    recordStageTiming(timings, "sources_ms", sourcesStartedAt);
+
+    results = attachSources(results, sourcesMap);
+    if (relatedResults) {
+      relatedResults = attachSources(relatedResults, sourcesMap);
+    }
+
     const response: SearchResponse = {
       results,
       total_count: totalCount,
@@ -767,6 +905,9 @@ export async function POST(request: NextRequest) {
       ...(typeof hasMore === "boolean" ? { has_more: hasMore } : {}),
       ...(relatedResults && relatedResults.length > 0
         ? { related_results: relatedResults }
+        : {}),
+      ...(relatedArticles && relatedArticles.length > 0
+        ? { related_articles: relatedArticles }
         : {}),
       ...(queryUnderstanding ? { query_understanding: queryUnderstanding } : {}),
     };

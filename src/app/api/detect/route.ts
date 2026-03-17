@@ -10,6 +10,7 @@ import type {
   DetectResponse,
   DetectionMatch,
   Statement,
+  StatementSource,
   Verdict,
 } from "@/types";
 
@@ -18,10 +19,11 @@ interface MatchRow {
   vyrok: string;
   vyhodnotenie: Verdict;
   odovodnenie: string | null;
-  oblast: string | null;
   datum: string | null;
   meno: string;
   strana: string;
+  url: string;
+  speaker_url: string | null;
   similarity: number;
 }
 
@@ -33,16 +35,25 @@ interface ArticleMatchRow {
   similarity: number;
 }
 
+interface SourceRow {
+  id: number;
+  statement_id: number;
+  position: number;
+  label: string;
+  url: string;
+}
+
 function toStatement(row: MatchRow): Statement {
   return {
     id: row.id,
     vyrok: row.vyrok,
     vyhodnotenie: row.vyhodnotenie,
     odovodnenie: row.odovodnenie,
-    oblast: row.oblast,
     datum: row.datum,
     meno: row.meno,
     strana: row.strana,
+    url: row.url,
+    speaker_url: row.speaker_url,
   };
 }
 
@@ -91,6 +102,31 @@ function buildFallbackClassification(row: MatchRow): {
     classification: "UNRELATED",
     explanation: "Klasifikácia nedostupná.",
   };
+}
+
+async function fetchSourcesForIds(
+  supabase: ReturnType<typeof supabasePublic>,
+  ids: number[]
+): Promise<Map<number, StatementSource[]>> {
+  if (ids.length === 0) {
+    return new Map();
+  }
+
+  const { data } = await supabase
+    .from("statement_sources")
+    .select("id, statement_id, position, label, url")
+    .in("statement_id", ids)
+    .order("position");
+
+  const map = new Map<number, StatementSource[]>();
+
+  for (const row of (data ?? []) as SourceRow[]) {
+    const list = map.get(row.statement_id) ?? [];
+    list.push({ id: row.id, position: row.position, label: row.label, url: row.url });
+    map.set(row.statement_id, list);
+  }
+
+  return map;
 }
 
 export async function POST(request: NextRequest) {
@@ -196,7 +232,7 @@ export async function POST(request: NextRequest) {
     classifications.map((classification) => [classification.id, classification])
   );
 
-  const matches: DetectionMatch[] = rows
+  const rawMatches: DetectionMatch[] = rows
     .map((row) => {
       const classification = classificationsById.get(row.id);
 
@@ -220,6 +256,19 @@ export async function POST(request: NextRequest) {
     })
     .slice(0, topK);
 
+  // Fetch and attach sources for all matched statements.
+  const sourcesMap = await fetchSourcesForIds(
+    supabase,
+    rawMatches.map((m) => m.statement.id)
+  );
+
+  const matches: DetectionMatch[] = rawMatches.map((match) => {
+    const sources = sourcesMap.get(match.statement.id);
+    return sources && sources.length > 0
+      ? { ...match, statement: { ...match.statement, sources } }
+      : match;
+  });
+
   const overallStatus: DetectResponse["overall_status"] = matches.some(
     (match) => match.classification === "DUPLICATE"
   )
@@ -240,7 +289,9 @@ export async function POST(request: NextRequest) {
       );
 
       if (!articleError) {
+        const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
         relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+          .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
           .map(toArticle)
           .filter((article) => article.text.length > 0);
       }
