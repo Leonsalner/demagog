@@ -4,8 +4,10 @@ Fast navigation for agents working in this repo.
 
 ## Core Entry Points
 
+- Product-facing showcase: [`README.md`](README.md)
 - Search and detect shell: [`src/app/page.tsx`](src/app/page.tsx)
 - Detect route redirect: [`src/app/detect/page.tsx`](src/app/detect/page.tsx)
+- Add statement page: [`src/app/add/page.tsx`](src/app/add/page.tsx)
 - Demo page: [`src/app/demo/page.tsx`](src/app/demo/page.tsx)
 - App shell: [`src/app/layout.tsx`](src/app/layout.tsx)
 - Shared types: [`src/types/index.ts`](src/types/index.ts)
@@ -14,10 +16,11 @@ Fast navigation for agents working in this repo.
 
 ### App and API
 
-- [`src/app/api/search/route.ts`](src/app/api/search/route.ts): semantic search, fast-vs-LLM query understanding, optional reranking, related politician results
-- [`src/app/api/detect/route.ts`](src/app/api/detect/route.ts): duplicate detection, fast/thorough modes, Gemini classification with heuristic fallback
+- [`src/app/api/search/route.ts`](src/app/api/search/route.ts): semantic search, fast-vs-LLM query understanding, related politician results, linked articles, attached statement sources
+- [`src/app/api/detect/route.ts`](src/app/api/detect/route.ts): duplicate detection, fast/thorough modes, Gemini classification with heuristic fallback, linked articles, attached statement sources
 - [`src/app/api/filters/route.ts`](src/app/api/filters/route.ts): filter metadata and date bounds
 - [`src/app/api/health/route.ts`](src/app/api/health/route.ts): Supabase connectivity and embedding counts
+- [`src/app/api/statements/route.ts`](src/app/api/statements/route.ts): add-new-statement entry flow for analysts
 
 ### UI
 
@@ -59,6 +62,7 @@ Fast navigation for agents working in this repo.
 
 ### Planning Notes
 
+- [`demagog-plan.md`](demagog-plan.md): current demo framing, priorities, and product direction for Demagog.sk
 - [`docs/plans`](docs/plans): implementation notes for search intelligence and embedding upgrades
 - [`PLAN.md`](PLAN.md): original project plan and ownership split
 
@@ -81,9 +85,9 @@ TEST_LIVE_API=true TEST_API_URL=http://localhost:3000 npm test
 - `SUPABASE_SERVICE_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
 - `JINA_API_KEY`
 - `GEMINI_API_KEY`
-- `GEMINI_FLASH_MODEL`
-- `GEMINI_PRO_MODEL`
-- `GEMINI_FLASH_LITE_MODEL`
+- `GEMINI_MODEL_FLASH`
+- `GEMINI_MODEL_PRO`
+- `GEMINI_MODEL_LITE`
 - `NEXT_PUBLIC_USE_SEARCH_MOCK`
 - `NEXT_PUBLIC_USE_DETECT_MOCK`
 - `ENABLE_SEARCH_RERANK`
@@ -92,9 +96,14 @@ TEST_LIVE_API=true TEST_API_URL=http://localhost:3000 npm test
 ## Useful Notes
 
 - The main UI lives on `/`; `/detect` currently redirects there instead of hosting a separate screen.
+- `README.md` is intentionally product-facing; keep deep implementation guidance in `CLAUDE.md`, `demagog-plan.md`, or `docs/plans`.
 - Search can auto-extract filters from a natural-language query and can return related politicians and related statements.
+- Search and detect can both attach related articles, giving analysts immediate context from nearby coverage.
+- Statement cards can expose analysis sources and outbound links for faster backtracking into the original research trail.
 - `useSearch` tracks model-owned filters so LLM-extracted filters can be applied and later cleared safely.
 - Detect supports a mock mode via `NEXT_PUBLIC_USE_DETECT_MOCK`; search has its own mock mode via `NEXT_PUBLIC_USE_SEARCH_MOCK`.
+- `/add` provides the analyst-side entry flow for saving a new statement after review.
 - The embedding stack expects 1024-dimensional vectors; keep runtime code, scripts, and Supabase schema aligned.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` specifically.
+- `AGENTS.md` is symlinked to `CLAUDE.md`; keep both paths working by editing the shared target content rather than duplicating instructions.
 - Run `scripts/setup-supabase.sql` as SQL, not through `tsx`.

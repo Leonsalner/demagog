@@ -35,13 +35,26 @@ Keď príde nový politický výrok, detektor duplicít pomáha zodpovedať veľ
   <img src="docs/images/demagog-demo-fold.png" alt="Ukážka výsledkov vyhľadávania so sémanticky priradenými výrokmi z Demagogu" width="900" />
 </p>
 
-### 3. Smerovanie k rozšíreniu pre prehliadač
+### 3. Výsledky, ktoré sa dajú hneď použiť pri ďalšom výskume
 
-Koncept rozšírenia ukazuje, ako by sa tento nástroj mohol v budúcnosti ešte viac priblížiť každodennej práci analytikov. Zvýraznenú vetu v článku by bolo možné porovnať s existujúcim obsahom Demagogu bez toho, aby používateľ musel opustiť stránku.
+Nové funkcie neposúvajú iba samotné vyhľadanie výroku, ale aj to, čo nasleduje potom. Výsledky sa rozširujú o prepojené články, odkazy na analýzu a zdroje priamo na kartách výrokov a jednoduchší prechod k doplneniu nového záznamu do internej evidencie.
 
-<p align="center">
-  <img src="docs/images/demagog-extension.png" alt="Maketa rozšírenia pre Chrome na porovnanie zvýrazneného výroku s databázou Demagogu" width="700" />
-</p>
+## Kľúčové scenáre ukážky
+
+Táto ukážka je najsilnejšia v troch konkrétnych situáciách:
+
+- používateľ zadá dopyt inými slovami, než ako je výrok uložený v archíve, a napriek tomu dostane správne výsledky
+- analytik vloží výrok, ktorý už bol v minulosti overený, a systém ho rýchlo identifikuje ako duplicitu
+- analytik vloží súvisiaci, ale nie totožný výrok, a systém ukáže užitočný kontext bez toho, aby vytváral falošnú zhodu
+
+## Nové hodnotné prvky
+
+Popri samotnom vyhľadávaní pribúdajú aj funkcie, ktoré robia nástroj praktickejším pri reálnej práci:
+
+- súvisiace články sa pripájajú priamo k výsledkom vyhľadávania aj k detekcii duplicít, takže analytik dostane ďalší kontext bez ďalšieho hľadania
+- karty výrokov zobrazujú odôvodnenie aj konkrétne zdroje analýzy, čo výrazne uľahčuje spätné dohľadanie, z čoho overenie vychádzalo
+- výsledky sa dajú preklikať späť na Demagog.sk aj na profil rečníka, takže orientácia v archíve je rýchlejšia
+- pri novom alebo iba súvisiacom výroku je jednoduchšie prejsť rovno na pridanie nového záznamu do internej evidencie
 
 ## Ako tento produkt chápať
 
@@ -62,4 +75,4 @@ npm install
 npm run dev
 ```
 
-Snímky obrazovky vyššie boli vytvorené lokálne pomocou Playwrightu z aplikácie a z makety rozšírenia v súbore [`extension-mockup.html`](extension-mockup.html).
+Snímky obrazovky vyššie boli vytvorené lokálne pomocou Playwrightu z aplikácie.
