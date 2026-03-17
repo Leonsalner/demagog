@@ -27,9 +27,9 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     eyebrow: "1. Základ",
     title: "Dva režimy. Jeden jednoduchý začiatok.",
     body: [
-      "Ak neviete, kde začať, začnite vo Vyhľadávaní. Rozumie témam, menám, citátom aj normálnym otázkam.",
-      "Detekcia duplicít použite vtedy, keď už máte konkrétny nový výrok a chcete zistiť, či ho Demagog už riešil.",
-      "Pri zhode pokračujte cez Preskúmať. Ak nič nesedí, prejdite na Pridať nový výrok.",
+      "Ak neviete, kde začať, zvoľte Vyhľadávanie. Rozumie témam, menám, citátom aj bežným otázkam.",
+      "Detekciu duplicít použite vtedy, keď už máte konkrétny výrok a chcete zistiť, či ho Demagog v minulosti riešil.",
+      "Ak nájdete zhodu, jej detail si otvoríte cez Preskúmať. Keď nič nesedí, môžete plynulo prejsť na Pridať nový výrok.",
     ],
     media: {
       kind: "text",
@@ -40,9 +40,9 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     eyebrow: "2. Vyhľadávanie",
     title: "Napíšte otázku tak, ako by ste ju povedali kolegovi.",
     body: [
-      "Vyhľadávanie prijíma tému, meno, citát aj celú otázku. Nepotrebujete presnú formuláciu z archívu.",
-      "Systém z dopytu automaticky rozpozná relevantné filtre a zoradí výsledky podľa toho, čo je najbližšie vášmu zadaniu.",
-      "Keď narazíte na relevantný výsledok, cez Preskúmať otvoríte pracovný pohľad a pokračujete bez ďalšieho hľadania.",
+      "Pýtajte sa tak, ako vám to napadne. Nemusíte hľadať presné slová z archívu, stačí zadať tému, meno alebo napísať celú vetu.",
+      "Systém z vašej otázky sám pochopí kontext a automaticky za vás nastaví správne filtre, napríklad pre konkrétnu stranu alebo hodnotenie.",
+      "Výsledky sa zoradia od najlepšej zhody. Keď vás niektorý zaujme, cez tlačidlo Preskúmať si rovno otvoríte jeho detail.",
     ],
     media: {
       kind: "image",
@@ -55,15 +55,15 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "detect",
     eyebrow: "3. Detekcia duplicít",
-    title: "Najprv overte, či sa nový výrok už neopakuje.",
+    title: "Najprv zistite, či už výrok nebol overený.",
     body: [
-      "Detekcia duplicít je určená pre konkrétny nový výrok, pri ktorom chcete rýchlo zistiť, či už má použiteľné staršie overenie.",
-      "Rýchly režim ukáže najbližšie zhody okamžite. Prieskum pridá širší kontext a súvisiace prípady.",
-      "Ak systém označí výrok ako nový, pokračujte na Pridať nový výrok a otvorte formulár s predvyplneným textom.",
+      "Vložte text výroku a nástroj vám obratom ukáže, či k nemu v archíve existuje použiteľné staršie overenie.",
+      "Rýchly režim vám hneď ponúkne najbližšie zhody. Ak potrebujete vidieť širší kontext a podobné tvrdenia, prepnite sa do Prieskumu.",
+      "Ak zistíte, že v archíve nič použiteľné nie je, prejdite na Pridať nový výrok. Formulár sa vám otvorí s už predvyplneným textom.",
     ],
     media: {
       kind: "image",
-      src: "/onboarding/step-03-detect-light.png",
+      src: "/onboarding/step-03-detect-light-v2.png",
       alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a výsledkom s akciou Pridať výrok.",
       caption: "Detekcia rýchlo ukáže, či už existuje zhoda, alebo máte pokračovať na pridanie nového výroku.",
       aspectRatio: "16 / 9",
@@ -72,17 +72,17 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "research",
     eyebrow: "4. Preskúmať",
-    title: "Kliknite na Preskúmať a otvorte pracovný pohľad.",
+    title: "Z výsledku priamo k analýze.",
     body: [
-      "Tlačidlo Preskúmať nájdete vo Vyhľadávaní aj pri výsledkoch Detekcie duplicít.",
-      "Otvorí pracovný pohľad s analýzou výroku, súvisiacimi článkami Demagogu a podkladmi, z ktorých analýza vychádza.",
-      "Je to najrýchlejší spôsob, ako prejsť zo zoznamu výsledkov do samotnej práce s nájdeným výrokom.",
+      "Tlačidlo Preskúmať nájdete pri výsledkoch vo Vyhľadávaní aj v Detekcii duplicít.",
+      "Otvorí vám kompletný prehľad o výroku s textom analýzy, súvisiacimi článkami z Demagogu a konkrétnymi podkladmi, o ktoré sa overenie opiera.",
+      "Všetky podstatné informácie tak máte na jednom mieste a môžete s nimi ihneď začať pracovať.",
     ],
     media: {
       kind: "image",
-      src: "/onboarding/step-04-research-light.png",
-      alt: "Pracovný pohľad Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi.",
-      caption: "Preskúmať sústreďuje analýzu, články Demagogu a overovacie podklady na jednom mieste.",
+      src: "/onboarding/step-04-research-light-v2.png",
+      alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
+      caption: "Preskúmať spája analýzu, Demagog články a podklady k overeniu na jednom mieste.",
       aspectRatio: "16 / 9",
     },
   },

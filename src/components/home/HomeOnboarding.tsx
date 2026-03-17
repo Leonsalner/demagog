@@ -59,8 +59,9 @@ function TextStage() {
           <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
             Začnite prirodzeným dopytom.
           </p>
-          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-            Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
+          <div className="mt-5 grid min-h-[7.5rem] grid-rows-[auto_auto] rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            <span>Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?</span>
+            <span aria-hidden="true">&nbsp;</span>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {["téma", "prirodzený jazyk", "auto-filtre"].map((hint) => (
@@ -309,7 +310,7 @@ export default function HomeOnboarding({
                     persistStatus("dismissed");
                     setManualOpenState("closed");
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                  className="inline-flex h-10 w-10 items-center justify-center text-slate-400 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:text-slate-500 dark:hover:text-slate-100 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
                   aria-label="Zavrieť návod"
                 >
                   <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
