@@ -86,7 +86,7 @@ export const PARTY_GROUPS: PartyGroup[] = [
         meno: "Martin Dubéci",
         strana: "PS",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Martin_Dub%C3%A9ci.jpg/330px-Martin_Dub%C3%A9ci.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/1/1a/Martin_Dub%C3%A9ci.jpg",
       },
       {
         meno: "Tomáš Valášek",
@@ -95,10 +95,10 @@ export const PARTY_GROUPS: PartyGroup[] = [
           "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Tom%C3%A1%C5%A1_Val%C3%A1%C5%A1ek_%282017%29.jpg/330px-Tom%C3%A1%C5%A1_Val%C3%A1%C5%A1ek_%282017%29.jpg",
       },
       {
-        meno: "Irena Bihariová",
+        meno: "Ivan Štefunko",
         strana: "PS",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Irena_Bihariov%C3%A1.jpg/330px-Irena_Bihariov%C3%A1.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/9/93/2P0A2086.jpg",
       },
     ],
   },
@@ -141,50 +141,107 @@ export const PARTY_GROUPS: PartyGroup[] = [
           "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Milan_Majersk%C3%BD.jpg/330px-Milan_Majersk%C3%BD.jpg",
       },
       {
-        meno: "František Majerský",
-        strana: "KDH",
-        photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Franti%C5%A1ek_Majersk%C3%BD_%282025-12-04%29.png/330px-Franti%C5%A1ek_Majersk%C3%BD_%282025-12-04%29.png",
-      },
-      {
         meno: "Viliam Karas",
         strana: "KDH",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Viliam_Karas%2C_June_2025.png/330px-Viliam_Karas%2C_June_2025.png",
+          "https://upload.wikimedia.org/wikipedia/commons/4/4a/Viliam_Karas%2C_June_2025.png",
       },
       {
-        meno: "Igor Janckulík",
+        meno: "František Majerský",
         strana: "KDH",
-        photoUrl: "",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/9/9a/Franti%C5%A1ek_Majersk%C3%BD_%282025-12-04%29.png",
+      },
+      {
+        meno: "Marián Čaučík",
+        strana: "KDH",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/6/63/Mari%C3%A1n_%C4%8Cau%C4%8D%C3%ADk_%282025-12-04%29.png",
       },
     ],
   },
   {
-    strana: "OĽaNO",
+    strana: "Slovensko",
     politicians: [
       {
         meno: "Igor Matovič",
-        strana: "OĽaNO",
+        strana: "Slovensko",
         photoUrl:
           "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Igor_Matovi%C4%8D_October_2020_%28cropped%29.jpg/330px-Igor_Matovi%C4%8D_October_2020_%28cropped%29.jpg",
       },
       {
-        meno: "Veronika Remišová",
-        strana: "OĽaNO",
+        meno: "Roman Mikulec",
+        strana: "Slovensko",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Visit_of_Veronika_R%C3%A9mi%C5%A1ov%C3%A1%2C_Slovak_Deputy_Prime_Minister_and_Minister_for_Investments%2C_Regional_development_and_Informatization%2C_to_the_European_Commission_02_%2818-11-2021%29_%28cropped%29.jpg/330px-thumbnail.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/0/08/RomanMikulec2020.jpg",
+      },
+      {
+        meno: "Marek Krajčí",
+        strana: "Slovensko",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/6/6e/Minister_Marek_Kraj%C4%8D%C3%AD.jpg",
       },
       {
         meno: "Jozef Pročko",
-        strana: "OĽaNO",
+        strana: "Slovensko",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Jozef_Pro%C4%8Dko_2015.jpg/330px-Jozef_Pro%C4%8Dko_2015.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/2/23/Jozef_Pro%C4%8Dko_2015.jpg",
+      },
+    ],
+  },
+  {
+    strana: "SNS",
+    politicians: [
+      {
+        meno: "Andrej Danko",
+        strana: "SNS",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/6/6c/Andrej_Danko%2C_2018.jpg",
       },
       {
-        meno: "Eduard Heger",
-        strana: "OĽaNO",
+        meno: "Tomáš Taraba",
+        strana: "SNS",
         photoUrl:
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Eduard_Heger_in_Finland%2C_2022_%28cropped%29.jpg/330px-Eduard_Heger_in_Finland%2C_2022_%28cropped%29.jpg",
+          "https://upload.wikimedia.org/wikipedia/commons/e/e0/Tom%C3%A1%C5%A1_Taraba%2C_February_2025.png",
+      },
+      {
+        meno: "Martina Šimkovičová",
+        strana: "SNS",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/6/60/Martina_%C5%A0imkovi%C4%8Dov%C3%A1_%282025-09-30%29.png",
+      },
+      {
+        meno: "Roman Michelko",
+        strana: "SNS",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/1/14/Roman_Michelko_portrait-library.JPG",
+      },
+    ],
+  },
+  {
+    strana: "Republika",
+    politicians: [
+      {
+        meno: "Milan Uhrík",
+        strana: "Republika",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/8/80/MEP_Milan_Uhr%C3%ADk.jpg",
+      },
+      {
+        meno: "Milan Mazurek",
+        strana: "Republika",
+        photoUrl:
+          "https://upload.wikimedia.org/wikipedia/commons/f/f0/1720604779368_20240709_MAZUREK_Milan_SK_007.jpg",
+      },
+      {
+        meno: "Miroslav Suja",
+        strana: "Republika",
+        photoUrl: "",
+      },
+      {
+        meno: "Martin Beluský",
+        strana: "Republika",
+        photoUrl: "",
       },
     ],
   },
@@ -214,13 +271,23 @@ export const PARTY_FILTER_OPTIONS: PartyFilterOption[] = [
     aliases: ["KDH", "Kresťanskodemokratické hnutie"],
   },
   {
-    label: "OĽaNO",
+    label: "Slovensko",
     aliases: [
+      "Slovensko",
+      "Hnutie Slovensko",
       "OĽaNO",
       "Obyčajní ľudia a nezávislé osobnosti",
       "Kresťanská únia (klub OĽaNO)",
       "nominant OĽaNO",
-      "Slovensko",
+      "Slovensko, Za ľudí, KÚ",
     ],
+  },
+  {
+    label: "SNS",
+    aliases: ["SNS", "Slovenská národná strana"],
+  },
+  {
+    label: "Republika",
+    aliases: ["Republika", "REPUBLIKA"],
   },
 ];
