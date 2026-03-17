@@ -32,7 +32,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Dva režimy, jedno pole práce")).toBeInTheDocument();
+    expect(screen.getByText("Dva režimy. Jeden jednoduchý začiatok.")).toBeInTheDocument();
   });
 
   it("persists dismissal and supports manual reopen", async () => {
@@ -71,6 +71,7 @@ describe("HomeOnboarding", () => {
     render(<HomeOnboarding />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Hotovo" }));
 

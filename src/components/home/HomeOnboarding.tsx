@@ -1,12 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import {
-  HOME_ONBOARDING_STEPS,
-  type HomeOnboardingStep,
-  type OnboardingPreview,
-} from "./homeOnboardingSteps";
+import { HOME_ONBOARDING_STEPS, type HomeOnboardingStep } from "./homeOnboardingSteps";
 
 export const HOME_ONBOARDING_STORAGE_KEY = "demagog-home-onboarding-v1";
 
@@ -42,183 +39,130 @@ function subscribeToOnboardingStatus() {
   return () => {};
 }
 
-function OutcomePill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "duplicate" | "related" | "new";
-}) {
-  const toneClassName =
-    tone === "duplicate"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300"
-      : tone === "related"
-        ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
-        : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300";
-
+function TextStage() {
   return (
-    <span
-      className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${toneClassName}`}
-    >
-      {label}
-    </span>
-  );
-}
+    <div className="space-y-6">
+      <div className="inline-flex rounded-full border border-[#f3c2b1] bg-[#fff2ea] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9a2d15] dark:border-[#7a3a28] dark:bg-[#2a1510] dark:text-[#ffae98]">
+        Rýchla orientácia
+      </div>
 
-function PreviewCard({ preview }: { preview: OnboardingPreview }) {
-  if (preview.kind === "basics") {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-            <div className="mb-3 inline-flex rounded-full bg-[#e03e1a]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#b53015] dark:bg-[#ff3300]/16 dark:text-[#ff9c85]">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex rounded-full bg-[#e03e1a] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-[#ff3300]">
               Vyhľadávanie
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-              {preview.searchPrompt}
-            </div>
-          </div>
-
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-            <div className="mb-3 inline-flex rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              Detekcia duplicít
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-              {preview.detectPrompt}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {preview.hints.map((hint) => (
-            <span
-              key={hint}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-            >
-              {hint}
             </span>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              Téma, citát, meno, otázka
+            </span>
+          </div>
+          <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Začnite prirodzeným dopytom.
+          </p>
+          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {["téma", "prirodzený jazyk", "auto-filtre"].map((hint) => (
+              <span
+                key={hint}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+              >
+                {hint}
+              </span>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-slate-100 dark:text-slate-900">
+              Detekcia duplicít
+            </span>
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              Nový konkrétny výrok
+            </span>
+          </div>
+          <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            Vložte celé tvrdenie a porovnajte ho s archívom.
+          </p>
+          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {["Rýchly", "Prieskum", "nový výrok"].map((hint) => (
+              <span
+                key={hint}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+              >
+                {hint}
+              </span>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      <div className="rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-800 dark:bg-slate-900">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              label: "1",
+              title: "Napíšte otázku alebo vložte výrok",
+            },
+            {
+              label: "2",
+              title: "Sledujte filtre, zhody a výsledky",
+            },
+            {
+              label: "3",
+              title: "Keď treba, pokračujte cez Preskúmať alebo Pridať nový výrok",
+            },
+          ].map((item) => (
+            <div key={item.label} className="flex gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                {item.label}
+              </div>
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item.title}</p>
+            </div>
           ))}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  if (preview.kind === "search") {
+function MediaStage({ step }: { step: HomeOnboardingStep }) {
+  if (step.media.kind === "text") {
     return (
-      <div className="space-y-4">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950">
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-              {preview.query}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {preview.filters.map((filter) => (
-                <span
-                  key={filter}
-                  className="rounded-full border border-[#f3c2b1] bg-[#ffe8da] px-3 py-1 text-[11px] font-medium text-[#9a2d15] dark:border-[#7a3a28] dark:bg-[#2a1510] dark:text-[#ffae98]"
-                >
-                  {filter}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                Výsledok
-              </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">Preskúmať</span>
-            </div>
-            <p className="text-sm leading-6 text-slate-900 dark:text-slate-100">{preview.resultTitle}</p>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{preview.resultMeta}</p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#e03e1a] px-4 py-2 text-sm font-semibold text-white shadow-sm dark:bg-[#ff3300]">
-              Preskúmať
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (preview.kind === "detect") {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-          <div className="flex gap-2">
-            <span className="rounded-full bg-[#e03e1a] px-3 py-1 text-[11px] font-semibold text-white dark:bg-[#ff3300]">
-              Rýchly
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              Prieskum
-            </span>
-          </div>
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-            {preview.statement}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {preview.outcomes.map((outcome) => (
-              <OutcomePill key={outcome.label} label={outcome.label} tone={outcome.tone} />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (preview.kind === "research") {
-    return (
-      <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-          <div className="space-y-2">
-            {preview.headings.map((heading) => (
-              <div
-                key={heading}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-              >
-                {heading}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            Zdroje
-          </p>
-          <div className="mt-3 space-y-2">
-            {preview.sources.map((source) => (
-              <div
-                key={source}
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-              >
-                {source}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div key={step.id} className="animate-[onboardingFade_240ms_ease-out]">
+        <TextStage />
       </div>
     );
   }
 
   return (
-    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-        Nový výrok
+    <figure key={step.id} className="animate-[onboardingFade_240ms_ease-out]">
+      <div className="overflow-hidden rounded-[1.85rem] border border-slate-200 bg-[#f8fafc] p-3 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-slate-900/80">
+        <div
+          className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950"
+          style={{ aspectRatio: step.media.aspectRatio ?? "16 / 9" }}
+        >
+          <Image
+            src={step.media.src}
+            alt={step.media.alt}
+            width={1280}
+            height={720}
+            sizes="(min-width: 1280px) 70vw, (min-width: 1024px) 60vw, 100vw"
+            className="h-full w-full object-cover object-top"
+          />
+        </div>
       </div>
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-        {preview.statement}
-      </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {preview.fields.map((field) => (
-          <div
-            key={field}
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-          >
-            {field}
-          </div>
-        ))}
-      </div>
-    </div>
+      {step.media.caption ? (
+        <figcaption className="mt-4 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {step.media.caption}
+        </figcaption>
+      ) : null}
+    </figure>
   );
 }
 
@@ -337,21 +281,19 @@ export default function HomeOnboarding({
             role="dialog"
             aria-modal="true"
             aria-label="Rýchly návod k práci s Demagogom"
-            className="relative z-10 grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 lg:grid-cols-[minmax(0,1.15fr)_420px]"
+            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950 lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px]"
           >
-            <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(224,62,26,0.12),transparent_45%),linear-gradient(180deg,#fffdfb_0%,#f8fafc_100%)] p-5 dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,107,61,0.18),transparent_40%),linear-gradient(180deg,#111827_0%,#020617_100%)] sm:p-7">
-              <div key={currentStep.id} className="animate-[onboardingFade_240ms_ease-out]">
-                <PreviewCard preview={currentStep.preview} />
-              </div>
+            <div className="min-h-0 overflow-y-auto border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6 lg:border-b-0 lg:border-r lg:p-8 xl:p-10">
+              <MediaStage step={currentStep} />
             </div>
 
-            <div className="flex flex-col p-5 sm:p-7">
+            <div className="flex min-h-0 flex-col overflow-y-auto p-5 sm:p-7">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#b53015] dark:text-[#ff9c85]">
                     {currentStep.eyebrow}
                   </p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2rem]">
                     {currentStep.title}
                   </h2>
                 </div>
@@ -371,15 +313,22 @@ export default function HomeOnboarding({
                 </button>
               </div>
 
-              <div key={`copy-${currentStep.id}`} className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3">
+              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+                Návod je neskôr vždy dostupný cez tlačidlo Návod v pravom dolnom rohu.
+              </div>
+
+              <div
+                key={`copy-${currentStep.id}`}
+                className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3"
+              >
                 {currentStep.body.map((line) => (
-                  <p key={line} className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <p key={line} className="text-sm leading-7 text-slate-600 dark:text-slate-300">
                     {line}
                   </p>
                 ))}
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
+              <div className="mt-auto flex items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
                     Krok {activeStep + 1} z {steps.length}

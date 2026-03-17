@@ -1,36 +1,15 @@
 "use client";
 
-export type OnboardingPreview =
+export type OnboardingMedia =
   | {
-      kind: "basics";
-      searchPrompt: string;
-      detectPrompt: string;
-      hints: string[];
+      kind: "text";
     }
   | {
-      kind: "search";
-      query: string;
-      filters: string[];
-      resultTitle: string;
-      resultMeta: string;
-    }
-  | {
-      kind: "detect";
-      statement: string;
-      outcomes: Array<{
-        label: string;
-        tone: "duplicate" | "related" | "new";
-      }>;
-    }
-  | {
-      kind: "research";
-      headings: string[];
-      sources: string[];
-    }
-  | {
-      kind: "add";
-      statement: string;
-      fields: string[];
+      kind: "image";
+      src: string;
+      alt: string;
+      caption?: string;
+      aspectRatio?: "16 / 10" | "16 / 9";
     };
 
 export interface HomeOnboardingStep {
@@ -39,92 +18,88 @@ export interface HomeOnboardingStep {
   title: string;
   body: string[];
   optional?: boolean;
-  preview: OnboardingPreview;
+  media: OnboardingMedia;
 }
 
 export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "basics",
     eyebrow: "1. Základ",
-    title: "Dva režimy, jedno pole práce",
+    title: "Dva režimy. Jeden jednoduchý začiatok.",
     body: [
-      "Vyhľadávanie je na tému, meno, citát alebo otázku.",
+      "Vyhľadávanie je na tému, meno, citát alebo normálnu otázku.",
       "Detekcia duplicít je na nový konkrétny výrok.",
-      "Píšte prirodzene. Filtre sa často doplnia samy.",
+      "Nemusíte písať presné kľúčové slová. Search sa správa skoro ako chat a filtre sa často doplnia samy.",
     ],
-    preview: {
-      kind: "basics",
-      searchPrompt: "Čo hovoril Robert Fico o konsolidácii v roku 2024?",
-      detectPrompt: "V roku 2025 zvýšime platy učiteľov o 20 percent.",
-      hints: ["otázka", "téma", "nový výrok"],
+    media: {
+      kind: "text",
     },
   },
   {
     id: "search",
     eyebrow: "2. Vyhľadávanie",
-    title: "Hľadajte tak, ako by ste sa pýtali kolegu",
+    title: "Napíšte otázku tak, ako by ste ju povedali kolegovi.",
     body: [
-      "Môžete zadať tému, politika, celý výrok aj plnú otázku.",
-      "Rozpoznané meno, obdobie alebo hodnotenie sa doplní do filtrov.",
+      "Do vyhľadávania môžete napísať tému, meno, citát alebo celú otázku.",
+      "Systém si z textu často sám doplní filtre.",
       "Keď nájdete dobrý výsledok, pokračujte cez Preskúmať.",
     ],
-    preview: {
-      kind: "search",
-      query: "Kto hovoril o tom, že štát šetrí hlavne na rodinách?",
-      filters: ["Rodiny", "2024", "automatický filter"],
-      resultTitle: "42 % konsolidácie musí zvládať bežný občan.",
-      resultMeta: "Milan Majerský • KDH • Pravda",
+    media: {
+      kind: "image",
+      src: "/onboarding/step-02-search-light.png",
+      alt: "Vyhľadávacie rozhranie Demagogu s prirodzeným dopytom, automaticky doplnenými filtrami a výsledkami.",
+      caption: "Prirodzený dopyt, automatické filtre a výsledky pripravené na ďalší krok.",
+      aspectRatio: "16 / 9",
     },
   },
   {
     id: "detect",
     eyebrow: "3. Detekcia duplicít",
-    title: "Sem vkladajte celé nové tvrdenie",
+    title: "Sem vložte celý nový výrok.",
     body: [
-      "Rýchly nájde najbližšie zhody na prvé posúdenie.",
-      "Prieskum otvorí širší kontext, články a zdroje.",
-      "Výsledok môže byť duplicitný výrok, súvisiaci výrok alebo nový výrok.",
+      "Použite to vtedy, keď už máte konkrétny nový výrok.",
+      "Rýchly je na prvé posúdenie. Prieskum je na širší kontext.",
+      "Výsledok môže byť duplicitný, súvisiaci alebo nový.",
     ],
-    preview: {
-      kind: "detect",
-      statement: "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      outcomes: [
-        { label: "Duplicitný výrok", tone: "duplicate" },
-        { label: "Len súvisiace", tone: "related" },
-        { label: "Nový výrok", tone: "new" },
-      ],
+    media: {
+      kind: "image",
+      src: "/onboarding/step-03-detect-light.png",
+      alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a zobrazenými zhodami.",
+      caption: "Rýchly režim ukáže najbližšie zhody ešte pred otvorením širšieho prieskumu.",
+      aspectRatio: "16 / 9",
     },
   },
   {
     id: "research",
     eyebrow: "4. Preskúmať",
-    title: "Detailná pracovná vrstva pre analytika",
+    title: "Keď chcete ísť ďalej, otvorte detail.",
     body: [
-      "Tu pokračuje analýza konkrétneho výroku alebo viacerých zhôd.",
-      "Uvidíte súvisiace články, externé zdroje a rozpracovaný kontext.",
-      "Vo v1 je tento krok vysvetlený už v náhľadoch, preto je mimo predvoleného toku.",
+      "Preskúmať otvorí pracovný pohľad s analýzou, článkami a zdrojmi.",
+      "Tu už nepokračujete len v hľadaní. Tu reálne pracujete s nájdeným výsledkom.",
     ],
-    optional: true,
-    preview: {
-      kind: "research",
-      headings: ["Súhrnný prieskum", "Články", "Externé zdroje"],
-      sources: ["Demagog.sk", "TASR", "Ministerstvo financií"],
+    media: {
+      kind: "image",
+      src: "/onboarding/step-04-research-light.png",
+      alt: "Pracovný detail výroku s analýzou, článkami a zdrojmi v rozhraní Demagogu.",
+      caption: "Detail je miesto, kde sa z výsledku stáva pracovný podklad pre analytika.",
+      aspectRatio: "16 / 9",
     },
   },
   {
     id: "add",
     eyebrow: "5. Pridať nový výrok",
-    title: "Keď nič nesedí, pokračujte rovno do databázy",
+    title: "Keď nič nesedí, pokračujte rovno do databázy.",
     body: [
-      "Nový výrok otvorí predvyplnený formulár s vloženým textom.",
-      "Analytik len doplní meno, stranu, hodnotenie a odôvodnenie.",
-      "Aj tento krok je pripravený v konfigurácii, ale v predvolenom návode je zatiaľ vypnutý.",
+      "Ak systém nič vhodné nenašiel, môžete hneď pokračovať na Pridať nový výrok.",
+      "Formulár otvorí predvyplnený text, takže nezačínate od nuly.",
     ],
     optional: true,
-    preview: {
-      kind: "add",
-      statement: "V roku 2025 zvýšime platy učiteľov o 20 percent.",
-      fields: ["Výrok", "Meno", "Strana", "Vyhodnotenie"],
+    media: {
+      kind: "image",
+      src: "/onboarding/step-05-add-light.png",
+      alt: "Formulár na pridanie nového výroku s predvyplneným textom a pripravenými poliami.",
+      caption: "Keď výsledok nesedí, prechod do databázy nadviaže bez straty vloženého textu.",
+      aspectRatio: "16 / 9",
     },
   },
 ];
