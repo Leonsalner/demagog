@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-
-loadEnvConfig(process.cwd(), true);
 
 type ArticleRow = {
   id: number;
@@ -23,19 +20,12 @@ type RpcError = {
   message: string;
 };
 
-const DEFAULT_EMBEDDING_URL = "http://localhost:11434/v1/embeddings";
-const DEFAULT_EMBEDDING_MODEL = "qwen3-embedding:8b";
-const ARTICLE_EMBEDDING_DIMENSIONS = 2048;
-const BATCH_SIZE = 32;
+const JINA_API_URL = "https://api.jina.ai/v1/embeddings";
+const BATCH_SIZE = 100;
 const BATCH_DELAY_MS = 200;
-const RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const;
+const MAX_BACKOFF_MS = 30_000;
 const INDEX_NAME = "idx_clanky_embedding";
 const INDEX_SQL = `CREATE INDEX IF NOT EXISTS ${INDEX_NAME} ON clanky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);`;
-const EMBEDDING_MIGRATION_REMINDER = `Manual Supabase SQL required before this script runs:
-ALTER TABLE clanky ALTER COLUMN embedding TYPE vector(${ARTICLE_EMBEDDING_DIMENSIONS}) USING NULL::vector(${ARTICLE_EMBEDDING_DIMENSIONS});
-DROP INDEX IF EXISTS ${INDEX_NAME};
-
-The script will recreate the HNSW index after embedding completes.`;
 
 type SupabaseClientAny = ReturnType<typeof createClient<any>>;
 
@@ -124,59 +114,43 @@ async function countPending(
   return count ?? 0;
 }
 
-async function requestEmbeddings(
-  inputs: string[],
-  embeddingUrl: string,
-  embeddingModel: string,
-): Promise<number[][]> {
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
-    try {
-      const response = await fetch(embeddingUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: embeddingModel,
-          input: inputs,
-          dimensions: ARTICLE_EMBEDDING_DIMENSIONS,
-        }),
-      });
+async function requestEmbeddings(inputs: string[], apiKey: string): Promise<number[][]> {
+  let backoffMs = 0;
 
-      if (!response.ok) {
-        const body = await response.text();
-        const isRetryable = response.status === 429 || response.status >= 500;
-
-        if (isRetryable && attempt < RETRY_DELAYS_MS.length) {
-          const delayMs = RETRY_DELAYS_MS[attempt];
-          console.warn(
-            `Embedding request failed with ${response.status}. Retrying in ${delayMs / 1000}s.`,
-          );
-          await sleep(delayMs);
-          continue;
-        }
-
-        throw new Error(`Embedding request failed with ${response.status}: ${body}`);
-      }
-
-      const payload = (await response.json()) as EmbeddingResponse;
-      return payload.data
-        .sort((left, right) => left.index - right.index)
-        .map((item) => item.embedding);
-    } catch (error) {
-      if (attempt >= RETRY_DELAYS_MS.length) {
-        throw error;
-      }
-
-      const delayMs = RETRY_DELAYS_MS[attempt];
-      console.warn(
-        `Embedding request errored (${error instanceof Error ? error.message : error}). Retrying in ${delayMs / 1000}s.`,
-      );
-      await sleep(delayMs);
+  while (true) {
+    if (backoffMs > 0) {
+      await sleep(backoffMs);
     }
-  }
 
-  throw new Error("Embedding request failed after retries.");
+    const response = await fetch(JINA_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "jina-embeddings-v5-text-small",
+        input: inputs,
+        dimensions: 1024,
+        task: "text-matching",
+      }),
+    });
+
+    if (response.status === 429) {
+      backoffMs = Math.min(backoffMs === 0 ? 1_000 : backoffMs * 2, MAX_BACKOFF_MS);
+      console.warn(`Jina rate limit hit. Retrying in ${backoffMs / 1000}s.`);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Jina request failed with ${response.status}: ${await response.text()}`);
+    }
+
+    const payload = (await response.json()) as EmbeddingResponse;
+    return payload.data
+      .sort((left, right) => left.index - right.index)
+      .map((item) => item.embedding);
+  }
 }
 
 async function updateEmbeddings(
@@ -251,7 +225,7 @@ async function createIndex(supabase: SupabaseClientAny): Promise<void> {
     }
 
     throw new Error(
-      `Failed to create the ${ARTICLE_EMBEDDING_DIMENSIONS}d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
+      `Failed to create the 1024d HNSW index automatically: ${formatRpcError(error as RpcError)}\nRun the SQL from scripts/setup-supabase.sql manually in the Supabase SQL editor.`,
     );
   }
 }
@@ -260,9 +234,7 @@ async function main(): Promise<void> {
   const { force, fromId, dryRun } = parseArgs();
 
   const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
-  const embeddingUrl = process.env.EMBEDDING_API_URL?.trim() || DEFAULT_EMBEDDING_URL;
-  const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;
-  console.log(EMBEDDING_MIGRATION_REMINDER);
+  const jinaApiKey = getEnv("JINA_API_KEY");
 
   const modeLabel = [
     force ? "--force (re-embed all)" : "incremental (null embeddings only)",
@@ -273,8 +245,9 @@ async function main(): Promise<void> {
     .join(", ");
 
   console.log(`embed-articles: mode=${modeLabel}`);
-  console.log(`Embedding API: ${embeddingUrl}`);
-  console.log(`Model: ${embeddingModel}, dimensions=${ARTICLE_EMBEDDING_DIMENSIONS}`);
+  console.log(
+    "Model: jina-embeddings-v5-text-small, dimensions=1024, task=text-matching",
+  );
 
   const total = await countPending(supabase, force, fromId);
 
@@ -295,6 +268,7 @@ async function main(): Promise<void> {
 
   let processed = 0;
   const startedAt = Date.now();
+  let warnedAboutGemini = false;
   let rangeFrom = 0;
 
   while (true) {
@@ -319,8 +293,7 @@ async function main(): Promise<void> {
     try {
       embeddings = await requestEmbeddings(
         rows.map((row) => row.text_content),
-        embeddingUrl,
-        embeddingModel,
+        jinaApiKey,
       );
     } catch (embedError) {
       console.error(
@@ -348,6 +321,13 @@ async function main(): Promise<void> {
       // page from offset 0, so rangeFrom stays at 0.
     } else {
       rangeFrom += BATCH_SIZE;
+    }
+
+    if (!warnedAboutGemini && Date.now() - startedAt > 5 * 60_000 && processed < total) {
+      console.warn(
+        "Embedding runtime has exceeded 5 minutes. If rate limiting remains too aggressive, switch manually to Gemini embeddings:\nPOST https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=<GEMINI_API_KEY>",
+      );
+      warnedAboutGemini = true;
     }
 
     await sleep(BATCH_DELAY_MS);
