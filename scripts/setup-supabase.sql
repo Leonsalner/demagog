@@ -1,9 +1,12 @@
--- Wave 2 migration notes:
--- Before running embed-statements.ts with Qwen 4096d vectors, apply in the Supabase SQL Editor:
---   ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(4096) USING NULL::vector(4096);
---   ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(4096) USING NULL::vector(4096);
+-- Downgrade migration (from 4096d/2048d back to 1024d):
+-- Run in Supabase SQL Editor before re-embedding:
+--   ALTER TABLE vyroky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+--   ALTER TABLE vyroky_import_staging ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
+--   ALTER TABLE clanky ALTER COLUMN embedding TYPE vector(1024) USING NULL::vector(1024);
 --   DROP INDEX IF EXISTS idx_vyroky_embedding;
--- The embed script recreates the HNSW index after the new 4096d vectors are stored.
+--   DROP INDEX IF EXISTS idx_clanky_embedding;
+-- Then re-run embed-statements.ts and embed-articles.ts to populate 1024d vectors.
+-- The embed scripts recreate the HNSW indexes after embedding completes.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -16,7 +19,7 @@ CREATE TABLE IF NOT EXISTS vyroky (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(4096),
+  embedding vector(1024),
   source_id TEXT NOT NULL,
   numeric_id BIGINT,
   url TEXT NOT NULL,
@@ -31,7 +34,7 @@ CREATE TABLE IF NOT EXISTS clanky (
   datum TIMESTAMPTZ,
   autor TEXT,
   text_content TEXT,
-  embedding vector(2048)
+  embedding vector(1024)
 );
 
 CREATE TABLE IF NOT EXISTS statement_sources (
@@ -54,7 +57,7 @@ CREATE TABLE IF NOT EXISTS vyroky_import_staging (
   datum DATE,
   meno TEXT NOT NULL,
   strana TEXT NOT NULL,
-  embedding vector(4096),
+  embedding vector(1024),
   numeric_id BIGINT,
   url TEXT NOT NULL,
   speaker_url TEXT,
@@ -89,7 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_statement_sources_import_staging_run_id
   ON statement_sources_import_staging(import_run_id);
 
 CREATE OR REPLACE FUNCTION search_statements(
-  query_embedding vector(4096),
+  query_embedding vector(1024),
   match_count int DEFAULT 20,
   match_offset int DEFAULT 0,
   filter_strana text DEFAULT NULL,
@@ -193,7 +196,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION match_statements(
-  query_embedding vector(4096),
+  query_embedding vector(1024),
   match_count int DEFAULT 10
 ) RETURNS TABLE (
   id int,
@@ -228,7 +231,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION match_articles(
-  query_embedding vector(2048),
+  query_embedding vector(1024),
   match_count int DEFAULT 3
 ) RETURNS TABLE (
   id int,
@@ -278,10 +281,13 @@ AS $$
   );
 $$;
 
--- Create this 4096d HNSW index manually in the Supabase SQL Editor only after
--- embed-statements.ts finishes to avoid a slow rebuild during imports.
+-- Create HNSW indexes after embedding scripts finish:
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding
 -- ON vyroky USING hnsw (embedding vector_cosine_ops)
+-- WITH (m = 16, ef_construction = 64);
+--
+-- CREATE INDEX IF NOT EXISTS idx_clanky_embedding
+-- ON clanky USING hnsw (embedding vector_cosine_ops)
 -- WITH (m = 16, ef_construction = 64);
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
