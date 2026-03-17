@@ -254,7 +254,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_articles",
       expect.objectContaining({
-        match_count: 3,
+        match_count: 10,
         query_embedding: [0.4, 0.5, 0.6],
       }),
     );

@@ -422,7 +422,7 @@ export async function POST(request: NextRequest) {
         "match_articles",
         {
           query_embedding: embedding,
-          match_count: 3,
+          match_count: 10,
         }
       );
 
