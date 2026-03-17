@@ -430,22 +430,28 @@ function stripMatchedTerms(
 }
 
 function detectVerdictsFromQuery(query: string): Verdict[] | null {
-  const normalizedQuery = normalizeForMatching(query);
+  const queryTokens = tokenizeForMatching(query);
   const detected: Verdict[] = [];
 
-  if (normalizedQuery.includes("neoveritelne")) {
+  if (queryTokens.some((token) => token.startsWith("neoverit"))) {
     detected.push("Neoveriteľné");
   }
 
-  if (normalizedQuery.includes("zavadzajuce")) {
+  if (queryTokens.some((token) => token.startsWith("zavadz"))) {
     detected.push("Zavádzajúce");
   }
 
-  if (normalizedQuery.includes("nepravda")) {
+  if (queryTokens.some((token) => token.startsWith("nepravd"))) {
     detected.push("Nepravda");
   }
 
-  if (normalizedQuery.includes("pravda")) {
+  if (
+    queryTokens.some(
+      (token) =>
+        token === "pravda" ||
+        (token.startsWith("pravdiv") && !token.startsWith("nepravdiv"))
+    )
+  ) {
     detected.push("Pravda");
   }
 

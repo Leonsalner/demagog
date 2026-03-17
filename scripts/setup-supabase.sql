@@ -91,6 +91,9 @@ CREATE INDEX IF NOT EXISTS idx_vyroky_import_staging_run_id ON vyroky_import_sta
 CREATE INDEX IF NOT EXISTS idx_statement_sources_import_staging_run_id
   ON statement_sources_import_staging(import_run_id);
 
+DROP FUNCTION IF EXISTS search_statements(vector, int, int, text, text, text, date, date);
+DROP FUNCTION IF EXISTS count_statements(text, text, text, date, date, boolean);
+
 CREATE OR REPLACE FUNCTION search_statements(
   query_embedding vector(2048),
   match_count int DEFAULT 20,

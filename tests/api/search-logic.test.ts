@@ -695,6 +695,61 @@ describe("POST /api/search logic", () => {
     );
   });
 
+  it("does not broaden nepravda fallback detection into pravda", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: "Robert Fico",
+              strana: "Smer-SD",
+              vyhodnotenie: "Nepravda",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "konsolidácia",
+        filters: {
+          meno: null,
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "nepravda konsolidácia",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_vyhodnotenie: ["Nepravda"],
+      }),
+    );
+    expect(data.query_understanding.extracted_filters.vyhodnotenie).toEqual([
+      "Nepravda",
+    ]);
+  });
+
   it("fills explicit date filters from the query when the model misses them", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
