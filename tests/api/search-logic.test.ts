@@ -40,6 +40,8 @@ function buildUnderstanding(
       meno: null,
       strana: null,
       vyhodnotenie: null,
+      datum_od: null,
+      datum_do: null,
     },
     related_politicians: [],
     ...overrides,
@@ -334,6 +336,8 @@ describe("POST /api/search logic", () => {
           meno: "fico",
           strana: "smer",
           vyhodnotenie: "Pravda",
+          datum_od: null,
+          datum_do: null,
         },
         related_politicians: [
           {
@@ -376,6 +380,8 @@ describe("POST /api/search logic", () => {
       meno: "Robert Fico",
       strana: "Smer-SD",
       vyhodnotenie: "Pravda",
+      datum_od: null,
+      datum_do: null,
     });
     expect(data.query_understanding.related_politicians).toEqual([
       {
@@ -512,7 +518,13 @@ describe("POST /api/search logic", () => {
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         semantic_query: "vojna ukrajina",
-        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
       }),
     );
 
@@ -558,7 +570,13 @@ describe("POST /api/search logic", () => {
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         semantic_query: "vojna ukrajina",
-        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
       }),
     );
 
@@ -579,6 +597,204 @@ describe("POST /api/search logic", () => {
         filter_meno: "Robert Fico",
       }),
     );
+  });
+
+  it("runs query understanding for verdict-heavy keyword queries", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: String(args.filter_meno ?? "Robert Fico"),
+              strana: "Smer-SD",
+              vyhodnotenie: "Nepravda",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "vojna na ukrajine",
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: "Nepravda",
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "fico vojna na ukrajine nepravda",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(understandQuery).toHaveBeenCalledWith(
+      "fico vojna na ukrajine nepravda",
+      expect.any(Array),
+      expect.any(Array),
+    );
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: "Robert Fico",
+        filter_vyhodnotenie: "Nepravda",
+      }),
+    );
+  });
+
+  it("fills explicit date filters from the query when the model misses them", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: "Robert Fico",
+              strana: String(args.filter_strana ?? "Smer-SD"),
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        filters: {
+          meno: null,
+          strana: "SMER-SD",
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?",
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: "Smer-SD",
+        filter_datum_od: "2022-01-01",
+        filter_datum_do: null,
+      }),
+    );
+    expect(data.query_understanding.extracted_filters).toEqual({
+      meno: null,
+      strana: "Smer-SD",
+      vyhodnotenie: null,
+      datum_od: "2022-01-01",
+      datum_do: null,
+    });
+  });
+
+  it("prefers user-provided date filters over extracted ones", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        filters: {
+          meno: null,
+          strana: "Smer-SD",
+          vyhodnotenie: null,
+          datum_od: "2022-01-01",
+          datum_do: "2024-12-31",
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "SMER za posledné dva roky",
+        datum_od: "2025-01-01",
+        datum_do: "2025-12-31",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: "Smer-SD",
+        filter_datum_od: "2025-01-01",
+        filter_datum_do: "2025-12-31",
+      }),
+    );
+  });
+
+  it("fills rolling relative date filters when the model omits them", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-17T12:00:00.000Z"));
+
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(buildUnderstanding());
+
+    const response = await POST(
+      createRequest({
+        query: "Čo hovoril Fico o Ukrajine za posledné dva roky?",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_datum_od: "2024-03-17",
+        filter_datum_do: "2026-03-17",
+      }),
+    );
+
+    vi.useRealTimers();
   });
 
   it("uses the first selected politician for semantic search arrays", async () => {
@@ -799,6 +1015,11 @@ describe("POST /api/search logic", () => {
     };
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "konsolidačný balíček",
+      }),
+    );
 
     const response = await POST(
       createRequest({

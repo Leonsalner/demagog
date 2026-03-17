@@ -36,8 +36,18 @@ vi.mock("next/link", () => ({
 const { useDetect } = await import("@/hooks/useDetect");
 const { useSearch } = await import("@/hooks/useSearch");
 
-function openDetectTab() {
-  fireEvent.click(screen.getByRole("tab", { name: "Detekcia duplikátov" }));
+function createSearchParams(mode?: string) {
+  return Promise.resolve(mode ? { mode } : {}) as Promise<{
+    mode?: string | string[];
+  }>;
+}
+
+async function renderHome(mode?: string) {
+  return render(
+    await Home({
+      searchParams: createSearchParams(mode),
+    }),
+  );
 }
 
 function mockUseSearchReturn() {
@@ -48,7 +58,6 @@ function mockUseSearchReturn() {
     query: "",
     filters: {
       strana: null,
-      oblast: null,
       vyhodnotenie: null,
       meno: null,
       datum_od: null,
@@ -57,7 +66,6 @@ function mockUseSearchReturn() {
     page: 1,
     availableFilters: {
       strany: [],
-      oblasti: [],
       mena: [],
       verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
       date_range: { min: null, max: null },
@@ -96,24 +104,19 @@ describe("detect page flow", () => {
     mockUseSearchReturn();
   });
 
-  it("renders the input form", () => {
+  it("renders the input form", async () => {
     mockUseDetectReturn();
 
-    render(<Home />);
-    openDetectTab();
+    await renderHome("detect");
 
-    expect(
-      screen.getByRole("heading", { name: /Skontrolujte nový výrok bez otvárania ďalšej stránky/i }),
-    ).toBeInTheDocument();
     expect(screen.getByLabelText("Politický výrok")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeInTheDocument();
   }, 20_000);
 
-  it("submits a statement for analysis", () => {
+  it("submits a statement for analysis", async () => {
     const { detect } = mockUseDetectReturn();
 
-    render(<Home />);
-    openDetectTab();
+    await renderHome("detect");
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -125,14 +128,12 @@ describe("detect page flow", () => {
     );
   }, 20_000);
 
-  it("forwards the selected research mode", () => {
+  it("forwards the selected research mode", async () => {
     const { detect } = mockUseDetectReturn();
 
-    render(<Home />);
-    openDetectTab();
-    fireEvent.change(screen.getByLabelText("Režim porovnania"), {
-      target: { value: "thorough" },
-    });
+    await renderHome("detect");
+    fireEvent.click(screen.getByRole("button", { name: "Rýchly" }));
+    fireEvent.click(screen.getByRole("option", { name: "Prieskum" }));
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -144,45 +145,40 @@ describe("detect page flow", () => {
     );
   }, 20_000);
 
-  it("shows loading feedback while detect is running", () => {
+  it("shows loading feedback while detect is running", async () => {
     mockUseDetectReturn({ loading: true });
 
-    render(<Home />);
-    openDetectTab();
+    await renderHome("detect");
 
     expect(
       screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
     ).toBeInTheDocument();
   });
 
-  it("renders duplicate and related result states", () => {
+  it("renders duplicate and related result states", async () => {
     mockUseDetectReturn({ result: mockDetectDuplicate });
-    const { rerender } = render(<Home />);
-    openDetectTab();
+    const { rerender } = await renderHome("detect");
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
 
     mockUseDetectReturn({ result: mockDetectRelated });
-    rerender(<Home />);
-    openDetectTab();
+    rerender(await Home({ searchParams: createSearchParams("detect") }));
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
-  it("renders the new-claim state", () => {
+  it("renders the new-claim state", async () => {
     mockUseDetectReturn({ result: mockDetectNew });
 
-    render(<Home />);
-    openDetectTab();
+    await renderHome("detect");
 
     expect(
       screen.getByText(/V databáze sa nenašiel podobný overený nárok\./i),
     ).toBeInTheDocument();
   });
 
-  it("clears stale detect results while editing and supports another submit", () => {
+  it("clears stale detect results while editing and supports another submit", async () => {
     const { reset } = mockUseDetectReturn({ result: mockDetectDuplicate });
 
-    render(<Home />);
-    openDetectTab();
+    await renderHome("detect");
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Upravený výrok na ďalšie porovnanie." },
     });

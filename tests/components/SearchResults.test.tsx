@@ -11,7 +11,6 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         vyrok: "Hlavný výsledok",
         vyhodnotenie: "Pravda",
         odovodnenie: "Odôvodnenie hlavného výsledku.",
-        oblast: "Ekonomika",
         datum: "2026-01-10",
         meno: "Robert Fico",
         strana: "Smer-SD",
@@ -28,7 +27,6 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         vyrok: "Súvisiaci výsledok",
         vyhodnotenie: "Nepravda",
         odovodnenie: "Odôvodnenie súvisiaceho výsledku.",
-        oblast: "Zahraničná politika",
         datum: "2026-01-12",
         meno: "Peter Pellegrini",
         strana: "Hlas",
@@ -40,7 +38,8 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         meno: "Robert Fico",
         strana: "Smer-SD",
         vyhodnotenie: "Nepravda",
-        oblast: null,
+        datum_od: null,
+        datum_do: null,
       },
       related_politicians: [
         {

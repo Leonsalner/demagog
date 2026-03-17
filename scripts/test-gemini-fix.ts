@@ -28,6 +28,16 @@ const INPUTS = [
   "Rodičia nemôžu rozhodovae o vzdelávaní, ktoré je súčaseou osnov, ale škola musí bye informovaná.",
 ];
 
+interface GeminiPayload {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+}
+
 async function call(model: string, texts: string[]): Promise<string[]> {
   const prompt = "Oprav diakritiku v " + texts.length + " textoch:\n\n" + texts.map(function(t,i){return (i+1)+". "+t;}).join("\n");
   console.log("Calling " + model + "...");
@@ -43,8 +53,12 @@ async function call(model: string, texts: string[]): Promise<string[]> {
   });
   console.log(model + " responded in " + (Date.now()-start) + "ms, status=" + r.status);
   if(!r.ok){ const b=await r.text(); throw new Error(model+" "+r.status+": "+b.slice(0,200)); }
-  const p:any=await r.json();
-  return JSON.parse(p.candidates[0].content.parts[0].text);
+  const p = (await r.json()) as GeminiPayload;
+  const text = p.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error(model + " returned no text content");
+  }
+  return JSON.parse(text) as string[];
 }
 
 async function main(){
@@ -63,4 +77,7 @@ async function main(){
     console.log("");
   }
 }
-main().catch(function(e:any){console.error(e);process.exit(1);});
+main().catch(function(e: unknown){
+  console.error(e);
+  process.exit(1);
+});

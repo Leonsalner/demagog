@@ -8,6 +8,7 @@ import {
   scoreTextAgainstQuery,
   tokenizeForMatching,
 } from "@/lib/lexical-match";
+import { extractDateFiltersFromQuery, normalizeExtractedDateFilters } from "@/lib/search-date-understanding";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
@@ -190,6 +191,8 @@ function mergeQueryFilters(
     strana: body.strana ?? extractedFilters.strana ?? undefined,
     vyhodnotenie:
       body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
+    datum_od: body.datum_od ?? extractedFilters.datum_od ?? undefined,
+    datum_do: body.datum_do ?? extractedFilters.datum_do ?? undefined,
   };
 }
 
@@ -228,18 +231,17 @@ function logSearchTimings(
   });
 }
 
-function queryHasSentenceShape(query: string): boolean {
-  return /[?!,:;]/u.test(query) || query.trim().split(/\s+/u).length > 6;
-}
-
-function hasStructuredSearchFilters(body: SearchRequest): boolean {
-  return Boolean(
-    body.meno ||
-      body.strana ||
-      body.vyhodnotenie ||
-      body.datum_od ||
-      body.datum_do
-  );
+function mergeUnderstandingFilters(
+  primaryFilters: QueryUnderstanding["filters"],
+  fallbackFilters: QueryUnderstanding["filters"]
+): QueryUnderstanding["filters"] {
+  return {
+    meno: primaryFilters.meno ?? fallbackFilters.meno,
+    strana: primaryFilters.strana ?? fallbackFilters.strana,
+    vyhodnotenie: primaryFilters.vyhodnotenie ?? fallbackFilters.vyhodnotenie,
+    datum_od: primaryFilters.datum_od ?? fallbackFilters.datum_od,
+    datum_do: primaryFilters.datum_do ?? fallbackFilters.datum_do,
+  };
 }
 
 function containsTokenSequence(queryTokens: string[], candidateTokens: string[]): boolean {
@@ -408,6 +410,7 @@ function buildFastQueryUnderstanding(
   const detectedName = selectedName ?? findNameInQuery(query, availableNames);
   const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
   const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
+  const detectedDates = extractDateFiltersFromQuery(query);
   const semanticQuery =
     stripMatchedTerms(query, [
       ...getNameAliases(detectedName),
@@ -424,34 +427,11 @@ function buildFastQueryUnderstanding(
       meno: detectedName,
       strana: detectedParty,
       vyhodnotenie: detectedVerdict,
+      datum_od: detectedDates.datum_od,
+      datum_do: detectedDates.datum_do,
     },
     related_politicians: [],
   };
-}
-
-function shouldUseFastQueryUnderstanding(
-  body: SearchRequest,
-  query: string,
-  availableNames: string[],
-  availableParties: string[]
-): boolean {
-  if (hasStructuredSearchFilters(body)) {
-    return true;
-  }
-
-  // Name-only detection no longer forces the fast path. When a name is
-  // the only signal, the LLM decides whether the user means statements
-  // FROM the politician or ABOUT the politician.
-
-  if (findExactCandidateInQuery(query, availableParties)) {
-    return true;
-  }
-
-  if (detectVerdictFromQuery(query)) {
-    return true;
-  }
-
-  return !queryHasSentenceShape(query) && !findNameInQuery(query, availableNames);
 }
 
 function resolveAvailableValue(
@@ -484,14 +464,22 @@ function resolveAvailableValue(
 }
 
 function validateExtractedFilters(
+  query: string,
   filters: QueryUnderstanding["filters"],
   availableNames: string[],
   availableParties: string[]
 ): QueryUnderstanding["filters"] {
+  const normalizedDates = normalizeExtractedDateFilters(query, {
+    datum_od: filters.datum_od,
+    datum_do: filters.datum_do,
+  });
+
   return {
     meno: resolveAvailableValue(filters.meno, availableNames),
     strana: resolveAvailableValue(filters.strana, availableParties),
     vyhodnotenie: filters.vyhodnotenie,
+    datum_od: normalizedDates.datum_od,
+    datum_do: normalizedDates.datum_do,
   };
 }
 
@@ -861,16 +849,27 @@ export async function POST(request: NextRequest) {
       recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
 
       const understandingStartedAt = performance.now();
-      const understanding = shouldUseFastQueryUnderstanding(
+      const modelUnderstanding = await understandQuery(body.query, allNames, allParties);
+      const fallbackUnderstanding = buildFastQueryUnderstanding(
         body,
         body.query,
         allNames,
         allParties
-      )
-        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties)
-        : await understandQuery(body.query, allNames, allParties);
+      );
+      const understanding = {
+        semantic_query:
+          modelUnderstanding.semantic_query.trim() ||
+          fallbackUnderstanding.semantic_query.trim() ||
+          body.query,
+        filters: mergeUnderstandingFilters(
+          modelUnderstanding.filters,
+          fallbackUnderstanding.filters
+        ),
+        related_politicians: modelUnderstanding.related_politicians,
+      } satisfies QueryUnderstanding;
       recordStageTiming(timings, "understand_query_ms", understandingStartedAt);
       const validatedFilters = validateExtractedFilters(
+        body.query,
         understanding.filters,
         allNames,
         allParties

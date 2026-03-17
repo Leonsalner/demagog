@@ -7,7 +7,6 @@ import type { FilterState, FiltersResponse } from "@/types";
 
 const availableFilters: FiltersResponse = {
   strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO"],
-  oblasti: ["Ekonomika", "Zdravotníctvo"],
   mena: [
     "Denisa Saková",
     "Milan Majerský",
@@ -24,7 +23,6 @@ const availableFilters: FiltersResponse = {
 
 const emptyFilters: FilterState = {
   strana: null,
-  oblast: null,
   vyhodnotenie: null,
   meno: null,
   datum_od: null,
@@ -71,12 +69,13 @@ describe("FilterSidebar", () => {
       }),
     );
 
-    const pickerButton = screen.getByRole("button", {
-      name: /Peter Pellegrini Hlas/i,
-    });
-    expect(pickerButton).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Skryť panel odporúčaných politikov",
+      }),
+    ).toBeInTheDocument();
 
-    await user.click(pickerButton);
+    await user.click(screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0]);
 
     expect(
       screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0],

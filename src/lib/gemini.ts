@@ -123,6 +123,8 @@ function fallbackQueryUnderstanding(query: string): QueryUnderstanding {
       meno: null,
       strana: null,
       vyhodnotenie: null,
+      datum_od: null,
+      datum_do: null,
     },
     related_politicians: [],
   };
@@ -135,6 +137,21 @@ function toOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function getCurrentDateInTimeZone(timeZone: string): string {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
 }
 
 export async function classifyMatches(
@@ -269,10 +286,12 @@ export async function understandQuery(
   availableNames: string[],
   availableParties: string[]
 ): Promise<QueryUnderstanding> {
+  const currentDate = getCurrentDateInTimeZone("Europe/Bratislava");
   const prompt = `Si asistent systému Demagog.sk na overovanie faktov.
 Analyzuj vyhľadávací dopyt slovenského používateľa a vráť štruktúrované pochopenie dopytu.
 
 DOPYT: "${query}"
+DNEŠNÝ DÁTUM V ČASOVEJ ZÓNE EUROPE/BRATISLAVA: ${currentDate}
 
 DOSTUPNÉ MENÁ POLITIKOV (presné hodnoty z DB): ${availableNames.join(", ")}
 DOSTUPNÉ STRANY (presné hodnoty z DB): ${availableParties.join(", ")}
@@ -283,7 +302,9 @@ Urč:
 2. filters.meno: ak dopyt obsahuje meno politika, vyber PRESNÉ meno z dostupných mien, inak null
 3. filters.strana: ak dopyt obsahuje názov strany, vyber PRESNÉ meno strany z dostupných strán, inak null
 4. filters.vyhodnotenie: ak dopyt obsahuje hodnotenie (napr. "nepravda", "zavádzajúce"), vráť presnú hodnotu, inak null
-5. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
+5. filters.datum_od: ak dopyt obsahuje začiatok časového intervalu, vráť dátum vo formáte YYYY-MM-DD, inak null
+6. filters.datum_do: ak dopyt obsahuje koniec časového intervalu, vráť dátum vo formáte YYYY-MM-DD, inak null
+7. related_politicians: 2-3 politici súvisiaci buď s tou istou stranou alebo s témou dopytu. Pre každého uveď meno (PRESNÉ z dostupných mien), stranu a jednovetvový dôvod relevantnosti. Ak nikto nie je relevantný, vráť prázdne pole.
 
 Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
 {
@@ -291,7 +312,9 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
   "filters": {
     "meno": "..." | null,
     "strana": "..." | null,
-    "vyhodnotenie": "..." | null
+    "vyhodnotenie": "..." | null,
+    "datum_od": "YYYY-MM-DD" | null,
+    "datum_do": "YYYY-MM-DD" | null
   },
   "related_politicians": [
     { "meno": "...", "strana": "...", "topic_relevance": "..." }
@@ -308,6 +331,8 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
       const meno = toOptionalString(value.filters.meno);
       const strana = toOptionalString(value.filters.strana);
       const verdict = value.filters.vyhodnotenie;
+      const datum_od = toOptionalString(value.filters.datum_od);
+      const datum_do = toOptionalString(value.filters.datum_do);
 
       if (!semanticQuery) {
         throw new Error("Gemini query understanding semantic_query is invalid");
@@ -344,6 +369,8 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
           meno,
           strana,
           vyhodnotenie: isVerdict(verdict) ? verdict : null,
+          datum_od,
+          datum_do,
         },
         related_politicians,
       };

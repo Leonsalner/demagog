@@ -74,6 +74,8 @@ export interface QueryUnderstanding {
     meno: string | null;
     strana: string | null;
     vyhodnotenie: Verdict | null;
+    datum_od: string | null;
+    datum_do: string | null;
   };
   related_politicians: Array<{
     meno: string;

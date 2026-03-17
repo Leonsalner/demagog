@@ -275,7 +275,7 @@ describe("POST /api/detect logic", () => {
       ilike: vi.fn().mockReturnThis(),
       range: vi.fn().mockResolvedValue({
         data: lexicalRows.map((row) => {
-          const candidate = { ...row };
+          const candidate = { ...row } as Partial<(typeof lexicalRows)[number]>;
           delete candidate.similarity;
           return candidate;
         }),
