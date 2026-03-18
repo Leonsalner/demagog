@@ -20,9 +20,9 @@ export const detectStatusConfig = {
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
     button:
-      "border-red-300/80 bg-red-200 text-red-950 shadow-[0_10px_25px_-18px_rgba(185,28,28,0.85)] hover:border-red-400 hover:bg-red-300 dark:border-red-500/60 dark:bg-red-600 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(248,113,113,0.65)] dark:hover:bg-red-500",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-red-700 text-white shadow-[0_14px_30px_-18px_rgba(185,28,28,0.95)] hover:bg-red-800 dark:bg-red-500 dark:hover:bg-red-400",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
   RELATED_ONLY: {
     container: "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/40",
@@ -31,9 +31,9 @@ export const detectStatusConfig = {
     description: "Odporúčame kontrolu existujúcich overení.",
     detail: "Nižšie nájdete výroky na podobnú tému.",
     button:
-      "border-amber-300/80 bg-amber-200 text-amber-950 shadow-[0_10px_25px_-18px_rgba(180,83,9,0.85)] hover:border-amber-400 hover:bg-amber-300 dark:border-amber-500/60 dark:bg-amber-600 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(251,191,36,0.65)] dark:hover:bg-amber-500",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-amber-700 text-white shadow-[0_14px_30px_-18px_rgba(180,83,9,0.95)] hover:bg-amber-800 dark:bg-amber-500 dark:hover:bg-amber-400",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
   NEW_CLAIM: {
     container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
@@ -42,9 +42,9 @@ export const detectStatusConfig = {
     description: "V databáze sa nenašiel podobný overený nárok.",
     detail: "Tento výrok vyžaduje úplné overenie.",
     button:
-      "border-green-300/80 bg-green-200 text-green-950 shadow-[0_10px_25px_-18px_rgba(21,128,61,0.85)] hover:border-green-400 hover:bg-green-300 dark:border-green-500/60 dark:bg-green-600 dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(74,222,128,0.65)] dark:hover:bg-green-500",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-green-700 text-white shadow-[0_14px_30px_-18px_rgba(21,128,61,0.95)] hover:bg-green-800 dark:bg-green-500 dark:hover:bg-green-400",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
 } as const;
 

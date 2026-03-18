@@ -242,7 +242,7 @@ export default function StatementCard({
           <button
             type="button"
             onClick={() => onOpenResearch(statement.id)}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)]"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
           >
             Preskúmať
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">

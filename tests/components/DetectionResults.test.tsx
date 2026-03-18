@@ -78,29 +78,29 @@ describe("DetectionResults", () => {
   });
 
   it.each([
-    ["DUPLICATE_FOUND", "border-red-300/80", "text-red-950", "dark:text-white"],
-    ["RELATED_ONLY", "border-amber-300/80", "text-amber-950", "dark:text-white"],
-    ["NEW_CLAIM", "border-green-300/80", "text-green-950", "dark:text-white"],
+    "DUPLICATE_FOUND",
+    "RELATED_ONLY",
+    "NEW_CLAIM",
   ] as const)(
-    "styles the add button to match the %s status",
-    (overallStatus, borderClass, textClass, darkTextClass) => {
+    "styles the add button with the shared primary orange for %s",
+    (overallStatus) => {
       render(<DetectionResults result={buildResult({ overall_status: overallStatus })} />);
 
       const addButton = screen.getByRole("link", { name: "Pridať výrok" });
 
-      expect(addButton).toHaveClass(borderClass);
-      expect(addButton).toHaveClass(textClass);
-      expect(addButton).toHaveClass(darkTextClass);
+      expect(addButton).toHaveClass("bg-[var(--brand-accent)]");
+      expect(addButton).toHaveClass("text-white");
+      expect(addButton).toHaveClass("dark:bg-[var(--brand-accent)]");
     },
   );
 
   it.each([
-    ["DUPLICATE_FOUND", "bg-red-700", "dark:bg-red-500"],
-    ["RELATED_ONLY", "bg-amber-700", "dark:bg-amber-500"],
-    ["NEW_CLAIM", "bg-green-700", "dark:bg-green-500"],
+    "DUPLICATE_FOUND",
+    "RELATED_ONLY",
+    "NEW_CLAIM",
   ] as const)(
-    "styles the fast-mode research trigger to match the %s status",
-    (overallStatus, lightClass, darkClass) => {
+    "styles the fast-mode research trigger with the shared primary orange for %s",
+    (overallStatus) => {
       render(
         <DetectionResults
           result={buildResult({ overall_status: overallStatus })}
@@ -111,8 +111,9 @@ describe("DetectionResults", () => {
 
       const rerunButton = screen.getByRole("button", { name: "Spustiť Prieskum" });
 
-      expect(rerunButton).toHaveClass(lightClass);
-      expect(rerunButton).toHaveClass(darkClass);
+      expect(rerunButton).toHaveClass("bg-[var(--brand-accent)]");
+      expect(rerunButton).toHaveClass("text-white");
+      expect(rerunButton).toHaveClass("dark:bg-[var(--brand-accent)]");
     },
   );
 });
