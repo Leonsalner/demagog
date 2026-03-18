@@ -56,13 +56,10 @@ function TextStage() {
               Téma, citát, meno, otázka
             </span>
           </div>
-          <div className="mt-6 grid min-h-[4.75rem] grid-rows-[auto_auto]">
+          <div className="mt-6 min-h-[3.5rem]">
             <p className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               Začnite prirodzeným dopytom.
             </p>
-            <span aria-hidden="true" className="block text-xl leading-8">
-              &nbsp;
-            </span>
           </div>
           <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
             Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
@@ -88,9 +85,11 @@ function TextStage() {
               Konkrétny výrok
             </span>
           </div>
-          <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Vložte celé tvrdenie a porovnajte ho s archívom.
-          </p>
+          <div className="mt-6 min-h-[3.5rem]">
+            <p className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              Vložte celé tvrdenie a porovnajte ho s archívom.
+            </p>
+          </div>
           <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
