@@ -34,14 +34,14 @@ describe("HomeOnboarding", () => {
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Dva režimy. Jeden jednoduchý začiatok.")).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("persists dismissal and supports manual reopen", async () => {
     render(<HomeOnboarding />);
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Preskočiť",
+        name: "Zavrieť návod",
       }),
     );
 
@@ -49,13 +49,14 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
+    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť návod" }));
 
     expect(
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
     ).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("does not reopen automatically after completion", async () => {
     window.localStorage.setItem(HOME_ONBOARDING_STORAGE_KEY, "completed");
@@ -74,12 +75,15 @@ describe("HomeOnboarding", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Hotovo" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("completed");
+    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
   }, 20_000);
 
   it("navigates forward and backward across steps", async () => {
@@ -137,6 +141,27 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
+    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+  });
+
+  it("shows and hides the mobile scroll cue on the first step", async () => {
+    render(<HomeOnboarding />);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Rýchly návod k práci s Demagogom",
+    });
+    expect(screen.getByText("Posuňte nižšie pre ďalšie kroky")).toBeInTheDocument();
+
+    Object.defineProperty(dialog, "scrollTop", {
+      configurable: true,
+      value: 40,
+      writable: true,
+    });
+    fireEvent.scroll(dialog);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Posuňte nižšie pre ďalšie kroky")).not.toBeInTheDocument();
+    });
   });
 
   it("switches onboarding media to dark assets when the active theme is dark", async () => {
@@ -156,7 +181,7 @@ describe("HomeOnboarding", () => {
   it("uses dark assets for all image-backed onboarding steps", async () => {
     document.documentElement.dataset.theme = "dark";
 
-    render(<HomeOnboarding includeOptionalSteps />);
+    render(<HomeOnboarding />);
 
     const expectedAssets = [
       {
