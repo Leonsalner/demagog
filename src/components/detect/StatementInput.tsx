@@ -5,6 +5,8 @@ import type { DetectMode } from "@/types";
 
 interface StatementInputProps {
   onSubmit: (statement: string, mode: DetectMode) => void;
+  mode: DetectMode;
+  onModeChange: (mode: DetectMode) => void;
   loading: boolean;
   onReset?: () => void;
 }
@@ -45,11 +47,12 @@ function ModeIcon({ icon }: { icon: "bolt" | "idea" }) {
 
 export default function StatementInput({
   onSubmit,
+  mode,
+  onModeChange,
   loading,
   onReset,
 }: StatementInputProps) {
   const [value, setValue] = useState("");
-  const [mode, setMode] = useState<DetectMode>("fast");
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const trimmedValue = value.trim();
@@ -185,7 +188,7 @@ export default function StatementInput({
                       role="option"
                       aria-selected={isActive}
                       onClick={() => {
-                        setMode(option.value);
+                        onModeChange(option.value);
                         setIsModeMenuOpen(false);
                       }}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${

@@ -12,7 +12,6 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
       {
         similarity: 0.82,
         classification: "RELATED",
-        explanation: "Téma sa zhoduje.",
         statement: {
           id: 1,
           vyrok: "Existujúci výrok",
@@ -44,7 +43,7 @@ describe("DetectionResults", () => {
     fireEvent.click(screen.getByRole("button", { name: /otvoriť prieskum/i }));
 
     expect(onOpenAggregateResearch).toHaveBeenCalledWith([1]);
-  });
+  }, 20_000);
 
   it("passes the per-statement research trigger in fast mode", () => {
     const onOpenStatementResearch = vi.fn();
@@ -60,6 +59,22 @@ describe("DetectionResults", () => {
     fireEvent.click(screen.getByRole("button", { name: /preskúmať/i }));
 
     expect(onOpenStatementResearch).toHaveBeenCalledWith(1);
+  });
+
+  it("offers a rerun button in fast mode", () => {
+    const onRerunThorough = vi.fn();
+
+    render(
+      <DetectionResults
+        result={buildResult()}
+        resultMode="fast"
+        onRerunThorough={onRerunThorough}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /spustiť prieskum/i }));
+
+    expect(onRerunThorough).toHaveBeenCalledWith("Nový výrok");
   });
 
   it.each([

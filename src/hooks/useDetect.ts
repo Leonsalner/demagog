@@ -17,13 +17,11 @@ function buildMatch(
   statement: Statement,
   similarity: number,
   classification: DetectionMatch["classification"],
-  explanation: string,
 ): DetectionMatch {
   return {
     statement,
     similarity,
     classification,
-    explanation,
   };
 }
 
@@ -36,13 +34,11 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(14)!,
       0.92,
       "DUPLICATE",
-      "Výrok používa takmer rovnaký údaj aj geografické vymedzenie. Pravdepodobne ide o parafrázu už overeného tvrdenia.",
     ),
     buildMatch(
       statementsById.get(15)!,
       0.87,
       "DUPLICATE",
-      "Zmysel výroku je zhodný, mení sa len formulácia počtu pediatrov. Existujúce overenie je priamo použiteľné.",
     ),
   ];
 
@@ -51,19 +47,16 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(11)!,
       0.65,
       "RELATED",
-      "Výrok sa týka rovnakého zdravotníckeho problému, ale opisuje ho všeobecnejšie a bez totožnej formulácie.",
     ),
     buildMatch(
       statementsById.get(12)!,
       0.58,
       "RELATED",
-      "Tvrdenie pracuje s podobnou témou čakacích lehôt a plánovaných opatrení, no nejde o priamu duplicitu.",
     ),
     buildMatch(
       statementsById.get(13)!,
       0.51,
       "RELATED",
-      "Nárok sa tematicky približuje k zahraničnopolitickým výrokom o Ukrajine, ale obsahovo zostáva širší.",
     ),
   ];
 
@@ -72,13 +65,11 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(1)!,
       0.31,
       "UNRELATED",
-      "Výrok rieši odlišnú ekonomickú tému bez spoločného skutkového jadra.",
     ),
     buildMatch(
       statementsById.get(7)!,
       0.26,
       "UNRELATED",
-      "Zhoda je len v niekoľkých všeobecných slovách, nie v obsahu výroku.",
     ),
   ];
 
@@ -118,7 +109,7 @@ export function useDetect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
+  const detect = useCallback(async (statement: string, mode: DetectMode = "thorough") => {
     setLoading(true);
     setError(null);
     setResult(null);

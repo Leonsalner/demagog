@@ -143,7 +143,6 @@ export default function StatementCard({
   statement,
   show_similarity = false,
   classification,
-  explanation,
   onOpenResearch,
 }: StatementCardProps) {
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
@@ -279,13 +278,6 @@ export default function StatementCard({
             </div>
           ) : null}
         </div>
-      ) : null}
-
-      {explanation ? (
-        <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          <span className="font-semibold text-slate-600 dark:text-slate-300">Dôvod zaradenia:</span>{" "}
-          {explanation}
-        </p>
       ) : null}
     </article>
   );

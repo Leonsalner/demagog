@@ -1,14 +1,15 @@
 "use client";
 
-import type { ResearchItem } from "@/types";
+import type { DetectionMatch, ResearchItem } from "@/types";
 
 import AnalysisRenderer from "./AnalysisRenderer";
 import ArticleRenderer from "./ArticleRenderer";
 import ExternalSourceRenderer from "./ExternalSourceRenderer";
 import ProvenanceChips from "./ProvenanceChips";
+import StatementMatchPane from "./StatementMatchPane";
 
 interface ResearchPaneProps {
-  item: ResearchItem | null;
+  item: ResearchItem | DetectionMatch | null;
 }
 
 export default function ResearchPane({ item }: ResearchPaneProps) {
@@ -18,6 +19,10 @@ export default function ResearchPane({ item }: ResearchPaneProps) {
         Vyberte položku z ľavého panelu.
       </div>
     );
+  }
+
+  if ("statement" in item) {
+    return <StatementMatchPane match={item} />;
   }
 
   return (

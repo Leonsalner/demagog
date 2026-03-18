@@ -14,6 +14,10 @@ type ResearchRequest =
       body: { statement_ids: number[] };
     };
 
+interface OpenResearchOptions {
+  revealWhenReady?: boolean;
+}
+
 async function fetchResearch(
   request: ResearchRequest,
   signal?: AbortSignal,
@@ -41,15 +45,16 @@ export function useResearch() {
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const open = useCallback(async (request: ResearchRequest) => {
+  const open = useCallback(async (request: ResearchRequest, options?: OpenResearchOptions) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const revealWhenReady = options?.revealWhenReady ?? true;
 
     setLastRequest(request);
-    setIsOpen(true);
+    setIsOpen(revealWhenReady);
     setLoading(true);
     setError(null);
     setData(null);
@@ -62,12 +67,18 @@ export function useResearch() {
       }
 
       setData(nextData);
+      if (!revealWhenReady) {
+        setIsOpen(true);
+      }
     } catch (nextError) {
       if (controller.signal.aborted || requestIdRef.current !== requestId) {
         return;
       }
 
       setError(nextError instanceof Error ? nextError.message : "Nepodarilo sa načítať prieskum.");
+      if (!revealWhenReady) {
+        setIsOpen(true);
+      }
     } finally {
       if (requestIdRef.current === requestId) {
         setLoading(false);
@@ -76,21 +87,21 @@ export function useResearch() {
   }, []);
 
   const openStatementResearch = useCallback(
-    async (statementId: number) => {
+    async (statementId: number, options?: OpenResearchOptions) => {
       await open({
         endpoint: "/api/research/statement",
         body: { statement_id: statementId },
-      });
+      }, options);
     },
     [open],
   );
 
   const openAggregateResearch = useCallback(
-    async (statementIds: number[]) => {
+    async (statementIds: number[], options?: OpenResearchOptions) => {
       await open({
         endpoint: "/api/research/detect",
         body: { statement_ids: statementIds },
-      });
+      }, options);
     },
     [open],
   );

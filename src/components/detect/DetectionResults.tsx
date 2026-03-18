@@ -9,9 +9,10 @@ interface DetectionResultsProps {
   resultMode?: DetectMode | null;
   onOpenStatementResearch?: (statementId: number) => void;
   onOpenAggregateResearch?: (statementIds: number[]) => void;
+  onRerunThorough?: (statement: string) => void;
 }
 
-const statusConfig = {
+export const detectStatusConfig = {
   DUPLICATE_FOUND: {
     container: "border-red-200 bg-red-50 dark:border-red-800/60 dark:bg-red-950/40",
     icon: "⚠",
@@ -56,6 +57,7 @@ export default function DetectionResults({
   resultMode,
   onOpenStatementResearch,
   onOpenAggregateResearch,
+  onRerunThorough,
 }: DetectionResultsProps) {
   const visibleMatches = sortMatches(
     result.matches.filter((match) => match.classification !== "UNRELATED"),
@@ -63,7 +65,7 @@ export default function DetectionResults({
   const hiddenMatches = sortMatches(
     result.matches.filter((match) => match.classification === "UNRELATED"),
   );
-  const status = statusConfig[result.overall_status];
+  const status = detectStatusConfig[result.overall_status];
   const addHref = `/add?vyrok=${encodeURIComponent(result.input_statement)}`;
   const showAddButton =
     result.overall_status === "NEW_CLAIM" ||
@@ -84,7 +86,19 @@ export default function DetectionResults({
             </h2>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{status.detail}</p>
             {showAddButton ? (
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {resultMode === "fast" && onRerunThorough ? (
+                  <button
+                    type="button"
+                    onClick={() => onRerunThorough(result.input_statement)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)] dark:focus-visible:ring-offset-slate-950"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                      <path d="M8 1.5a4.75 4.75 0 0 0-2.98 8.45c.28.23.48.55.54.91l.06.39h4.76l.06-.39c.06-.36.25-.68.54-.91A4.75 4.75 0 0 0 8 1.5Zm-1.08 11.75.1.5c.1.48.52.83 1 .83h.96a1.02 1.02 0 0 0 1-.83l.1-.5H6.92Z" />
+                    </svg>
+                    Spustiť Prieskum
+                  </button>
+                ) : null}
                 <a
                   href={addHref}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${status.button}`}
@@ -131,7 +145,6 @@ export default function DetectionResults({
               key={`${match.classification}-${match.statement.id}`}
               statement={{ ...match.statement, similarity: match.similarity }}
               classification={match.classification}
-              explanation={match.explanation}
               show_similarity
               onOpenResearch={
                 resultMode === "fast" ? onOpenStatementResearch : undefined
@@ -152,7 +165,6 @@ export default function DetectionResults({
                 key={`${match.classification}-${match.statement.id}`}
                 statement={{ ...match.statement, similarity: match.similarity }}
                 classification={match.classification}
-                explanation={match.explanation}
                 show_similarity
                 onOpenResearch={
                   resultMode === "fast" ? onOpenStatementResearch : undefined

@@ -52,7 +52,7 @@ interface SourceRow {
 
 const LEXICAL_DETECT_CANDIDATE_LIMIT = 120;
 const LEXICAL_DETECT_ROWS_PER_TERM = 40;
-const FAST_DETECT_RETRIEVAL_COUNT = 20;
+const FAST_DETECT_RETRIEVAL_COUNT = 10;
 const THOROUGH_DETECT_RETRIEVAL_COUNT = 60;
 let matchStatementsRpcAvailable: boolean | null = null;
 const DETECT_FALLBACK_IGNORED_TERMS = new Set([
@@ -105,13 +105,11 @@ function classificationRank(value: DetectionMatch["classification"]): number {
 function buildFallbackClassification(row: MatchRow): {
   id: number;
   classification: DetectionMatch["classification"];
-  explanation: string;
 } {
   if (row.similarity >= 0.85) {
     return {
       id: row.id,
       classification: "DUPLICATE",
-      explanation: "Vysoká sémantická zhoda.",
     };
   }
 
@@ -119,14 +117,12 @@ function buildFallbackClassification(row: MatchRow): {
     return {
       id: row.id,
       classification: "RELATED",
-      explanation: "Podobná téma alebo rámec tvrdenia.",
     };
   }
 
   return {
     id: row.id,
     classification: "UNRELATED",
-    explanation: "Len slabá povrchová zhoda.",
   };
 }
 
@@ -362,7 +358,7 @@ export async function POST(request: NextRequest) {
         vyrok: row.vyrok,
         vyhodnotenie: row.vyhodnotenie,
       })),
-      getGeminiModel(mode === "fast" ? "flash" : "pro")
+      getGeminiModel(mode === "fast" ? "lite" : "pro")
     );
   } catch {
     classifications = rows.map(buildFallbackClassification);
@@ -380,7 +376,6 @@ export async function POST(request: NextRequest) {
         statement: toStatement(row),
         similarity: row.similarity,
         classification: classification?.classification ?? "UNRELATED",
-        explanation: classification?.explanation ?? "Klasifikácia nebola vrátená.",
       };
     })
     .sort((left, right) => {

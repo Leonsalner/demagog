@@ -125,7 +125,7 @@ describe("detect page flow", () => {
 
     expect(detect).toHaveBeenCalledWith(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "fast",
+      "thorough",
     );
   }, 20_000);
 
@@ -133,8 +133,8 @@ describe("detect page flow", () => {
     const { detect } = mockUseDetectReturn();
 
     await renderHome("detect");
-    fireEvent.click(screen.getByRole("button", { name: "Rýchly" }));
-    fireEvent.click(screen.getByRole("option", { name: "Prieskum" }));
+    fireEvent.click(screen.getByRole("button", { name: "Prieskum" }));
+    fireEvent.click(screen.getByRole("option", { name: "Rýchly" }));
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -142,7 +142,7 @@ describe("detect page flow", () => {
 
     expect(detect).toHaveBeenCalledWith(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "thorough",
+      "fast",
     );
   }, 20_000);
 
@@ -152,7 +152,7 @@ describe("detect page flow", () => {
     await renderHome("detect");
 
     expect(
-      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
+      screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i),
     ).toBeInTheDocument();
   });
 

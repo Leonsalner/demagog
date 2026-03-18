@@ -118,7 +118,7 @@ export interface DetectionMatch {
   statement: Statement;
   similarity: number;
   classification: "DUPLICATE" | "RELATED" | "UNRELATED";
-  explanation: string;
+  explanation?: string;
 }
 
 export interface DetectResponse {
@@ -145,7 +145,6 @@ export interface StatementCardProps {
   statement: Statement;
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
-  explanation?: string;
   onOpenResearch?: (statementId: number) => void;
 }
 

@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { ResearchWorkspaceResponse } from "@/types";
+import type { DetectResponse, DetectionMatch, ResearchItem, ResearchWorkspaceResponse } from "@/types";
 
+import AddStatementModal from "./AddStatementModal";
+import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
 
@@ -12,8 +14,30 @@ interface ResearchWorkspaceProps {
   data: ResearchWorkspaceResponse | null;
   loading: boolean;
   error: string | null;
+  detectResult?: DetectResponse | null;
   onClose: () => void;
   onRetry?: () => void;
+}
+
+type WorkspaceSelection =
+  | { type: "research-item"; id: string }
+  | { type: "statement-match"; statementId: number }
+  | null;
+
+function isSelectionValid(
+  selection: WorkspaceSelection,
+  items: ResearchItem[],
+  matches: DetectionMatch[],
+) {
+  if (!selection) {
+    return false;
+  }
+
+  if (selection.type === "research-item") {
+    return items.some((item) => item.id === selection.id);
+  }
+
+  return matches.some((match) => match.statement.id === selection.statementId);
 }
 
 export default function ResearchWorkspace({
@@ -21,19 +45,81 @@ export default function ResearchWorkspace({
   data,
   loading,
   error,
+  detectResult,
   onClose,
   onRetry,
 }: ResearchWorkspaceProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const resolvedSelectedId =
-    data?.items.some((item) => item.id === selectedId) ? selectedId : data?.items[0]?.id ?? null;
-  const selectedItem = useMemo(
-    () => data?.items.find((item) => item.id === resolvedSelectedId) ?? null,
-    [data, resolvedSelectedId],
+  const [selection, setSelection] = useState<WorkspaceSelection>(null);
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(isOpen);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const detectMatches = useMemo(
+    () =>
+      data?.mode === "aggregate"
+        ? detectResult?.matches.filter((match) => match.classification !== "UNRELATED") ?? []
+        : [],
+    [data?.mode, detectResult],
   );
+  const resolvedSelection = useMemo<WorkspaceSelection>(() => {
+    const items = data?.items ?? [];
+
+    if (isSelectionValid(selection, items, detectMatches)) {
+      return selection;
+    }
+
+    if (items[0]) {
+      return { type: "research-item", id: items[0].id };
+    }
+
+    if (detectMatches[0]) {
+      return { type: "statement-match", statementId: detectMatches[0].statement.id };
+    }
+
+    return null;
+  }, [data, detectMatches, selection]);
+  const selectedItem = useMemo(() => {
+    if (!resolvedSelection) {
+      return null;
+    }
+
+    if (resolvedSelection.type === "statement-match") {
+      return detectMatches.find((match) => match.statement.id === resolvedSelection.statementId) ?? null;
+    }
+
+    return data?.items.find((item) => item.id === resolvedSelection.id) ?? null;
+  }, [data, detectMatches, resolvedSelection]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      const mountFrame = window.requestAnimationFrame(() => {
+        setIsMounted(true);
+      });
+      const visibleFrame = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(mountFrame);
+        window.cancelAnimationFrame(visibleFrame);
+      };
+    }
+
+    const hideFrame = window.requestAnimationFrame(() => {
+      setIsVisible(false);
+    });
+    const timeout = window.setTimeout(() => {
+      setIsMounted(false);
+      setIsAddModalOpen(false);
+    }, 300);
+
+    return () => {
+      window.cancelAnimationFrame(hideFrame);
+      window.clearTimeout(timeout);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isMounted) {
       return;
     }
 
@@ -43,29 +129,38 @@ export default function ResearchWorkspace({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isOpen]);
+  }, [isMounted]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isMounted) {
       return;
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        if (isAddModalOpen) {
+          setIsAddModalOpen(false);
+          return;
+        }
+
         onClose();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isAddModalOpen, isMounted, onClose]);
 
-  if (!isOpen) {
+  if (!isMounted) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-3 py-3 backdrop-blur-sm sm:px-6">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center px-3 py-3 transition-opacity duration-300 sm:px-6 ${
+        isVisible ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
+      }`}
+    >
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -75,7 +170,9 @@ export default function ResearchWorkspace({
         role="dialog"
         aria-modal="true"
         aria-label="Research workspace"
-        className="relative z-10 flex h-full max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+        className={`relative z-10 flex h-full max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-out dark:border-slate-800 dark:bg-slate-950 ${
+          isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-[0.98] opacity-0"
+        }`}
       >
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
           <div>
@@ -93,15 +190,27 @@ export default function ResearchWorkspace({
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
               <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
             </svg>
-          </button>
+            </button>
         </header>
+
+        {data?.mode === "aggregate" && detectResult ? (
+          <DetectStatusBar
+            inputStatement={detectResult.input_statement}
+            overallStatus={detectResult.overall_status}
+            onAddStatement={() => setIsAddModalOpen(true)}
+          />
+        ) : null}
 
         <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
           <div className="min-h-[180px] lg:min-h-0">
             <ResearchSidebar
+              mode={data?.mode ?? "statement"}
               items={data?.items ?? []}
-              selectedId={resolvedSelectedId}
-              onSelect={setSelectedId}
+              selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
+              onSelect={(itemId) => setSelection({ type: "research-item", id: itemId })}
+              detectMatches={detectMatches}
+              selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
+              onSelectMatch={(statementId) => setSelection({ type: "statement-match", statementId })}
             />
           </div>
 
@@ -133,6 +242,12 @@ export default function ResearchWorkspace({
             {!loading && !error ? <ResearchPane item={selectedItem} /> : null}
           </main>
         </div>
+
+        <AddStatementModal
+          isOpen={data?.mode === "aggregate" && isAddModalOpen}
+          initialStatement={data?.mode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
+          onClose={() => setIsAddModalOpen(false)}
+        />
       </section>
     </div>
   );

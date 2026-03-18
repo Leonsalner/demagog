@@ -117,7 +117,6 @@ describe("POST /api/detect logic", () => {
       rows.map((row) => ({
         id: row.id,
         classification: "RELATED",
-        explanation: `Kandidat ${row.id}`,
       })),
     );
 
@@ -146,8 +145,8 @@ describe("POST /api/detect logic", () => {
     expect(data.overall_status).toBe("RELATED_ONLY");
   });
 
-  it("uses the fast Gemini model and a 20-candidate shortlist when mode is fast", async () => {
-    const rows = Array.from({ length: 20 }, (_, index) =>
+  it("uses the fast lite Gemini model and a 10-candidate shortlist when mode is fast", async () => {
+    const rows = Array.from({ length: 10 }, (_, index) =>
       buildRow(index + 1, Number((0.89 - index * 0.01).toFixed(2))),
     );
     const supabase = createSupabaseMock(rows);
@@ -157,7 +156,6 @@ describe("POST /api/detect logic", () => {
       rows.map((row) => ({
         id: row.id,
         classification: "RELATED",
-        explanation: "Rychle porovnanie.",
       })),
     );
 
@@ -172,14 +170,14 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_statements",
       expect.objectContaining({
-        match_count: 20,
+        match_count: 10,
       }),
     );
-    expect(getGeminiModel).toHaveBeenCalledWith("flash");
+    expect(getGeminiModel).toHaveBeenCalledWith("lite");
     expect(classifyMatches).toHaveBeenCalledWith(
       "Nova formulacia tvrdenia",
       expect.any(Array),
-      "mock-flash",
+      "mock-lite",
     );
   });
 
@@ -205,9 +203,6 @@ describe("POST /api/detect logic", () => {
     expect(response.status).toBe(200);
     expect(data.matches.map((match: { classification: string }) => match.classification)).toEqual(
       ["DUPLICATE", "RELATED", "UNRELATED"],
-    );
-    expect(data.matches[0].explanation).toBe(
-      "Vysoká sémantická zhoda.",
     );
     expect(data.overall_status).toBe("DUPLICATE_FOUND");
   });
@@ -239,7 +234,6 @@ describe("POST /api/detect logic", () => {
       {
         id: 1,
         classification: "RELATED",
-        explanation: "Tvrdenie je na rovnakú tému.",
       },
     ]);
 
@@ -317,12 +311,10 @@ describe("POST /api/detect logic", () => {
       {
         id: 15,
         classification: "DUPLICATE",
-        explanation: "Takmer totožná formulácia.",
       },
       {
         id: 16,
         classification: "UNRELATED",
-        explanation: "Iná téma.",
       },
     ]);
 

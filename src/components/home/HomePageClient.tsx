@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import HomeOnboarding from "@/components/home/HomeOnboarding";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
@@ -12,6 +12,7 @@ import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useDetect } from "@/hooks/useDetect";
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
+import type { DetectMode } from "@/types";
 
 export type HomeTab = "search" | "detect";
 
@@ -20,6 +21,8 @@ interface HomePageClientProps {
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
+  const [detectMode, setDetectMode] = useState<DetectMode>("thorough");
+  const [isAutoOpeningResearch, setIsAutoOpeningResearch] = useState(false);
   const {
     results,
     loading,
@@ -57,6 +60,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
+  const autoOpenedRef = useRef(false);
 
   useEffect(() => {
     searchRef.current = search;
@@ -95,6 +99,56 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     void search(nextPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const matchedStatementIds = useMemo(
+    () =>
+      detectResult?.matches
+        .filter((match) => match.classification !== "UNRELATED")
+        .map((match) => match.statement.id) ?? [],
+    [detectResult],
+  );
+
+  useEffect(() => {
+    if (resultMode !== "thorough" || !detectResult || matchedStatementIds.length === 0 || autoOpenedRef.current) {
+      return;
+    }
+
+    autoOpenedRef.current = true;
+    startTransition(() => {
+      setIsAutoOpeningResearch(true);
+    });
+
+    void openAggregateResearch(matchedStatementIds, { revealWhenReady: false }).finally(() => {
+      startTransition(() => {
+        setIsAutoOpeningResearch(false);
+      });
+    });
+  }, [detectResult, matchedStatementIds, openAggregateResearch, resultMode]);
+
+  const handleDetectReset = () => {
+    autoOpenedRef.current = false;
+    setIsAutoOpeningResearch(false);
+    resetDetect();
+    closeResearch();
+  };
+
+  const handleDetect = (statement: string, mode: DetectMode) => {
+    autoOpenedRef.current = false;
+    setIsAutoOpeningResearch(false);
+    setDetectMode(mode);
+    closeResearch();
+    void detect(statement, mode);
+  };
+
+  const handleRerunThorough = (statement: string) => {
+    autoOpenedRef.current = false;
+    setIsAutoOpeningResearch(false);
+    setDetectMode("thorough");
+    closeResearch();
+    void detect(statement, "thorough");
+  };
+
+  const isThoroughLoading = detectLoading || isAutoOpeningResearch;
 
   return (
     <div className="relative min-h-[400px]">
@@ -206,7 +260,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
           }`}
         >
           <div className="space-y-6">
-            <StatementInput onSubmit={detect} loading={detectLoading} onReset={resetDetect} />
+            <StatementInput
+              onSubmit={handleDetect}
+              mode={detectMode}
+              onModeChange={setDetectMode}
+              loading={isThoroughLoading}
+              onReset={handleDetectReset}
+            />
 
             <div className="min-h-[320px]">
               {detectError ? (
@@ -215,11 +275,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {detectLoading ? (
+              {isThoroughLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                   <LoadingSpinner size="lg" />
                   <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
-                    Porovnávam výrok s databázou overených tvrdení...
+                    {resultMode === "thorough" || detectMode === "thorough"
+                      ? "Pripravujem prieskum výroku a súvisiace zdroje..."
+                      : "Porovnávam výrok s databázou overených tvrdení..."}
                   </p>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     Analýza zvyčajne trvá niekoľko sekúnd.
@@ -227,21 +289,21 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {!detectLoading && !detectResult ? (
+              {!isThoroughLoading && !detectResult ? (
                 <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Výsledky detekcie sa zobrazia tu
                     </h3>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Po odoslaní uvidíte najbližšie zhody, ich klasifikáciu a
-                      stručné vysvetlenie.
+                      Po odoslaní uvidíte najbližšie zhody a pri režime Prieskum sa
+                      automaticky otvorí aj súhrnný workspace.
                     </p>
                   </div>
                 </div>
               ) : null}
 
-              {!detectLoading && detectResult ? (
+              {!isThoroughLoading && detectResult ? (
                 <DetectionResults
                   result={detectResult}
                   resultMode={resultMode}
@@ -251,6 +313,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   onOpenAggregateResearch={(statementIds) => {
                     void openAggregateResearch(statementIds);
                   }}
+                  onRerunThorough={handleRerunThorough}
                 />
               ) : null}
             </div>
@@ -263,6 +326,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         data={researchData}
         loading={researchLoading}
         error={researchError}
+        detectResult={detectResult}
         onClose={closeResearch}
         onRetry={() => {
           void retryResearch();

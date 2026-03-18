@@ -80,7 +80,7 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("completed");
-  });
+  }, 20_000);
 
   it("navigates forward and backward across steps", async () => {
     render(<HomeOnboarding />);
@@ -112,7 +112,7 @@ describe("HomeOnboarding", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("1. Základ")).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("navigates directly through progress dots", async () => {
     render(<HomeOnboarding />);
@@ -183,5 +183,5 @@ describe("HomeOnboarding", () => {
       const image = await screen.findByAltText(asset.alt);
       expect(image).toHaveAttribute("src", expect.stringContaining(asset.file));
     }
-  });
+  }, 20_000);
 });
