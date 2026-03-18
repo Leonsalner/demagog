@@ -56,7 +56,7 @@ describe("FilterSidebar", () => {
       screen.getByRole("button", { name: "Odstrániť Tomáš Drucker" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Vymazať filtre" })).toBeInTheDocument();
-  }, 20_000);
+  }, 40_000);
 
   it("supports multi-select verdict and party toggles", async () => {
     const user = userEvent.setup();

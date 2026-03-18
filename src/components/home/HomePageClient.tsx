@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import HomeOnboarding from "@/components/home/HomeOnboarding";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
@@ -24,7 +24,7 @@ interface HomePageClientProps {
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const [detectMode, setDetectMode] = useState<DetectMode>("thorough");
   const [detectStatement, setDetectStatement] = useState("");
-  const [isAutoOpeningResearch, setIsAutoOpeningResearch] = useState(false);
+  const [hasAutoOpenedResearch, setHasAutoOpenedResearch] = useState(false);
   const {
     results,
     loading,
@@ -51,10 +51,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     reset: resetDetect,
   } = useDetect();
   const {
+    activeMode: researchMode,
     data: researchData,
     loading: researchLoading,
     error: researchError,
     isOpen: isResearchOpen,
+    isPendingReveal: isResearchPendingReveal,
     openStatementResearch,
     openAggregateResearch,
     retry: retryResearch,
@@ -62,13 +64,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
-  const autoOpenedRef = useRef(false);
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
       mode: activeTab,
-      query: query.trim() || null,
-      statement: detectStatement.trim() || null,
+      query: activeTab === "search" ? query.trim() || null : null,
+      statement: activeTab === "detect" ? detectStatement.trim() || null : null,
     }),
     [activeTab, detectStatement, query],
   );
@@ -120,40 +121,32 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         .map((match) => match.statement.id) ?? [],
     [detectResult],
   );
+  const shouldAutoOpenAggregateResearch =
+    resultMode === "thorough" &&
+    !!detectResult &&
+    detectResult.overall_status !== "NEW_CLAIM" &&
+    matchedStatementIds.length > 0 &&
+    !hasAutoOpenedResearch;
 
   useEffect(() => {
-    if (
-      resultMode !== "thorough" ||
-      !detectResult ||
-      detectResult.overall_status === "NEW_CLAIM" ||
-      matchedStatementIds.length === 0 ||
-      autoOpenedRef.current
-    ) {
+    if (!shouldAutoOpenAggregateResearch) {
       return;
     }
 
-    autoOpenedRef.current = true;
-    startTransition(() => {
-      setIsAutoOpeningResearch(true);
+    queueMicrotask(() => {
+      setHasAutoOpenedResearch(true);
     });
-
-    void openAggregateResearch(matchedStatementIds, { revealWhenReady: false }).finally(() => {
-      startTransition(() => {
-        setIsAutoOpeningResearch(false);
-      });
-    });
-  }, [detectResult, matchedStatementIds, openAggregateResearch, resultMode]);
+    void openAggregateResearch(matchedStatementIds, { revealWhenReady: false });
+  }, [matchedStatementIds, openAggregateResearch, shouldAutoOpenAggregateResearch]);
 
   const handleDetectReset = () => {
-    autoOpenedRef.current = false;
-    setIsAutoOpeningResearch(false);
+    setHasAutoOpenedResearch(false);
     resetDetect();
     closeResearch();
   };
 
   const handleDetect = (statement: string, mode: DetectMode) => {
-    autoOpenedRef.current = false;
-    setIsAutoOpeningResearch(false);
+    setHasAutoOpenedResearch(false);
     setDetectMode(mode);
     setDetectStatement(statement);
     closeResearch();
@@ -161,8 +154,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   };
 
   const handleRerunThorough = (statement: string) => {
-    autoOpenedRef.current = false;
-    setIsAutoOpeningResearch(false);
+    setHasAutoOpenedResearch(false);
     setDetectMode("thorough");
     setDetectStatement(statement);
     closeResearch();
@@ -170,7 +162,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   };
 
   const isDetectPanelLoading =
-    detectLoading || (resultMode === "thorough" && isAutoOpeningResearch);
+    detectLoading ||
+    shouldAutoOpenAggregateResearch ||
+    (resultMode === "thorough" && isResearchPendingReveal && !isResearchOpen);
 
   return (
     <div className="relative min-h-[400px]">
@@ -346,6 +340,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
       <ResearchWorkspace
         isOpen={isResearchOpen}
+        activeMode={researchMode}
         data={researchData}
         loading={researchLoading}
         error={researchError}

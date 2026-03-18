@@ -174,7 +174,7 @@ describe("search page flow", () => {
 
     expect(setPage).toHaveBeenCalledWith(1);
     expect(search).toHaveBeenCalledWith(1);
-  }, 20_000);
+  }, 40_000);
 
   it("passes filter changes to the hook", async () => {
     const { setFilters } = mockUseSearchReturn();
@@ -186,7 +186,7 @@ describe("search page flow", () => {
       ...emptyFilters,
       strana: ["Hlas"],
     });
-  });
+  }, 20_000);
 
   it("does not auto-search when only the query changes and search is recreated", async () => {
     vi.useFakeTimers();

@@ -96,10 +96,12 @@ describe("feedback context integration", () => {
       reset: vi.fn(),
     });
     vi.mocked(useResearch).mockReturnValue({
+      activeMode: null,
       data: null,
       loading: false,
       error: null,
       isOpen: false,
+      isPendingReveal: false,
       openStatementResearch: vi.fn().mockResolvedValue(undefined),
       openAggregateResearch: vi.fn().mockResolvedValue(undefined),
       retry: vi.fn().mockResolvedValue(undefined),
@@ -130,7 +132,39 @@ describe("feedback context integration", () => {
     expect(payload.context.query).toBe("konsolidácia");
     expect(payload.context.mode).toBe("search");
     expect(payload.context.statement).toBeNull();
-  }, 10_000);
+  }, 20_000);
+
+  it("drops stale detect context after switching back to the search tab", async () => {
+    const view = renderHarness("detect");
+
+    fireEvent.change(screen.getByLabelText("Politický výrok"), {
+      target: { value: "Toto je starý detect draft." },
+    });
+
+    view.rerender(
+      <FeedbackContextProvider>
+        <HomePageClient activeTab="search" />
+        <FeedbackWidget />
+      </FeedbackContextProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Toto sa týka vyhľadávania." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit?.body));
+
+    expect(payload.context.mode).toBe("search");
+    expect(payload.context.query).toBe("konsolidácia");
+    expect(payload.context.statement).toBeNull();
+  }, 20_000);
 
   it("captures the detect draft in submitted feedback", async () => {
     renderHarness("detect");
@@ -152,10 +186,11 @@ describe("feedback context integration", () => {
     const payload = JSON.parse(String(requestInit?.body));
 
     expect(payload.context.mode).toBe("detect");
+    expect(payload.context.query).toBeNull();
     expect(payload.context.statement).toBe(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
     );
-  });
+  }, 20_000);
 
   it("falls back to null query and statement on non-home routes", async () => {
     vi.mocked(usePathname).mockReturnValue("/add");

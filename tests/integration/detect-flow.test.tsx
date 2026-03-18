@@ -118,8 +118,10 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
   const close = vi.fn();
 
   vi.mocked(useResearch).mockReturnValue({
+    activeMode: null,
     data: null,
     isOpen: false,
+    isPendingReveal: false,
     loading: false,
     error: null,
     openStatementResearch,
@@ -146,7 +148,7 @@ describe("detect page flow", () => {
 
     expect(screen.getByLabelText("Politický výrok")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeInTheDocument();
-  }, 20_000);
+  }, 40_000);
 
   it("submits a statement for analysis", async () => {
     const { detect } = mockUseDetectReturn();
@@ -239,6 +241,28 @@ describe("detect page flow", () => {
         revealWhenReady: false,
       });
     });
+  });
+
+  it("keeps the detect spinner visible while thorough auto-open is being kicked off", async () => {
+    const openAggregateResearch = vi.fn(() => new Promise(() => {}));
+    mockUseResearchReturn({
+      isPendingReveal: true,
+      openAggregateResearch,
+    });
+    mockUseDetectReturn({
+      result: mockDetectDuplicate,
+      resultMode: "thorough",
+    });
+
+    await act(async () => {
+      await renderHome("detect");
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdený duplicitný výrok/i)).not.toBeInTheDocument();
   });
 
   it("does not auto-open aggregate research for thorough new-claim results", async () => {

@@ -9,7 +9,7 @@ import {
   type FormEvent,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useFeedbackContext } from "@/components/feedback/FeedbackContext";
+import { useFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import {
   FEEDBACK_CATEGORY_LABELS,
   inferFeedbackPageType,
@@ -48,7 +48,7 @@ function getResponseErrorMessage(payload: unknown): string {
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { pageContext } = useFeedbackContext();
+  const pageContext = useFeedbackPageContext();
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY);
   const [message, setMessage] = useState("");
@@ -84,6 +84,10 @@ export default function FeedbackWidget() {
     }, 0);
 
     function handlePointerDown(event: MouseEvent) {
+      if (isSubmitting) {
+        return;
+      }
+
       const target = event.target as Node;
 
       if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
@@ -99,7 +103,7 @@ export default function FeedbackWidget() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") {
+      if (event.key !== "Escape" || isSubmitting) {
         return;
       }
 
@@ -119,7 +123,7 @@ export default function FeedbackWidget() {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, isSubmitting]);
 
   useEffect(() => {
     return () => {
@@ -137,6 +141,10 @@ export default function FeedbackWidget() {
   }
 
   function closePanel(resetAfterClose = false) {
+    if (isSubmitting) {
+      return;
+    }
+
     setIsOpen(false);
     setErrorMessage(null);
 
@@ -237,7 +245,8 @@ export default function FeedbackWidget() {
             <button
               type="button"
               onClick={() => closePanel(status === "success")}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+              disabled={isSubmitting}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
               aria-label="Zavrieť spätnú väzbu"
             >
               <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -322,7 +331,12 @@ export default function FeedbackWidget() {
         type="button"
         aria-expanded={isOpen}
         aria-controls={panelId}
+        disabled={isOpen && isSubmitting}
         onClick={() => {
+          if (isOpen && isSubmitting) {
+            return;
+          }
+
           setIsOpen((open) => !open);
           if (status === "success") {
             resetForm();
@@ -330,7 +344,7 @@ export default function FeedbackWidget() {
             setErrorMessage(null);
           }
         }}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/96 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
+        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/96 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
       >
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]">
           <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">

@@ -5,22 +5,24 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
-  type Dispatch,
+  useSyncExternalStore,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 import {
   DEFAULT_FEEDBACK_PAGE_CONTEXT,
   type FeedbackPageContext,
 } from "@/lib/feedback";
 
-interface FeedbackContextValue {
-  pageContext: FeedbackPageContext;
-  setPageContext: Dispatch<SetStateAction<FeedbackPageContext>>;
+type FeedbackContextListener = () => void;
+
+interface FeedbackContextStore {
+  getSnapshot: () => FeedbackPageContext;
+  resetPageContext: (pageContext: FeedbackPageContext) => void;
+  setPageContext: (pageContext: FeedbackPageContext) => void;
+  subscribe: (listener: FeedbackContextListener) => () => void;
 }
 
-const FeedbackContext = createContext<FeedbackContextValue | null>(null);
+const FeedbackContext = createContext<FeedbackContextStore | null>(null);
 
 function isSamePageContext(left: FeedbackPageContext, right: FeedbackPageContext) {
   return (
@@ -31,22 +33,54 @@ function isSamePageContext(left: FeedbackPageContext, right: FeedbackPageContext
   );
 }
 
-export function FeedbackContextProvider({ children }: { children: ReactNode }) {
-  const [pageContext, setPageContext] = useState<FeedbackPageContext>(
-    DEFAULT_FEEDBACK_PAGE_CONTEXT,
-  );
-  const value = useMemo(
-    () => ({
-      pageContext,
-      setPageContext,
-    }),
-    [pageContext],
-  );
+function createFeedbackContextStore(): FeedbackContextStore {
+  let pageContext = DEFAULT_FEEDBACK_PAGE_CONTEXT;
+  const listeners = new Set<FeedbackContextListener>();
 
-  return <FeedbackContext.Provider value={value}>{children}</FeedbackContext.Provider>;
+  function emitChange() {
+    listeners.forEach((listener) => {
+      listener();
+    });
+  }
+
+  return {
+    getSnapshot: () => pageContext,
+    resetPageContext: (nextPageContext) => {
+      if (
+        !isSamePageContext(pageContext, nextPageContext) ||
+        isSamePageContext(pageContext, DEFAULT_FEEDBACK_PAGE_CONTEXT)
+      ) {
+        return;
+      }
+
+      pageContext = DEFAULT_FEEDBACK_PAGE_CONTEXT;
+      emitChange();
+    },
+    setPageContext: (nextPageContext) => {
+      if (isSamePageContext(pageContext, nextPageContext)) {
+        return;
+      }
+
+      pageContext = nextPageContext;
+      emitChange();
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
 }
 
-export function useFeedbackContext() {
+export function FeedbackContextProvider({ children }: { children: ReactNode }) {
+  const store = useMemo(() => createFeedbackContextStore(), []);
+
+  return <FeedbackContext.Provider value={store}>{children}</FeedbackContext.Provider>;
+}
+
+function useFeedbackContextStore() {
   const context = useContext(FeedbackContext);
 
   if (!context) {
@@ -56,20 +90,20 @@ export function useFeedbackContext() {
   return context;
 }
 
+export function useFeedbackPageContext() {
+  const store = useFeedbackContextStore();
+
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+}
+
 export function usePublishFeedbackPageContext(pageContext: FeedbackPageContext) {
-  const { setPageContext } = useFeedbackContext();
+  const store = useFeedbackContextStore();
 
   useEffect(() => {
-    setPageContext((currentPageContext) =>
-      isSamePageContext(currentPageContext, pageContext) ? currentPageContext : pageContext,
-    );
+    store.setPageContext(pageContext);
 
     return () => {
-      setPageContext((currentPageContext) =>
-        isSamePageContext(currentPageContext, pageContext)
-          ? DEFAULT_FEEDBACK_PAGE_CONTEXT
-          : currentPageContext,
-      );
+      store.resetPageContext(pageContext);
     };
-  }, [pageContext, setPageContext]);
+  }, [pageContext, store]);
 }

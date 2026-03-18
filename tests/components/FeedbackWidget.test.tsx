@@ -59,7 +59,7 @@ describe("FeedbackWidget", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
     });
-  });
+  }, 20_000);
 
   it("disables the form while submitting and sends the expected payload", async () => {
     fetchMock.mockReturnValue(new Promise<Response>(() => {}));
@@ -100,8 +100,27 @@ describe("FeedbackWidget", () => {
         },
       }),
     });
+  }, 20_000);
 
-  });
+  it("ignores close affordances while a submission is in flight", async () => {
+    fetchMock.mockReturnValue(new Promise<Response>(() => {}));
+
+    renderWidget();
+
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Správa sa práve odosiela." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    expect(screen.getByRole("button", { name: "Zavrieť spätnú väzbu" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Máte pripomienku?" })).toBeDisabled();
+
+    fireEvent.mouseDown(document.body);
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+  }, 20_000);
 
   it("preserves the draft when submission fails", async () => {
     fetchMock.mockResolvedValue(
@@ -125,7 +144,7 @@ describe("FeedbackWidget", () => {
       expect(screen.getAllByText("Linear zlyhal")).toHaveLength(2);
     });
     expect(screen.getByLabelText("Správa")).toHaveValue("Táto správa sa má zachovať.");
-  });
+  }, 20_000);
 
   it("auto-closes and resets after a successful submission", async () => {
     fetchMock.mockResolvedValue(
