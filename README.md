@@ -35,9 +35,3 @@ Ak sa v archíve nič podobné nenájde, systém výrok označí ako nový a pon
 <p align="center">
   <img src="docs/images/detect-no-match-new-claim.png" alt="Detektor označil výrok ako nový a ponúkol jeho pridanie do databázy" width="1100" />
 </p>
-
-## Pre koho je to užitočné
-
-- **Pre bežného čitateľa a novinára:** Rýchlo nájde relevantné staršie overenia k aktuálnej téme, aj keď nepozná presné pôvodné znenie výroku.
-- **Pre analytika:** Hneď zistí, či už redakcia podobný výrok v minulosti riešila, a získa priamy prístup k podkladom.
-- **Pre redakčný tím:** Mení archív na živý pracovný nástroj a výrazne zjednodušuje proces zaraďovania nových výrokov.
