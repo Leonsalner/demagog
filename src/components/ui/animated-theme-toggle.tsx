@@ -4,37 +4,62 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-type ThemeMode = "light" | "dark";
-
-const STORAGE_KEY = "demagog-theme";
-
-function applyTheme(theme: ThemeMode) {
-  const root = document.documentElement;
-  root.dataset.theme = theme;
-  root.classList.toggle("dark", theme === "dark");
-}
-
-function getStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  return window.localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
-}
+import {
+  applyTheme,
+  DARK_THEME_MEDIA_QUERY,
+  readActiveTheme,
+  readStoredTheme,
+  resolveTheme,
+  THEME_STORAGE_KEY,
+  type ThemeMode,
+} from "@/lib/theme";
 
 export function AnimatedThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<ThemeMode>(getStoredTheme);
+  const [theme, setTheme] = useState<ThemeMode>(() =>
+    typeof document === "undefined" ? "light" : readActiveTheme(),
+  );
+  const [hasStoredPreference, setHasStoredPreference] = useState(() => readStoredTheme() !== null);
   const isDark = theme === "dark";
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    const resolvedTheme = resolveTheme();
+    setTheme(resolvedTheme);
+    applyTheme(resolvedTheme);
+  }, []);
+
+  useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (hasStoredPreference || typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(DARK_THEME_MEDIA_QUERY);
+    const handleChange = () => {
+      const nextTheme = mediaQuery.matches ? "dark" : "light";
+      setTheme(nextTheme);
+      applyTheme(nextTheme);
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, [hasStoredPreference]);
+
   return (
     <Button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        const nextTheme = isDark ? "light" : "dark";
+        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        setHasStoredPreference(true);
+        setTheme(nextTheme);
+      }}
       className={cn("h-9 w-9 px-2.5", className)}
       variant="outline"
       aria-label={isDark ? "Prepnúť na svetlý režim" : "Prepnúť na tmavý režim"}

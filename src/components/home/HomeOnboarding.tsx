@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { readActiveTheme, type ThemeMode } from "@/lib/theme";
 
 import { HOME_ONBOARDING_STEPS, type HomeOnboardingStep } from "./homeOnboardingSteps";
 
@@ -39,6 +40,21 @@ function subscribeToOnboardingStatus() {
   return () => {};
 }
 
+function subscribeToTheme(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const root = document.documentElement;
+  const observer = new MutationObserver(() => callback());
+  observer.observe(root, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+
+  return () => observer.disconnect();
+}
+
 function TextStage() {
   return (
     <div className="space-y-6">
@@ -47,9 +63,9 @@ function TextStage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-800 dark:bg-slate-900">
+        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_72px_-40px_rgba(2,6,23,0.95)]">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex rounded-full bg-[#e03e1a] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-[#ff3300]">
+            <span className="inline-flex rounded-full bg-[#e03e1a] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-[#ff5a2a]">
               Vyhľadávanie
             </span>
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
@@ -61,14 +77,14 @@ function TextStage() {
               Začnite prirodzeným dopytom.
             </p>
           </div>
-          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(148,163,184,0.08)]">
             Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {["Téma", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
               <span
                 key={hint}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               >
                 {hint}
               </span>
@@ -76,9 +92,9 @@ function TextStage() {
           </div>
         </article>
 
-        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-800 dark:bg-slate-900">
+        <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_72px_-40px_rgba(2,6,23,0.95)]">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-slate-100 dark:text-slate-900">
+            <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-slate-100 dark:text-slate-950">
               Detekcia duplicít
             </span>
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
@@ -90,14 +106,14 @@ function TextStage() {
               Vložte celé tvrdenie a porovnajte ho s archívom.
             </p>
           </div>
-          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(148,163,184,0.08)]">
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {["Rýchla kontrola", "Prieskum", "Nový výrok"].map((hint) => (
               <span
                 key={hint}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               >
                 {hint}
               </span>
@@ -106,7 +122,7 @@ function TextStage() {
         </article>
       </div>
 
-      <div className="rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/85 dark:shadow-[0_24px_72px_-44px_rgba(2,6,23,0.95)]">
         <div className="grid gap-3 sm:grid-cols-3">
           {[
             {
@@ -124,9 +140,9 @@ function TextStage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/60"
+              className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-100">
                 {item.label}
               </div>
               <p className="pt-0.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -140,7 +156,7 @@ function TextStage() {
   );
 }
 
-function MediaStage({ step }: { step: HomeOnboardingStep }) {
+function MediaStage({ step, theme }: { step: HomeOnboardingStep; theme: ThemeMode }) {
   if (step.media.kind === "text") {
     return (
       <div key={step.id} className="animate-[onboardingFade_240ms_ease-out]">
@@ -149,15 +165,18 @@ function MediaStage({ step }: { step: HomeOnboardingStep }) {
     );
   }
 
+  const imageSrc =
+    theme === "dark" ? step.media.darkSrc ?? step.media.lightSrc : step.media.lightSrc;
+
   return (
     <figure key={step.id} className="animate-[onboardingFade_240ms_ease-out]">
-      <div className="max-h-[40vh] overflow-hidden rounded-[1.85rem] border border-slate-200 bg-[#f8fafc] p-3 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-slate-900/80 lg:max-h-none">
+      <div className="max-h-[40vh] overflow-hidden rounded-[1.85rem] border border-slate-200 bg-[#f8fafc] p-3 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(2,6,23,0.98))] dark:shadow-[0_32px_88px_-44px_rgba(2,6,23,0.95)] lg:max-h-none">
         <div
           className="max-h-[40vh] overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 lg:max-h-none"
           style={{ aspectRatio: step.media.aspectRatio ?? "16 / 9" }}
         >
           <Image
-            src={step.media.src}
+            src={imageSrc}
             alt={step.media.alt}
             width={1280}
             height={720}
@@ -216,6 +235,11 @@ export default function HomeOnboarding({
     subscribeToOnboardingStatus,
     readStoredStatus,
     (): OnboardingSnapshot => "loading",
+  );
+  const theme = useSyncExternalStore<ThemeMode>(
+    subscribeToTheme,
+    readActiveTheme,
+    () => "light",
   );
   const [activeStep, setActiveStep] = useState(0);
   const [manualOpenState, setManualOpenState] = useState<"open" | "closed" | null>(null);
@@ -290,13 +314,13 @@ export default function HomeOnboarding({
             role="dialog"
             aria-modal="true"
             aria-label="Rýchly návod k práci s Demagogom"
-            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950 lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
+            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
           >
-            <div className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 xl:p-10">
-              <MediaStage step={currentStep} />
+            <div className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 xl:p-10">
+              <MediaStage step={currentStep} theme={theme} />
             </div>
 
-            <div className="flex flex-col overflow-visible p-5 sm:p-7 lg:min-h-0 lg:overflow-y-auto">
+            <div className="flex flex-col overflow-visible bg-white/96 p-5 dark:bg-slate-950/65 sm:p-7 lg:min-h-0 lg:overflow-y-auto">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#b53015] dark:text-[#ff9c85]">
@@ -313,7 +337,7 @@ export default function HomeOnboarding({
                     persistStatus("dismissed");
                     setManualOpenState("closed");
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center text-slate-400 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:text-slate-500 dark:hover:text-slate-100 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-transparent bg-transparent text-slate-400 transition hover:border-slate-200 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:text-slate-500 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-100 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
                   aria-label="Zavrieť návod"
                 >
                   <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -322,7 +346,7 @@ export default function HomeOnboarding({
                 </button>
               </div>
 
-              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
                 Návod je neskôr vždy dostupný cez tlačidlo Návod v pravom dolnom rohu.
               </div>
 
@@ -337,7 +361,7 @@ export default function HomeOnboarding({
                 ))}
               </div>
 
-              <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between gap-4 border-t border-slate-200 bg-white pt-5 pb-5 dark:border-slate-800 dark:bg-slate-950 lg:mt-auto lg:pb-0">
+              <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between gap-4 border-t border-slate-200 bg-white pt-5 pb-5 dark:border-slate-800 dark:bg-slate-950/98 lg:mt-auto lg:pb-0">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
                     Krok {activeStep + 1} z {steps.length}

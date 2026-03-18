@@ -24,6 +24,7 @@ describe("HomeOnboarding", () => {
 
     window.localStorage.removeItem(HOME_ONBOARDING_STORAGE_KEY);
     document.body.style.overflow = "";
+    document.documentElement.dataset.theme = "light";
   });
 
   it("opens automatically on first visit", async () => {
@@ -136,5 +137,51 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
+  });
+
+  it("switches onboarding media to dark assets when the active theme is dark", async () => {
+    document.documentElement.dataset.theme = "dark";
+
+    render(<HomeOnboarding />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+
+    const image = await screen.findByAltText(
+      "Vyhľadávacie rozhranie Demagogu s prirodzeným dopytom, automaticky doplnenými filtrami a výsledkami.",
+    );
+
+    expect(image).toHaveAttribute("src", expect.stringContaining("step-02-search-dark.png"));
+  });
+
+  it("uses dark assets for all image-backed onboarding steps", async () => {
+    document.documentElement.dataset.theme = "dark";
+
+    render(<HomeOnboarding includeOptionalSteps />);
+
+    const expectedAssets = [
+      {
+        alt: "Vyhľadávacie rozhranie Demagogu s prirodzeným dopytom, automaticky doplnenými filtrami a výsledkami.",
+        file: "step-02-search-dark.png",
+      },
+      {
+        alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a výsledkom s akciou Pridať výrok.",
+        file: "step-03-detect-dark.png",
+      },
+      {
+        alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
+        file: "step-04-research-dark.png",
+      },
+      {
+        alt: "Formulár na pridanie nového výroku s predvyplneným textom a pripravenými poliami.",
+        file: "step-05-add-dark.png",
+      },
+    ];
+
+    for (const asset of expectedAssets) {
+      fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+
+      const image = await screen.findByAltText(asset.alt);
+      expect(image).toHaveAttribute("src", expect.stringContaining(asset.file));
+    }
   });
 });

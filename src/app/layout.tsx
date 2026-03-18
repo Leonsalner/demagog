@@ -2,12 +2,18 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import Navbar from "@/components/shared/Navbar";
+import { DARK_THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 const themeInitScript = `
   (() => {
-    const storedTheme = window.localStorage.getItem("demagog-theme");
-    const theme = storedTheme === "dark" ? "dark" : "light";
+    const storedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    const theme =
+      storedTheme === "light" || storedTheme === "dark"
+        ? storedTheme
+        : window.matchMedia(${JSON.stringify(DARK_THEME_MEDIA_QUERY)}).matches
+          ? "dark"
+          : "light";
     const root = document.documentElement;
     root.dataset.theme = theme;
     root.classList.toggle("dark", theme === "dark");
@@ -52,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="sk" data-theme="light" suppressHydrationWarning>
+    <html lang="sk" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

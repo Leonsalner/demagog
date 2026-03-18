@@ -6,7 +6,8 @@ export type OnboardingMedia =
     }
   | {
       kind: "image";
-      src: string;
+      lightSrc: string;
+      darkSrc?: string;
       alt: string;
       caption?: string;
       aspectRatio?: "16 / 10" | "16 / 9";
@@ -46,7 +47,8 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     ],
     media: {
       kind: "image",
-      src: "/onboarding/step-02-search-light.png",
+      lightSrc: "/onboarding/step-02-search-light.png",
+      darkSrc: "/onboarding/step-02-search-dark.png",
       alt: "Vyhľadávacie rozhranie Demagogu s prirodzeným dopytom, automaticky doplnenými filtrami a výsledkami.",
       caption: "Prirodzený dopyt, automatické filtre a výsledky pripravené na ďalší krok.",
       aspectRatio: "16 / 9",
@@ -63,7 +65,8 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     ],
     media: {
       kind: "image",
-      src: "/onboarding/step-03-detect-light-v2.png",
+      lightSrc: "/onboarding/step-03-detect-light-v2.png",
+      darkSrc: "/onboarding/step-03-detect-dark.png",
       alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a výsledkom s akciou Pridať výrok.",
       caption: "Detekcia rýchlo ukáže, či už existuje zhoda, alebo máte pokračovať na pridanie nového výroku.",
       aspectRatio: "16 / 9",
@@ -80,7 +83,8 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     ],
     media: {
       kind: "image",
-      src: "/onboarding/step-04-research-light-v2.png",
+      lightSrc: "/onboarding/step-04-research-light-v2.png",
+      darkSrc: "/onboarding/step-04-research-dark.png",
       alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
       caption: "Preskúmať spája analýzu, Demagog články a podklady k overeniu na jednom mieste.",
       aspectRatio: "16 / 9",
@@ -97,7 +101,8 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     optional: true,
     media: {
       kind: "image",
-      src: "/onboarding/step-05-add-light.png",
+      lightSrc: "/onboarding/step-05-add-light.png",
+      darkSrc: "/onboarding/step-05-add-dark.png",
       alt: "Formulár na pridanie nového výroku s predvyplneným textom a pripravenými poliami.",
       caption: "Keď výsledok nesedí, prechod do databázy nadviaže bez straty vloženého textu.",
       aspectRatio: "16 / 9",
