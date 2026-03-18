@@ -207,17 +207,22 @@ export default function FilterSidebar({
     <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-900 dark:text-slate-100">
+          <h2 className="text-base font-bold uppercase tracking-[0.22em] text-slate-900 dark:text-slate-100">
             Filtre
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Spresnenie výsledkov
-          </p>
         </div>
         {activeFilterCount > 0 ? (
-          <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-[#d95830]/12 px-2.5 py-1 text-xs font-semibold text-[#c04a25] dark:bg-[#d95830]/20 dark:text-[#f07850]">
-            {activeFilterCount}
-          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setPersonQuery("");
+              setIsPickerOpen(false);
+              onChange(emptyFilters);
+            }}
+            className="text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+          >
+            Vymazať filtre
+          </button>
         ) : null}
       </div>
 
@@ -413,20 +418,6 @@ export default function FilterSidebar({
           </FilterSection>
         </div>
       </div>
-
-      {activeFilterCount > 0 ? (
-        <button
-          type="button"
-          onClick={() => {
-            setPersonQuery("");
-            setIsPickerOpen(false);
-            onChange(emptyFilters);
-          }}
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-        >
-          Resetovať filtre
-        </button>
-      ) : null}
     </aside>
   );
 }

@@ -131,7 +131,7 @@ export default function StatementInput({
           <button
             type="submit"
             disabled={isDisabled}
-            className="inline-flex min-w-48 items-center justify-center rounded-full bg-[#d95830] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[#c04a25] disabled:cursor-not-allowed disabled:bg-[#d95830]/40 disabled:text-white/80 dark:hover:bg-[#f07850] dark:disabled:bg-[#f07850]/28 dark:disabled:text-white/70"
+            className="inline-flex min-w-48 items-center justify-center rounded-full bg-[var(--brand-accent)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] disabled:cursor-not-allowed disabled:bg-[var(--brand-accent)]/40 disabled:text-white/80 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-[var(--brand-accent-dark)]/28 dark:disabled:text-white/70"
           >
             {loading ? (
               <>

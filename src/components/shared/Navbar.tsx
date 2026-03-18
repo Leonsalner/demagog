@@ -37,7 +37,7 @@ export default function Navbar() {
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-[#d95830] shadow-[0_12px_30px_rgba(217,88,48,0.2)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-[#f07850] dark:shadow-[0_12px_30px_rgba(240,120,80,0.22)]"
+                className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-[var(--brand-accent)] shadow-[0_12px_30px_rgba(217,88,48,0.2)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-[var(--brand-accent)] dark:shadow-[0_12px_30px_rgba(217,88,48,0.24)]"
                 style={{
                   transform:
                     activeHomeTab === "search"
@@ -88,7 +88,7 @@ export default function Navbar() {
             <Link
               href="/add"
               prefetch={false}
-              className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2.5 text-sm font-semibold !text-white shadow-sm transition hover:bg-[#c04a25] visited:!text-white hover:!text-white dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-4 py-2.5 text-sm font-semibold !text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] visited:!text-white hover:!text-white dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
             >
               Pridať nový výrok
             </Link>

@@ -55,7 +55,7 @@ describe("FilterSidebar", () => {
     expect(
       screen.getByRole("button", { name: "Odstrániť Tomáš Drucker" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vymazať filtre" })).toBeInTheDocument();
   }, 20_000);
 
   it("supports multi-select verdict and party toggles", async () => {
@@ -124,4 +124,21 @@ describe("FilterSidebar", () => {
       screen.getByText(/Filter data unavailable\. Zobrazujú sa náhradné hodnoty\./i),
     ).toBeInTheDocument();
   });
+
+  it("clears active filters from the text-only header action", async () => {
+    const user = userEvent.setup();
+
+    render(<TestHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Hlas" }));
+    await user.click(screen.getByRole("button", { name: "Vymazať filtre" }));
+
+    expect(screen.getByRole("button", { name: "Hlas" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Vymazať filtre" }),
+    ).not.toBeInTheDocument();
+  }, 20_000);
 });

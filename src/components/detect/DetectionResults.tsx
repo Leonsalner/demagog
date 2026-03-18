@@ -20,9 +20,9 @@ export const detectStatusConfig = {
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
     button:
-      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] !text-white shadow-[0_12px_28px_-18px_rgba(217,88,48,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] hover:!text-white visited:!text-white dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:!text-white dark:shadow-[0_12px_28px_-16px_rgba(240,120,80,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(217,88,48,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
   RELATED_ONLY: {
     container: "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/40",
@@ -31,9 +31,9 @@ export const detectStatusConfig = {
     description: "Odporúčame kontrolu existujúcich overení.",
     detail: "Nižšie nájdete výroky na podobnú tému.",
     button:
-      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] !text-white shadow-[0_12px_28px_-18px_rgba(217,88,48,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] hover:!text-white visited:!text-white dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:!text-white dark:shadow-[0_12px_28px_-16px_rgba(240,120,80,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(217,88,48,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
   NEW_CLAIM: {
     container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
@@ -42,9 +42,9 @@ export const detectStatusConfig = {
     description: "V databáze sa nenašiel podobný overený nárok.",
     detail: "Tento výrok vyžaduje úplné overenie.",
     button:
-      "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white shadow-[0_12px_28px_-18px_rgba(224,62,26,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:shadow-[0_12px_28px_-16px_rgba(255,107,61,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "border-[var(--brand-accent)] bg-[var(--brand-accent)] !text-white shadow-[0_12px_28px_-18px_rgba(217,88,48,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] hover:!text-white visited:!text-white dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:!text-white dark:shadow-[0_12px_28px_-16px_rgba(240,120,80,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
     primaryButton:
-      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(224,62,26,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
+      "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(217,88,48,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
 } as const;
 
@@ -139,7 +139,7 @@ export default function DetectionResults({
             <button
               type="button"
               onClick={() => onOpenAggregateResearch(matchedStatementIds)}
-              className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_30px_-20px_rgba(224,62,26,0.85)] transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)]"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white shadow-[0_16px_30px_-20px_rgba(217,88,48,0.85)] transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
             >
               Otvoriť prieskum
             </button>

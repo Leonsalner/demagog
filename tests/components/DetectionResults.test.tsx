@@ -89,7 +89,7 @@ describe("DetectionResults", () => {
       const addButton = screen.getByRole("link", { name: "Pridať výrok" });
 
       expect(addButton).toHaveClass("bg-[var(--brand-accent)]");
-      expect(addButton).toHaveClass("text-white");
+      expect(addButton).toHaveClass("!text-white");
       expect(addButton).toHaveClass("dark:bg-[var(--brand-accent)]");
     },
   );
