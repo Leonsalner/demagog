@@ -1,9 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import ProvenanceChips from "@/components/research/ProvenanceChips";
 
 describe("ProvenanceChips", () => {
-  it("renders the statement-mode provenance line with name and party", () => {
+  it("renders a single statement as a clickable chip", () => {
     render(
       <ProvenanceChips
         refs={[
@@ -12,12 +12,53 @@ describe("ProvenanceChips", () => {
             vyrok: "Výrok",
             meno: "Robert Fico",
             strana: "Smer-SD",
+            verdict: "Pravda",
+            url: "https://demagog.sk/vyrok/1",
           },
         ]}
       />,
     );
 
-    expect(screen.getByText("Výrok od Robert Fico (Smer-SD)")).toBeInTheDocument();
+    expect(screen.getByText("Súvisiace výroky")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Robert Fico (Smer-SD)" })).toBeInTheDocument();
+  });
+
+  it("opens a popup with statement details and navigation", () => {
+    const onNavigateToStatement = vi.fn();
+
+    render(
+      <ProvenanceChips
+        refs={[
+          {
+            statement_id: 1,
+            vyrok: "A",
+            meno: "A",
+            strana: "A",
+            verdict: "Pravda",
+            url: "https://demagog.sk/vyrok/1",
+          },
+          {
+            statement_id: 2,
+            vyrok: "B",
+            meno: "B",
+            strana: "B",
+            verdict: "Nepravda",
+            url: "https://demagog.sk/vyrok/2",
+          },
+        ]}
+        onNavigateToStatement={onNavigateToStatement}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "A (A)" }));
+
+    expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0]).toHaveAttribute(
+      "href",
+      "https://demagog.sk/vyrok/1",
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Preskúmať" })[1]);
+
+    expect(onNavigateToStatement).toHaveBeenCalledWith(2);
   });
 
   it("collapses large aggregate provenance into a summary label", () => {

@@ -8,7 +8,13 @@ import {
 } from "@/lib/research";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, normalizeExternalSourceUrl } from "@/lib/utils";
-import type { Article, ResearchStatementRef, ResearchWorkspaceResponse, StatementSource } from "@/types";
+import type {
+  Article,
+  ResearchStatementRef,
+  ResearchWorkspaceResponse,
+  StatementSource,
+  Verdict,
+} from "@/types";
 
 const MAX_STATEMENT_IDS = 20;
 const RELATED_ARTICLE_COUNT = 10;
@@ -16,8 +22,10 @@ const RELATED_ARTICLE_COUNT = 10;
 type DetectResearchRow = {
   id: number;
   vyrok: string;
+  vyhodnotenie: Verdict;
   meno: string;
   strana: string;
+  url: string;
   embedding: number[] | null;
 };
 
@@ -95,7 +103,7 @@ export async function POST(request: NextRequest) {
   const supabase = supabasePublic();
   const { data: statements, error: statementError } = await supabase
     .from("vyroky")
-    .select("id, vyrok, meno, strana, embedding")
+    .select("id, vyrok, vyhodnotenie, meno, strana, url, embedding")
     .in("id", statementIds);
 
   if (statementError) {

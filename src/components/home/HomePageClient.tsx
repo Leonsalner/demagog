@@ -109,7 +109,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   );
 
   useEffect(() => {
-    if (resultMode !== "thorough" || !detectResult || matchedStatementIds.length === 0 || autoOpenedRef.current) {
+    if (
+      resultMode !== "thorough" ||
+      !detectResult ||
+      detectResult.overall_status === "NEW_CLAIM" ||
+      matchedStatementIds.length === 0 ||
+      autoOpenedRef.current
+    ) {
       return;
     }
 
@@ -148,7 +154,8 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     void detect(statement, "thorough");
   };
 
-  const isThoroughLoading = detectLoading || isAutoOpeningResearch;
+  const isDetectPanelLoading =
+    detectLoading || (resultMode === "thorough" && isAutoOpeningResearch);
 
   return (
     <div className="relative min-h-[400px]">
@@ -264,7 +271,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               onSubmit={handleDetect}
               mode={detectMode}
               onModeChange={setDetectMode}
-              loading={isThoroughLoading}
+              loading={isDetectPanelLoading}
               onReset={handleDetectReset}
             />
 
@@ -275,7 +282,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {isThoroughLoading ? (
+              {isDetectPanelLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                   <LoadingSpinner size="lg" />
                   <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
@@ -289,7 +296,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {!isThoroughLoading && !detectResult ? (
+              {!isDetectPanelLoading && !detectResult ? (
                 <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -303,7 +310,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {!isThoroughLoading && detectResult ? (
+              {!isDetectPanelLoading && detectResult ? (
                 <DetectionResults
                   result={detectResult}
                   resultMode={resultMode}

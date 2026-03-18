@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
@@ -15,6 +15,10 @@ vi.mock("@/hooks/useSearch", () => ({
 
 vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
+}));
+
+vi.mock("@/hooks/useResearch", () => ({
+  useResearch: vi.fn(),
 }));
 
 vi.mock("next/link", () => ({
@@ -34,6 +38,7 @@ vi.mock("next/link", () => ({
 }));
 
 const { useDetect } = await import("@/hooks/useDetect");
+const { useResearch } = await import("@/hooks/useResearch");
 const { useSearch } = await import("@/hooks/useSearch");
 
 function createSearchParams(mode?: string) {
@@ -99,10 +104,32 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
   return { detect, reset };
 }
 
+function mockUseResearchReturn(overrides?: Record<string, unknown>) {
+  const openStatementResearch = vi.fn().mockResolvedValue(undefined);
+  const openAggregateResearch = vi.fn().mockResolvedValue(undefined);
+  const retry = vi.fn().mockResolvedValue(undefined);
+  const close = vi.fn();
+
+  vi.mocked(useResearch).mockReturnValue({
+    data: null,
+    isOpen: false,
+    loading: false,
+    error: null,
+    openStatementResearch,
+    openAggregateResearch,
+    retry,
+    close,
+    ...overrides,
+  });
+
+  return { openStatementResearch, openAggregateResearch, retry, close };
+}
+
 describe("detect page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSearchReturn();
+    mockUseResearchReturn();
   });
 
   it("renders the input form", async () => {
@@ -186,5 +213,36 @@ describe("detect page flow", () => {
 
     expect(reset).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeEnabled();
+  });
+
+  it("auto-opens aggregate research for thorough duplicate results", async () => {
+    const openAggregateResearch = vi.fn(() => new Promise(() => {}));
+    mockUseResearchReturn({ openAggregateResearch });
+    mockUseDetectReturn({
+      result: mockDetectDuplicate,
+      resultMode: "thorough",
+    });
+
+    await act(async () => {
+      await renderHome("detect");
+    });
+
+    await waitFor(() => {
+      expect(openAggregateResearch).toHaveBeenCalledWith([109, 111], {
+        revealWhenReady: false,
+      });
+    });
+  });
+
+  it("does not auto-open aggregate research for thorough new-claim results", async () => {
+    const { openAggregateResearch } = mockUseResearchReturn();
+    mockUseDetectReturn({
+      result: mockDetectNew,
+      resultMode: "thorough",
+    });
+
+    await renderHome("detect");
+
+    expect(openAggregateResearch).not.toHaveBeenCalled();
   });
 });

@@ -10,22 +10,19 @@ interface DetectStatusBarProps {
 
 const statusConfig = {
   DUPLICATE_FOUND: {
-    container: "border-red-200 bg-red-50/90 dark:border-red-800/60 dark:bg-red-950/50",
-    icon: "⚠",
+    container: "border-red-200 bg-red-50/90 dark:border-red-800/60 dark:bg-red-950/70",
     label: "Duplicitný výrok",
     button:
       "border-red-300/80 bg-red-200 text-red-950 hover:border-red-400 hover:bg-red-300 dark:border-red-500/60 dark:bg-red-600 dark:text-white dark:hover:bg-red-500",
   },
   RELATED_ONLY: {
-    container: "border-amber-200 bg-amber-50/90 dark:border-amber-800/60 dark:bg-amber-950/50",
-    icon: "◔",
+    container: "border-amber-200 bg-amber-50/90 dark:border-amber-800/60 dark:bg-amber-950/70",
     label: "Súvisiace výroky",
     button:
-      "border-amber-300/80 bg-amber-200 text-amber-950 hover:border-amber-400 hover:bg-amber-300 dark:border-amber-500/60 dark:bg-amber-500 dark:text-white dark:hover:bg-amber-400",
+      "border-amber-300/80 bg-amber-200 text-amber-950 hover:border-amber-400 hover:bg-amber-300 dark:border-amber-500/60 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500",
   },
   NEW_CLAIM: {
-    container: "border-green-200 bg-green-50/90 dark:border-green-800/60 dark:bg-green-950/50",
-    icon: "✓",
+    container: "border-green-200 bg-green-50/90 dark:border-green-800/60 dark:bg-green-950/70",
     label: "Nový výrok",
     button:
       "border-green-300/80 bg-green-200 text-green-950 hover:border-green-400 hover:bg-green-300 dark:border-green-500/60 dark:bg-green-600 dark:text-white dark:hover:bg-green-500",
@@ -43,17 +40,15 @@ export default function DetectStatusBar({
     <div className={`sticky top-0 z-20 border-b px-5 py-3 backdrop-blur sm:px-6 ${status.container}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 lg:max-w-[48%]">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-300">
+            {status.label}
+          </p>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             Detekovaný vstup
           </p>
           <p className="mt-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
             {inputStatement}
           </p>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-900/80 dark:text-slate-200">
-          <span aria-hidden="true">{status.icon}</span>
-          <span>{status.label}</span>
         </div>
 
         <div className="flex justify-start lg:justify-end">

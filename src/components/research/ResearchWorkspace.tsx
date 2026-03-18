@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { DetectResponse, DetectionMatch, ResearchItem, ResearchWorkspaceResponse } from "@/types";
 
@@ -8,6 +8,8 @@ import AddStatementModal from "./AddStatementModal";
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
+
+type SidebarTab = "articles" | "statements";
 
 interface ResearchWorkspaceProps {
   isOpen: boolean;
@@ -53,6 +55,7 @@ export default function ResearchWorkspace({
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(isOpen);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
   const detectMatches = useMemo(
     () =>
       data?.mode === "aggregate"
@@ -88,6 +91,10 @@ export default function ResearchWorkspace({
 
     return data?.items.find((item) => item.id === resolvedSelection.id) ?? null;
   }, [data, detectMatches, resolvedSelection]);
+  const handleClose = useCallback(() => {
+    setSidebarTab("articles");
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -143,13 +150,13 @@ export default function ResearchWorkspace({
           return;
         }
 
-        onClose();
+        handleClose();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isAddModalOpen, isMounted, onClose]);
+  }, [handleClose, isAddModalOpen, isMounted]);
 
   if (!isMounted) {
     return null;
@@ -164,7 +171,7 @@ export default function ResearchWorkspace({
       <div
         className="absolute inset-0"
         aria-hidden="true"
-        onClick={onClose}
+        onClick={handleClose}
       />
       <section
         role="dialog"
@@ -183,7 +190,7 @@ export default function ResearchWorkspace({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
             aria-label="Zavrieť prieskum"
           >
@@ -206,11 +213,19 @@ export default function ResearchWorkspace({
             <ResearchSidebar
               mode={data?.mode ?? "statement"}
               items={data?.items ?? []}
+              activeTab={sidebarTab}
+              onTabChange={setSidebarTab}
               selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
-              onSelect={(itemId) => setSelection({ type: "research-item", id: itemId })}
+              onSelect={(itemId) => {
+                setSidebarTab("articles");
+                setSelection({ type: "research-item", id: itemId });
+              }}
               detectMatches={detectMatches}
               selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
-              onSelectMatch={(statementId) => setSelection({ type: "statement-match", statementId })}
+              onSelectMatch={(statementId) => {
+                setSidebarTab("statements");
+                setSelection({ type: "statement-match", statementId });
+              }}
             />
           </div>
 
@@ -239,7 +254,15 @@ export default function ResearchWorkspace({
               </div>
             ) : null}
 
-            {!loading && !error ? <ResearchPane item={selectedItem} /> : null}
+            {!loading && !error ? (
+              <ResearchPane
+                item={selectedItem}
+                onNavigateToStatement={(statementId) => {
+                  setSidebarTab("statements");
+                  setSelection({ type: "statement-match", statementId });
+                }}
+              />
+            ) : null}
           </main>
         </div>
 

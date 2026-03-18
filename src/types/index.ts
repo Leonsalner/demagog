@@ -42,6 +42,8 @@ export interface ResearchStatementRef {
   vyrok: string;
   meno: string;
   strana: string;
+  verdict?: Verdict | null;
+  url?: string | null;
 }
 
 export interface ResearchItem {

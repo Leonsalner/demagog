@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
 import type { DetectionMatch, ResearchItem, ResearchWorkspaceMode } from "@/types";
 
 interface ResearchSidebarProps {
   mode: ResearchWorkspaceMode;
   items: ResearchItem[];
+  activeTab?: "articles" | "statements";
+  onTabChange?: (tab: "articles" | "statements") => void;
   selectedId: string | null;
   onSelect: (itemId: string) => void;
   detectMatches?: DetectionMatch[];
@@ -45,13 +45,14 @@ const classificationLabels = {
 export default function ResearchSidebar({
   mode,
   items,
+  activeTab: requestedTab = "articles",
+  onTabChange,
   selectedId,
   onSelect,
   detectMatches = [],
   selectedMatchId = null,
   onSelectMatch,
 }: ResearchSidebarProps) {
-  const [requestedTab, setRequestedTab] = useState<"articles" | "statements">("articles");
   const sections = buildSections(items);
   const articleSections = sections.filter((section) => section.heading !== "Analýza výroku");
   const showTabs = mode === "aggregate" && detectMatches.length > 0;
@@ -69,7 +70,7 @@ export default function ResearchSidebar({
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-200/80 p-1 dark:bg-slate-800">
             <button
               type="button"
-              onClick={() => setRequestedTab("articles")}
+              onClick={() => onTabChange?.("articles")}
               className={`rounded-xl px-3 py-2 text-sm font-medium transition ${
                 activeTab === "articles"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100"
@@ -80,7 +81,7 @@ export default function ResearchSidebar({
             </button>
             <button
               type="button"
-              onClick={() => setRequestedTab("statements")}
+              onClick={() => onTabChange?.("statements")}
               className={`rounded-xl px-3 py-2 text-sm font-medium transition ${
                 activeTab === "statements"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100"
@@ -153,12 +154,31 @@ export default function ResearchSidebar({
                         className="flex w-full items-start justify-between gap-3 rounded-2xl border border-transparent px-3 py-3 text-left text-sm text-slate-600 transition hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"
                       >
                         <span className="min-w-0">
-                          <span className="block break-words font-medium">{item.title}</span>
+                        <span className="block break-words font-medium">{item.title}</span>
                           <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
                             {item.domain || "Externý zdroj"}
                           </span>
                         </span>
-                        <span className="text-base text-slate-400">↗</span>
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
+                        >
+                          <path
+                            d="M5 11 11.1 4.9"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M8.4 4.9h2.7v2.7"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </button>
                     );
                   }

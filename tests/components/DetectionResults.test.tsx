@@ -93,4 +93,26 @@ describe("DetectionResults", () => {
       expect(addButton).toHaveClass(darkTextClass);
     },
   );
+
+  it.each([
+    ["DUPLICATE_FOUND", "bg-red-700", "dark:bg-red-500"],
+    ["RELATED_ONLY", "bg-amber-700", "dark:bg-amber-500"],
+    ["NEW_CLAIM", "bg-green-700", "dark:bg-green-500"],
+  ] as const)(
+    "styles the fast-mode research trigger to match the %s status",
+    (overallStatus, lightClass, darkClass) => {
+      render(
+        <DetectionResults
+          result={buildResult({ overall_status: overallStatus })}
+          resultMode="fast"
+          onRerunThorough={vi.fn()}
+        />,
+      );
+
+      const rerunButton = screen.getByRole("button", { name: "Spustiť Prieskum" });
+
+      expect(rerunButton).toHaveClass(lightClass);
+      expect(rerunButton).toHaveClass(darkClass);
+    },
+  );
 });

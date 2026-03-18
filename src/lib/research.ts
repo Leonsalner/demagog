@@ -12,6 +12,8 @@ type ResearchStatementLike = {
   vyrok: string;
   meno: string;
   strana: string;
+  vyhodnotenie?: Verdict | null;
+  url?: string | null;
 };
 
 type ResearchArticleLike = Article & {
@@ -64,6 +66,8 @@ export function buildResearchStatementRef(
     vyrok: statement.vyrok,
     meno: statement.meno,
     strana: statement.strana,
+    verdict: statement.vyhodnotenie ?? null,
+    url: statement.url ?? null,
   };
 }
 
