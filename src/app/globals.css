@@ -13,11 +13,13 @@
   --brand-border-soft: #f3c2b1;
   --brand-surface-dark: #2a1510;
   --brand-border-dark: #7a3a28;
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
   --background: #020617;
   --foreground: #e2e8f0;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -33,6 +35,23 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+.demagog-date-input {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] .demagog-date-input {
+  color-scheme: dark;
+}
+
+.demagog-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+  opacity: 0;
 }
 
 body {
