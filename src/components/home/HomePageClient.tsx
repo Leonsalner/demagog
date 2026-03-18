@@ -284,15 +284,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
               {isDetectPanelLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
-                  <LoadingSpinner size="lg" />
-                  <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
-                    {resultMode === "thorough" || detectMode === "thorough"
-                      ? "Pripravujem prieskum výroku a súvisiace zdroje..."
-                      : "Porovnávam výrok s databázou overených tvrdení..."}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Analýza zvyčajne trvá niekoľko sekúnd.
-                  </p>
+                  <div className="flex min-h-[160px] flex-col items-center justify-center">
+                    <LoadingSpinner size="lg" />
+                    <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
+                      {resultMode === "thorough" || detectMode === "thorough"
+                        ? "Pripravujem prieskum výroku a súvisiace zdroje..."
+                        : "Porovnávam výrok s databázou overených tvrdení..."}
+                    </p>
+                  </div>
                 </div>
               ) : null}
 

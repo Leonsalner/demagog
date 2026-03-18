@@ -160,8 +160,8 @@ describe("detect page flow", () => {
     const { detect } = mockUseDetectReturn();
 
     await renderHome("detect");
-    fireEvent.click(screen.getByRole("button", { name: "Prieskum" }));
-    fireEvent.click(screen.getByRole("option", { name: "Rýchly" }));
+    fireEvent.click(screen.getByRole("button", { name: /Prieskum/ }));
+    fireEvent.click(screen.getByRole("option", { name: /Rýchly/ }));
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });

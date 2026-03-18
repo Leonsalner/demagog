@@ -16,16 +16,19 @@ const detectModeOptions = [
   {
     value: "fast",
     label: "Rýchly",
+    durationLabel: "<10 s",
     icon: "bolt",
   },
   {
     value: "thorough",
     label: "Prieskum",
+    durationLabel: "<1 min",
     icon: "idea",
   },
 ] as const satisfies Array<{
   value: DetectMode;
   label: string;
+  durationLabel: string;
   icon: "bolt" | "idea";
 }>;
 
@@ -159,7 +162,12 @@ export default function StatementInput({
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
                 <ModeIcon icon={activeMode.icon} />
               </span>
-              <span className="min-w-0 flex-1 truncate">{activeMode.label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{activeMode.label}</span>
+                <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {activeMode.durationLabel}
+                </span>
+              </span>
               <svg
                 aria-hidden="true"
                 viewBox="0 0 16 16"
@@ -206,7 +214,12 @@ export default function StatementInput({
                       >
                         <ModeIcon icon={option.icon} />
                       </span>
-                      <span className="flex-1">{option.label}</span>
+                      <span className="flex-1">
+                        <span className="block">{option.label}</span>
+                        <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                          {option.durationLabel}
+                        </span>
+                      </span>
                       {isActive ? (
                         <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                           <path d="M13.28 4.97a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0L2.72 9.03a.75.75 0 0 1 1.06-1.06L6.5 10.69l5.72-5.72a.75.75 0 0 1 1.06 0Z" />
