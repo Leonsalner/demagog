@@ -56,15 +56,19 @@ function TextStage() {
               Téma, citát, meno, otázka
             </span>
           </div>
-          <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Začnite prirodzeným dopytom.
-          </p>
-          <div className="mt-5 grid min-h-[7.5rem] grid-rows-[auto_auto] rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
-            <span>Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?</span>
-            <span aria-hidden="true">&nbsp;</span>
+          <div className="mt-6 grid min-h-[4.75rem] grid-rows-[auto_auto]">
+            <p className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+              Začnite prirodzeným dopytom.
+            </p>
+            <span aria-hidden="true" className="block text-xl leading-8">
+              &nbsp;
+            </span>
+          </div>
+          <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["téma", "prirodzený jazyk", "auto-filtre"].map((hint) => (
+            {["Téma", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
@@ -81,7 +85,7 @@ function TextStage() {
               Detekcia duplicít
             </span>
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
-              Nový konkrétny výrok
+              Konkrétny výrok
             </span>
           </div>
           <p className="mt-6 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
@@ -91,7 +95,7 @@ function TextStage() {
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Rýchly", "Prieskum", "nový výrok"].map((hint) => (
+            {["Rýchla kontrola", "Prieskum", "Nový výrok"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
