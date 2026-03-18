@@ -151,9 +151,9 @@ function MediaStage({ step }: { step: HomeOnboardingStep }) {
 
   return (
     <figure key={step.id} className="animate-[onboardingFade_240ms_ease-out]">
-      <div className="overflow-hidden rounded-[1.85rem] border border-slate-200 bg-[#f8fafc] p-3 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="max-h-[40vh] overflow-hidden rounded-[1.85rem] border border-slate-200 bg-[#f8fafc] p-3 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-slate-900/80 lg:max-h-none">
         <div
-          className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950"
+          className="max-h-[40vh] overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950 lg:max-h-none"
           style={{ aspectRatio: step.media.aspectRatio ?? "16 / 9" }}
         >
           <Image
@@ -290,13 +290,13 @@ export default function HomeOnboarding({
             role="dialog"
             aria-modal="true"
             aria-label="Rýchly návod k práci s Demagogom"
-            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950 lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px]"
+            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950 lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
           >
-            <div className="min-h-0 overflow-y-auto border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6 lg:border-b-0 lg:border-r lg:p-8 xl:p-10">
+            <div className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 xl:p-10">
               <MediaStage step={currentStep} />
             </div>
 
-            <div className="flex min-h-0 flex-col overflow-y-auto p-5 sm:p-7">
+            <div className="flex flex-col overflow-visible p-5 sm:p-7 lg:min-h-0 lg:overflow-y-auto">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#b53015] dark:text-[#ff9c85]">
@@ -337,7 +337,7 @@ export default function HomeOnboarding({
                 ))}
               </div>
 
-              <div className="mt-auto flex items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
+              <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between gap-4 border-t border-slate-200 bg-white pt-5 pb-5 dark:border-slate-800 dark:bg-slate-950 lg:mt-auto lg:pb-0">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
                     Krok {activeStep + 1} z {steps.length}

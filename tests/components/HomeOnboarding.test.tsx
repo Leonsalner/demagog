@@ -80,4 +80,61 @@ describe("HomeOnboarding", () => {
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("completed");
   });
+
+  it("navigates forward and backward across steps", async () => {
+    render(<HomeOnboarding />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Dva režimy. Jeden jednoduchý začiatok.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1. Základ")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Pýtajte sa tak, ako by ste sa pýtali kolegu.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("2. Vyhľadávanie")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Späť" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Dva režimy. Jeden jednoduchý začiatok.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1. Základ")).toBeInTheDocument();
+  });
+
+  it("navigates directly through progress dots", async () => {
+    render(<HomeOnboarding />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Prejsť na krok 3" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Najprv zistite, či už výrok nebol overený.",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("3. Detekcia duplicít")).toBeInTheDocument();
+  });
+
+  it("dismisses from the close button and persists the dismissed status", async () => {
+    render(<HomeOnboarding />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
+  });
 });
