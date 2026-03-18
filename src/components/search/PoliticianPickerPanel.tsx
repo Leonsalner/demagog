@@ -30,14 +30,25 @@ export default function PoliticianPickerPanel({
 
   useEffect(() => {
     if (isOpen) {
-      setMounted(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setVisible(true));
+      let mountFrame = 0;
+      let visibleFrame = 0;
+
+      mountFrame = requestAnimationFrame(() => {
+        setMounted(true);
+        visibleFrame = requestAnimationFrame(() => setVisible(true));
       });
+
+      return () => {
+        cancelAnimationFrame(mountFrame);
+        cancelAnimationFrame(visibleFrame);
+      };
     } else {
-      setVisible(false);
+      const hideFrame = requestAnimationFrame(() => setVisible(false));
       const timer = setTimeout(() => setMounted(false), 200);
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(hideFrame);
+        clearTimeout(timer);
+      };
     }
   }, [isOpen]);
 

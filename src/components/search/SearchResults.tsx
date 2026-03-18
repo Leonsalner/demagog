@@ -3,25 +3,27 @@
 import { useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
-import type { Article, SearchResponse, Statement } from "@/types";
+import type { SearchResponse, Statement } from "@/types";
 
 interface SearchResultsProps {
   results: SearchResponse | null;
   relatedResults?: Statement[];
-  relatedArticles?: Article[];
   queryUnderstanding?: SearchResponse["query_understanding"];
   query: string;
   onPageChange: (page: number) => void;
+  onOpenResearch?: (statementId: number) => void;
 }
 
 function RelatedResultsSection({
   relatedResults,
   relatedHeading,
   query,
+  onOpenResearch,
 }: {
   relatedResults: Statement[];
   relatedHeading: string;
   query: string;
+  onOpenResearch?: (statementId: number) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -59,6 +61,7 @@ function RelatedResultsSection({
               <StatementCard
                 statement={statement}
                 show_similarity={Boolean(query)}
+                onOpenResearch={onOpenResearch}
               />
             </div>
           ))}
@@ -109,99 +112,13 @@ function buildPagination(currentPage: number, totalPages: number) {
   return result;
 }
 
-function extractPseudoTitle(text: string): string {
-  const match = text.match(/^.+?[.!?](?:\s|$)/);
-  if (match && match[0].length <= 80) return match[0].trim();
-  if (match) return match[0].slice(0, 77).trim() + "\u2026";
-  return text.slice(0, 77).trim() + "\u2026";
-}
-
-function extractBodyPreview(text: string): string {
-  const sentenceEnd = text.match(/^.+?[.!?](?:\s|$)/);
-  if (!sentenceEnd) return "";
-  const rest = text.slice(sentenceEnd[0].length).trim();
-  if (!rest) return "";
-  if (rest.length <= 180) return rest;
-  const truncated = rest.slice(0, 180);
-  const lastSpace = truncated.lastIndexOf(" ");
-  return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + "\u2026";
-}
-
-function formatArticleDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString("sk-SK", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
-function ArticleCard({ article }: { article: Article }) {
-  const title = extractPseudoTitle(article.text);
-  const body = extractBodyPreview(article.text);
-
-  return (
-    <article className="border-l-2 border-slate-300 py-2 pl-4 dark:border-slate-600">
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</p>
-      <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-        {article.autor}
-        {article.datum ? ` \u00b7 ${formatArticleDate(article.datum)}` : ""}
-      </p>
-      {body ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{body}</p>
-      ) : null}
-    </article>
-  );
-}
-
-function SearchArticlesSection({ articles }: { articles: Article[] }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  return (
-    <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
-      <button
-        type="button"
-        onClick={() => setIsExpanded((prev) => !prev)}
-        aria-expanded={isExpanded}
-        aria-controls="search-articles-panel"
-        className="mt-4 flex w-full items-center justify-between py-3 text-sm font-medium text-slate-500 dark:text-slate-400"
-      >
-        <span>S\u00favisiace \u010dl\u00e1nky ({articles.length})</span>
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          className={`h-4 w-4 transition-transform duration-200 ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        >
-          <path d="m5 8 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      {isExpanded ? (
-        <div id="search-articles-panel" className="mt-2 space-y-3 pb-2">
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export default function SearchResults({
   results,
   relatedResults,
-  relatedArticles,
   queryUnderstanding,
   query,
   onPageChange,
+  onOpenResearch,
 }: SearchResultsProps) {
   if (!results) {
     return null;
@@ -249,6 +166,7 @@ export default function SearchResults({
             key={statement.id}
             statement={statement}
             show_similarity={Boolean(query)}
+            onOpenResearch={onOpenResearch}
           />
         ))}
       </div>
@@ -307,11 +225,8 @@ export default function SearchResults({
           relatedResults={relatedResults}
           relatedHeading={relatedHeading}
           query={query}
+          onOpenResearch={onOpenResearch}
         />
-      ) : null}
-
-      {relatedArticles && relatedArticles.length > 0 ? (
-        <SearchArticlesSection articles={relatedArticles} />
       ) : null}
     </div>
   );

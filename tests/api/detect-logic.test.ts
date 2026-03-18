@@ -220,6 +220,7 @@ describe("POST /api/detect logic", () => {
         autor: "Demagog.sk",
         datum: "2026-02-14T12:00:00.000Z",
         text: "Článok o rovnakom tvrdení a jeho kontexte.",
+        title: null,
       },
     ];
     const supabase = createSupabaseMock(
@@ -254,7 +255,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "match_articles",
       expect.objectContaining({
-        match_count: 3,
+        match_count: 10,
         query_embedding: [0.4, 0.5, 0.6],
       }),
     );
@@ -275,7 +276,7 @@ describe("POST /api/detect logic", () => {
       ilike: vi.fn().mockReturnThis(),
       range: vi.fn().mockResolvedValue({
         data: lexicalRows.map((row) => {
-          const candidate = { ...row };
+          const candidate = { ...row } as Partial<(typeof lexicalRows)[number]>;
           delete candidate.similarity;
           return candidate;
         }),

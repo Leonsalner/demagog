@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-import type { QueryUnderstanding, Verdict } from "@/types";
+import type { MultiValueFilter, QueryUnderstanding, Verdict } from "@/types";
 
 vi.mock("@/lib/supabase", () => ({
   supabasePublic: vi.fn(),
@@ -31,18 +31,53 @@ function createRequest(body: unknown) {
   });
 }
 
+type QueryUnderstandingOverrides = Partial<Omit<QueryUnderstanding, "filters">> & {
+  filters?: {
+    meno?: MultiValueFilter<string> | null;
+    strana?: MultiValueFilter<string> | null;
+    vyhodnotenie?: MultiValueFilter<Verdict> | null;
+    datum_od?: string | null;
+    datum_do?: string | null;
+  };
+};
+
+function toNullableArray<T>(value: MultiValueFilter<T> | null | undefined): T[] | null {
+  if (value == null) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
 function buildUnderstanding(
-  overrides?: Partial<QueryUnderstanding>,
+  overrides?: QueryUnderstandingOverrides,
 ): QueryUnderstanding {
+  const baseFilters: QueryUnderstanding["filters"] = {
+    meno: null,
+    strana: null,
+    vyhodnotenie: null,
+    datum_od: null,
+    datum_do: null,
+  };
+
+  const { filters: filterOverrides, ...restOverrides } = overrides ?? {};
+
   return {
     semantic_query: "zdravotnictvo",
     filters: {
-      meno: null,
-      strana: null,
-      vyhodnotenie: null,
+      ...baseFilters,
+      ...(filterOverrides
+        ? {
+            meno: toNullableArray(filterOverrides.meno),
+            strana: toNullableArray(filterOverrides.strana),
+            vyhodnotenie: toNullableArray(filterOverrides.vyhodnotenie),
+            datum_od: filterOverrides.datum_od ?? null,
+            datum_do: filterOverrides.datum_do ?? null,
+          }
+        : {}),
     },
     related_politicians: [],
-    ...overrides,
+    ...restOverrides,
   };
 }
 
@@ -334,6 +369,8 @@ describe("POST /api/search logic", () => {
           meno: "fico",
           strana: "smer",
           vyhodnotenie: "Pravda",
+          datum_od: null,
+          datum_do: null,
         },
         related_politicians: [
           {
@@ -360,22 +397,24 @@ describe("POST /api/search logic", () => {
       4,
       "search_statements",
       expect.objectContaining({
-        filter_meno: "Robert Fico",
-        filter_strana: "Smer-SD",
-        filter_vyhodnotenie: "Pravda",
+        filter_meno: ["Robert Fico"],
+        filter_strana: ["Smer-SD"],
+        filter_vyhodnotenie: ["Pravda"],
       }),
     );
     expect(supabase.rpc).toHaveBeenNthCalledWith(
       6,
       "search_statements",
       expect.objectContaining({
-        filter_meno: "Peter Pellegrini",
+        filter_meno: ["Peter Pellegrini"],
       }),
     );
     expect(data.query_understanding.extracted_filters).toEqual({
-      meno: "Robert Fico",
-      strana: "Smer-SD",
-      vyhodnotenie: "Pravda",
+      meno: ["Robert Fico"],
+      strana: ["Smer-SD"],
+      vyhodnotenie: ["Pravda"],
+      datum_od: null,
+      datum_do: null,
     });
     expect(data.query_understanding.related_politicians).toEqual([
       {
@@ -444,9 +483,9 @@ describe("POST /api/search logic", () => {
           throw new Error(`Unexpected RPC ${fn}`);
         }
 
-        if (typeof args.filter_meno === "string") {
+        if (Array.isArray(args.filter_meno)) {
           return {
-            data: relatedRowsByPolitician[args.filter_meno] ?? [],
+            data: relatedRowsByPolitician[args.filter_meno[0] ?? ""] ?? [],
             error: null,
           };
         }
@@ -499,7 +538,9 @@ describe("POST /api/search logic", () => {
         return {
           data: [
             buildRow(1, {
-              meno: String(args.filter_meno ?? "Robert Fico"),
+              meno: Array.isArray(args.filter_meno)
+                ? String(args.filter_meno[0] ?? "Robert Fico")
+                : "Robert Fico",
               strana: "Smer-SD",
             }),
           ],
@@ -512,7 +553,13 @@ describe("POST /api/search logic", () => {
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         semantic_query: "vojna ukrajina",
-        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
       }),
     );
 
@@ -530,7 +577,7 @@ describe("POST /api/search logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
-        filter_meno: "Robert Fico",
+        filter_meno: ["Robert Fico"],
       }),
     );
   });
@@ -545,7 +592,9 @@ describe("POST /api/search logic", () => {
         return {
           data: [
             buildRow(1, {
-              meno: String(args.filter_meno ?? "Robert Fico"),
+              meno: Array.isArray(args.filter_meno)
+                ? String(args.filter_meno[0] ?? "Robert Fico")
+                : "Robert Fico",
               strana: "Smer-SD",
             }),
           ],
@@ -558,7 +607,13 @@ describe("POST /api/search logic", () => {
     vi.mocked(understandQuery).mockResolvedValue(
       buildUnderstanding({
         semantic_query: "vojna ukrajina",
-        filters: { meno: "Robert Fico", strana: null, vyhodnotenie: null },
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
       }),
     );
 
@@ -576,12 +631,12 @@ describe("POST /api/search logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
-        filter_meno: "Robert Fico",
+        filter_meno: ["Robert Fico"],
       }),
     );
   });
 
-  it("uses the first selected politician for semantic search arrays", async () => {
+  it("runs query understanding for verdict-heavy keyword queries", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn, args) => {
         if (fn !== "search_statements") {
@@ -591,7 +646,368 @@ describe("POST /api/search logic", () => {
         return {
           data: [
             buildRow(1, {
-              meno: String(args.filter_meno ?? "Robert Fico"),
+              meno: Array.isArray(args.filter_meno)
+                ? String(args.filter_meno[0] ?? "Robert Fico")
+                : "Robert Fico",
+              strana: "Smer-SD",
+              vyhodnotenie: "Nepravda",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "vojna na ukrajine",
+        filters: {
+          meno: "Robert Fico",
+          strana: null,
+          vyhodnotenie: "Nepravda",
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "fico vojna na ukrajine nepravda",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(understandQuery).toHaveBeenCalledWith(
+      "fico vojna na ukrajine nepravda",
+      expect.any(Array),
+      expect.any(Array),
+    );
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: ["Robert Fico"],
+        filter_vyhodnotenie: ["Nepravda"],
+      }),
+    );
+  });
+
+  it("does not broaden nepravda fallback detection into pravda", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: "Robert Fico",
+              strana: "Smer-SD",
+              vyhodnotenie: "Nepravda",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "konsolidácia",
+        filters: {
+          meno: null,
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "nepravda konsolidácia",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_vyhodnotenie: ["Nepravda"],
+      }),
+    );
+    expect(data.query_understanding.extracted_filters.vyhodnotenie).toEqual([
+      "Nepravda",
+    ]);
+  });
+
+  it("fills multiple politician filters from the fallback path when the model misses them", async () => {
+    const supabase = createSupabaseMock({
+      names: ["Robert Fico", "Peter Pellegrini", "Milan Majersky"],
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { meno: "Robert Fico", strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "zdravotníctvo",
+        filters: {
+          meno: null,
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "Fico a Pellegrini zdravotníctvo",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: ["Robert Fico", "Peter Pellegrini"],
+      }),
+    );
+    expect(data.query_understanding.extracted_filters.meno).toEqual([
+      "Robert Fico",
+      "Peter Pellegrini",
+    ]);
+  });
+
+  it("fills multiple party filters from the fallback path when the model misses them", async () => {
+    const supabase = createSupabaseMock({
+      parties: ["PS", "SaS", "Smer-SD"],
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { meno: "Michal Simecka", strana: "PS" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "dane",
+        filters: {
+          meno: null,
+          strana: null,
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "PS a SaS dane",
+        page: 1,
+        page_size: 5,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: ["PS", "SaS"],
+      }),
+    );
+    expect(data.query_understanding.extracted_filters.strana).toEqual([
+      "PS",
+      "SaS",
+    ]);
+  });
+
+  it("fills explicit date filters from the query when the model misses them", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: "Robert Fico",
+              strana: Array.isArray(args.filter_strana)
+                ? String(args.filter_strana[0] ?? "Smer-SD")
+                : "Smer-SD",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        filters: {
+          meno: null,
+          strana: "SMER-SD",
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?",
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: ["Smer-SD"],
+        filter_datum_od: "2022-01-01",
+        filter_datum_do: null,
+      }),
+    );
+    expect(data.query_understanding.extracted_filters).toEqual({
+      meno: null,
+      strana: ["Smer-SD"],
+      vyhodnotenie: null,
+      datum_od: "2022-01-01",
+      datum_do: null,
+    });
+  });
+
+  it("prefers user-provided date filters over extracted ones", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        filters: {
+          meno: null,
+          strana: "Smer-SD",
+          vyhodnotenie: null,
+          datum_od: "2022-01-01",
+          datum_do: "2024-12-31",
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "SMER za posledné dva roky",
+        datum_od: "2025-01-01",
+        datum_do: "2025-12-31",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: ["Smer-SD"],
+        filter_datum_od: "2025-01-01",
+        filter_datum_do: "2025-12-31",
+      }),
+    );
+  });
+
+  it("fills rolling relative date filters when the model omits them", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-17T12:00:00.000Z"));
+
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [buildRow(1, { strana: "Smer-SD" })],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(buildUnderstanding());
+
+    const response = await POST(
+      createRequest({
+        query: "Čo hovoril Fico o Ukrajine za posledné dva roky?",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_datum_od: "2024-03-17",
+        filter_datum_do: "2026-03-17",
+      }),
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("passes all selected politicians through semantic search arrays", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: Array.isArray(args.filter_meno)
+                ? String(args.filter_meno[0] ?? "Robert Fico")
+                : "Robert Fico",
               strana: "Smer-SD",
             }),
           ],
@@ -615,7 +1031,7 @@ describe("POST /api/search logic", () => {
     expect(supabase.rpc).toHaveBeenCalledWith(
       "search_statements",
       expect.objectContaining({
-        filter_meno: "Robert Fico",
+        filter_meno: ["Robert Fico", "Peter Pellegrini"],
       }),
     );
   });
@@ -666,6 +1082,54 @@ describe("POST /api/search logic", () => {
       "Peter Pellegrini",
     ]);
     expect(data.total_count).toBe(2);
+  });
+
+  it("passes multi-party and multi-verdict arrays through to semantic RPC filters", async () => {
+    const supabase = createSupabaseMock({
+      rpc: async (fn) => {
+        if (fn !== "search_statements" && fn !== "count_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: fn === "count_statements" ? 1 : [buildRow(1)],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "konsolidácia",
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "konsolidácia",
+        strana: ["Hlas", "SaS"],
+        vyhodnotenie: ["Nepravda", "Zavádzajúce"],
+        page: 1,
+        page_size: 5,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_strana: ["Hlas", "SaS"],
+        filter_vyhodnotenie: ["Nepravda", "Zavádzajúce"],
+      }),
+    );
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "count_statements",
+      expect.objectContaining({
+        filter_strana: ["Hlas", "SaS"],
+        filter_vyhodnotenie: ["Nepravda", "Zavádzajúce"],
+      }),
+    );
   });
 
   it("reloads distinct values for each semantic request", async () => {
@@ -799,6 +1263,11 @@ describe("POST /api/search logic", () => {
     };
 
     vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "konsolidačný balíček",
+      }),
+    );
 
     const response = await POST(
       createRequest({

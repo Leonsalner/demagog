@@ -92,8 +92,10 @@ function buildPartyOptions(parties: string[]) {
 
 function countActiveFilters(filters: FilterState) {
   return [
-    filters.strana,
-    filters.vyhodnotenie,
+    filters.strana && filters.strana.length > 0 ? "strana" : null,
+    filters.vyhodnotenie && filters.vyhodnotenie.length > 0
+      ? "vyhodnotenie"
+      : null,
     filters.datum_od,
     filters.datum_do,
     filters.meno && filters.meno.length > 0 ? "meno" : null,
@@ -109,6 +111,8 @@ export default function FilterSidebar({
   const [personQuery, setPersonQuery] = useState("");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const selectedPoliticians = filters.meno ?? [];
+  const selectedParties = filters.strana ?? [];
+  const selectedVerdicts = filters.vyhodnotenie ?? [];
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
 
   const partyOptions = useMemo(
@@ -181,6 +185,22 @@ export default function FilterSidebar({
     updateFilter("meno", nextNames.length > 0 ? nextNames : null);
   };
 
+  const toggleParty = (party: string) => {
+    const nextParties = selectedParties.includes(party)
+      ? selectedParties.filter((currentParty) => currentParty !== party)
+      : [...selectedParties, party];
+
+    updateFilter("strana", nextParties.length > 0 ? nextParties : null);
+  };
+
+  const toggleVerdict = (verdict: Verdict) => {
+    const nextVerdicts = selectedVerdicts.includes(verdict)
+      ? selectedVerdicts.filter((currentVerdict) => currentVerdict !== verdict)
+      : [...selectedVerdicts, verdict];
+
+    updateFilter("vyhodnotenie", nextVerdicts.length > 0 ? nextVerdicts : null);
+  };
+
   const limitedPeople = filteredPeople.slice(0, personQuery ? 12 : 8);
 
   return (
@@ -211,16 +231,14 @@ export default function FilterSidebar({
         <FilterSection label="Hodnotenie">
           <div className="flex flex-wrap gap-2">
             {verdictOptions.map((verdict) => {
-              const isActive = filters.vyhodnotenie === verdict;
+              const isActive = selectedVerdicts.includes(verdict);
 
               return (
                 <button
                   key={verdict}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() =>
-                    updateFilter("vyhodnotenie", isActive ? null : verdict)
-                  }
+                  onClick={() => toggleVerdict(verdict)}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
                     isActive
                       ? verdictActiveClass[verdict]
@@ -240,16 +258,14 @@ export default function FilterSidebar({
         <FilterSection label="Politická strana">
           <div className="flex flex-wrap gap-2">
             {partyOptions.map((party) => {
-              const isActive = filters.strana === party.value;
+              const isActive = selectedParties.includes(party.value);
 
               return (
                 <button
                   key={party.value}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() =>
-                    updateFilter("strana", isActive ? null : party.value)
-                  }
+                  onClick={() => toggleParty(party.value)}
                   className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                     isActive
                       ? "bg-[#e03e1a] text-white shadow-sm dark:bg-[#ff3300]"

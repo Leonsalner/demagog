@@ -11,7 +11,6 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         vyrok: "Hlavný výsledok",
         vyhodnotenie: "Pravda",
         odovodnenie: "Odôvodnenie hlavného výsledku.",
-        oblast: "Ekonomika",
         datum: "2026-01-10",
         meno: "Robert Fico",
         strana: "Smer-SD",
@@ -28,7 +27,6 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         vyrok: "Súvisiaci výsledok",
         vyhodnotenie: "Nepravda",
         odovodnenie: "Odôvodnenie súvisiaceho výsledku.",
-        oblast: "Zahraničná politika",
         datum: "2026-01-12",
         meno: "Peter Pellegrini",
         strana: "Hlas",
@@ -37,10 +35,11 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
     ],
     query_understanding: {
       extracted_filters: {
-        meno: "Robert Fico",
-        strana: "Smer-SD",
-        vyhodnotenie: "Nepravda",
-        oblast: null,
+        meno: ["Robert Fico"],
+        strana: ["Smer-SD"],
+        vyhodnotenie: ["Nepravda"],
+        datum_od: null,
+        datum_do: null,
       },
       related_politicians: [
         {
@@ -138,5 +137,24 @@ describe("SearchResults", () => {
     expect(
       screen.getByText(/Zobrazené sú len najrelevantnejšie výsledky\./i),
     ).toBeInTheDocument();
+  });
+
+  it("passes the research trigger through to result cards", () => {
+    const onOpenResearch = vi.fn();
+
+    render(
+      <SearchResults
+        results={buildResults()}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+        onOpenResearch={onOpenResearch}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /preskúmať/i }));
+
+    expect(onOpenResearch).toHaveBeenCalledWith(1);
   });
 });

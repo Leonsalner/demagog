@@ -7,7 +7,6 @@ import type { FilterState, FiltersResponse } from "@/types";
 
 const availableFilters: FiltersResponse = {
   strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO"],
-  oblasti: ["Ekonomika", "Zdravotníctvo"],
   mena: [
     "Denisa Saková",
     "Milan Majerský",
@@ -24,7 +23,6 @@ const availableFilters: FiltersResponse = {
 
 const emptyFilters: FilterState = {
   strana: null,
-  oblast: null,
   vyhodnotenie: null,
   meno: null,
   datum_od: null,
@@ -60,6 +58,34 @@ describe("FilterSidebar", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
   }, 20_000);
 
+  it("supports multi-select verdict and party toggles", async () => {
+    const user = userEvent.setup();
+
+    render(<TestHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Hlas" }));
+    await user.click(screen.getByRole("button", { name: "KDH" }));
+    await user.click(screen.getByRole("button", { name: "Nepravda" }));
+    await user.click(screen.getByRole("button", { name: "Zavádzajúce" }));
+
+    expect(screen.getByRole("button", { name: "Hlas" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "KDH" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Nepravda" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Zavádzajúce" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  }, 20_000);
+
   it("opens the recommended politician panel and toggles a card", async () => {
     const user = userEvent.setup();
 
@@ -71,12 +97,13 @@ describe("FilterSidebar", () => {
       }),
     );
 
-    const pickerButton = screen.getByRole("button", {
-      name: /Peter Pellegrini Hlas/i,
-    });
-    expect(pickerButton).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Skryť panel odporúčaných politikov",
+      }),
+    ).toBeInTheDocument();
 
-    await user.click(pickerButton);
+    await user.click(screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0]);
 
     expect(
       screen.getAllByRole("button", { name: /Peter Pellegrini/i })[0],

@@ -24,6 +24,8 @@ const extractedFilterKeys = [
   "strana",
   "vyhodnotenie",
   "meno",
+  "datum_od",
+  "datum_do",
 ] as const satisfies Array<keyof FilterState>;
 
 type ExtractedFilters =
@@ -44,6 +46,8 @@ function clearModelOwnedFilters(
       ? null
       : currentFilters.vyhodnotenie,
     meno: ownedFields.has("meno") ? null : currentFilters.meno,
+    datum_od: ownedFields.has("datum_od") ? null : currentFilters.datum_od,
+    datum_do: ownedFields.has("datum_do") ? null : currentFilters.datum_do,
   };
 }
 
@@ -71,8 +75,16 @@ function applyExtractedFilters(
     nextOwnedFields.add("vyhodnotenie");
   }
   if (clearedFilters.meno === null && extractedFilters.meno !== null) {
-    nextFilters.meno = [extractedFilters.meno];
+    nextFilters.meno = extractedFilters.meno;
     nextOwnedFields.add("meno");
+  }
+  if (clearedFilters.datum_od === null && extractedFilters.datum_od !== null) {
+    nextFilters.datum_od = extractedFilters.datum_od;
+    nextOwnedFields.add("datum_od");
+  }
+  if (clearedFilters.datum_do === null && extractedFilters.datum_do !== null) {
+    nextFilters.datum_do = extractedFilters.datum_do;
+    nextOwnedFields.add("datum_do");
   }
 
   return {
@@ -125,12 +137,22 @@ function runMockSearch(request: SearchRequest): SearchResponse {
   const startedAt = performance.now();
 
   let filtered = mockStatements.filter((statement) => {
-    if (request.strana && statement.strana !== request.strana) {
-      return false;
+    if (request.strana) {
+      const parties = Array.isArray(request.strana)
+        ? request.strana
+        : [request.strana];
+      if (!parties.includes(statement.strana)) {
+        return false;
+      }
     }
 
-    if (request.vyhodnotenie && statement.vyhodnotenie !== request.vyhodnotenie) {
-      return false;
+    if (request.vyhodnotenie) {
+      const verdicts = Array.isArray(request.vyhodnotenie)
+        ? request.vyhodnotenie
+        : [request.vyhodnotenie];
+      if (!verdicts.includes(statement.vyhodnotenie)) {
+        return false;
+      }
     }
 
     if (request.meno) {

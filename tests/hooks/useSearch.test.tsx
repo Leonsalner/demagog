@@ -13,7 +13,6 @@ function buildResponse(
         vyrok: "Vyrok",
         vyhodnotenie: "Pravda",
         odovodnenie: "Odovodnenie",
-        oblast: "Ekonomika",
         datum: "2026-01-01",
         meno: "Robert Fico",
         strana: "Smer-SD",
@@ -29,7 +28,8 @@ function buildResponse(
         meno: null,
         strana: null,
         vyhodnotenie: null,
-        oblast: null,
+        datum_od: null,
+        datum_do: null,
       },
       related_politicians: [],
     },
@@ -56,10 +56,11 @@ describe("useSearch", () => {
           buildResponse({
             query_understanding: {
               extracted_filters: {
-                meno: "Robert Fico",
+                meno: ["Robert Fico"],
                 strana: null,
                 vyhodnotenie: null,
-                oblast: null,
+                datum_od: "2022-01-01",
+                datum_do: "2022-12-31",
               },
               related_politicians: [],
             },
@@ -81,6 +82,8 @@ describe("useSearch", () => {
 
     await waitFor(() => {
       expect(result.current.filters.meno).toEqual(["Robert Fico"]);
+      expect(result.current.filters.datum_od).toBe("2022-01-01");
+      expect(result.current.filters.datum_do).toBe("2022-12-31");
     });
 
     await act(async () => {
@@ -95,8 +98,156 @@ describe("useSearch", () => {
 
     expect(firstRequest.meno).toBeUndefined();
     expect(secondRequest.meno).toBeUndefined();
+    expect(firstRequest.datum_od).toBeUndefined();
+    expect(firstRequest.datum_do).toBeUndefined();
+    expect(secondRequest.datum_od).toBeUndefined();
+    expect(secondRequest.datum_do).toBeUndefined();
     await waitFor(() => {
       expect(result.current.filters.meno).toBeNull();
+      expect(result.current.filters.datum_od).toBeNull();
+      expect(result.current.filters.datum_do).toBeNull();
+    });
+  });
+
+  it("keeps user-edited date filters when model-owned filters are cleared", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () =>
+          buildResponse({
+            query_understanding: {
+              extracted_filters: {
+                meno: null,
+                strana: null,
+                vyhodnotenie: null,
+                datum_od: "2022-01-01",
+                datum_do: "2022-12-31",
+              },
+              related_politicians: [],
+            },
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => buildResponse(),
+      } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("Fico Ukrajina");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.datum_od).toBe("2022-01-01");
+      expect(result.current.filters.datum_do).toBe("2022-12-31");
+    });
+
+    await act(async () => {
+      result.current.setFilters((currentFilters) => ({
+        ...currentFilters,
+        datum_od: "2024-01-01",
+        datum_do: "2024-12-31",
+      }));
+    });
+    await act(async () => {
+      result.current.setQuery("zdravotnictvo");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    const secondRequest = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+
+    expect(secondRequest.datum_od).toBe("2024-01-01");
+    expect(secondRequest.datum_do).toBe("2024-12-31");
+    expect(result.current.filters.datum_od).toBe("2024-01-01");
+    expect(result.current.filters.datum_do).toBe("2024-12-31");
+  });
+
+  it("clears model-owned date filters when the query is emptied", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        buildResponse({
+          query_understanding: {
+            extracted_filters: {
+              meno: null,
+              strana: null,
+              vyhodnotenie: null,
+              datum_od: "2022-01-01",
+              datum_do: "2022-12-31",
+            },
+            related_politicians: [],
+          },
+        }),
+    } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("Fico Ukrajina");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.datum_od).toBe("2022-01-01");
+      expect(result.current.filters.datum_do).toBe("2022-12-31");
+    });
+
+    await act(async () => {
+      result.current.setQuery("");
+    });
+
+    expect(result.current.filters.datum_od).toBeNull();
+    expect(result.current.filters.datum_do).toBeNull();
+  });
+
+  it("applies multi-value extracted filters as arrays", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () =>
+        buildResponse({
+          query_understanding: {
+            extracted_filters: {
+              meno: ["Robert Fico", "Peter Pellegrini"],
+              strana: ["Smer-SD", "Hlas"],
+              vyhodnotenie: ["Nepravda", "Zavádzajúce"],
+              datum_od: null,
+              datum_do: null,
+            },
+            related_politicians: [],
+          },
+        }),
+    } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("koalícia nepravdivé alebo zavádzajúce výroky");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.meno).toEqual([
+        "Robert Fico",
+        "Peter Pellegrini",
+      ]);
+      expect(result.current.filters.strana).toEqual(["Smer-SD", "Hlas"]);
+      expect(result.current.filters.vyhodnotenie).toEqual([
+        "Nepravda",
+        "Zavádzajúce",
+      ]);
     });
   });
 

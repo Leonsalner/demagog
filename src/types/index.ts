@@ -2,6 +2,7 @@
 
 export type Verdict = "Pravda" | "Nepravda" | "Zavádzajúce" | "Neoveriteľné";
 export type DetectMode = "thorough" | "fast";
+export type MultiValueFilter<T> = T | T[];
 
 export interface StatementSource {
   id: number;
@@ -30,15 +31,44 @@ export interface Article {
   datum: string;
   autor: string;
   text: string;
+  title?: string | null;
+}
+
+export type ResearchWorkspaceMode = "statement" | "aggregate";
+export type ResearchItemKind = "analysis" | "clanky_article" | "external_source";
+
+export interface ResearchStatementRef {
+  statement_id: number;
+  vyrok: string;
+  meno: string;
+  strana: string;
+}
+
+export interface ResearchItem {
+  id: string;
+  kind: ResearchItemKind;
+  title: string;
+  body: string | null;
+  url: string | null;
+  domain: string | null;
+  author: string | null;
+  date: string | null;
+  statement_refs: ResearchStatementRef[];
+  verdict?: Verdict | null;
+}
+
+export interface ResearchWorkspaceResponse {
+  mode: ResearchWorkspaceMode;
+  items: ResearchItem[];
 }
 
 // ============== API REQUEST TYPES ==============
 
 export interface SearchRequest {
   query?: string;
-  strana?: string;
-  vyhodnotenie?: Verdict;
-  meno?: string | string[];
+  strana?: MultiValueFilter<string>;
+  vyhodnotenie?: MultiValueFilter<Verdict>;
+  meno?: MultiValueFilter<string>;
   datum_od?: string;
   datum_do?: string;
   page?: number;
@@ -71,9 +101,11 @@ export interface SearchResponse {
 export interface QueryUnderstanding {
   semantic_query: string;
   filters: {
-    meno: string | null;
-    strana: string | null;
-    vyhodnotenie: Verdict | null;
+    meno: string[] | null;
+    strana: string[] | null;
+    vyhodnotenie: Verdict[] | null;
+    datum_od: string | null;
+    datum_do: string | null;
   };
   related_politicians: Array<{
     meno: string;
@@ -114,11 +146,12 @@ export interface StatementCardProps {
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
   explanation?: string;
+  onOpenResearch?: (statementId: number) => void;
 }
 
 export interface FilterState {
-  strana: string | null;
-  vyhodnotenie: Verdict | null;
+  strana: string[] | null;
+  vyhodnotenie: Verdict[] | null;
   meno: string[] | null;
   datum_od: string | null;
   datum_do: string | null;

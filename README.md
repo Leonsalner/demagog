@@ -1,78 +1,37 @@
-# Ukážka AI vyhľadávania pre Demagog.sk
+# AI vyhľadávanie a kontrola duplicít pre Demagog.sk
 
-Toto je stručná produktová ukážka nástrojov pre Demagog.sk postavená na jednoduchej myšlienke: sprístupniť existujúci archív Demagogu lepšie čitateľom aj analytikom.
+Táto ukážka približuje, ako sa dá archív Demagogu sprístupniť pre bežné vyhľadávanie aj každodennú redakčnú prácu. Namiesto presných kľúčových slov tu môžete hľadať overenia podľa ich významu a kontextu.
 
-Spája dva praktické scenáre použitia:
+Nástroj pomáha rýchlo zistiť, či už bol výrok v minulosti overený. Od hľadania sa dá následne plynulo prejsť priamo k detailnej analýze alebo k pridaniu úplne nového záznamu.
 
-- lepšie verejné vyhľadávanie existujúcich overení aj vtedy, keď používateľ nepozná presné znenie výroku
-- interný detektor duplicít, ktorý analytikom pomáha rýchlo zistiť, či bol nový výrok už overený alebo či sa výrazne prekrýva s predchádzajúcou prácou
+### 1. Vyhľadávanie v prirodzenom jazyku
 
-Cieľom nie je nahradiť redakčný úsudok. Cieľom je obmedziť opakované manuálne hľadanie, rýchlejšie sprístupniť relevantné predchádzajúce overenia a pomôcť Demagogu naplno využiť hodnotu vlastného archívu.
-
-<p align="center">
-  <img src="docs/images/demagog-home-fold.png" alt="Domovská obrazovka vyhľadávania a detekcie duplicít pre Demagog" width="900" />
-</p>
-
-## Prečo je to dôležité
-
-Demagog už má to najcennejšie: rozsiahly archív overení. Tento prototyp nezlepšuje obsah samotný, ale prístup k nemu.
-
-- Čitatelia môžu nájsť relevantné overenia aj vtedy, keď hľadajú inými slovami, než ako bol výrok pôvodne formulovaný.
-- Analytici okamžite vidia, či je nový výrok pravdepodobne duplicitný, len voľne súvisiaci alebo skutočne nový.
-- Celý workflow zostáva pevne ukotvený v existujúcej práci Demagogu namiesto toho, aby predstieral automatizáciu redakčného rozhodovania.
-
-## Čo ukážka predvádza
-
-### 1. Inteligentnejšie vyhľadávanie pre verejný web
-
-Vyhľadávanie je navrhnuté tak, aby lepšie zodpovedalo tomu, ako ľudia v skutočnosti kladú otázky. Namiesto spoliehania sa iba na presné kľúčové slová vie pracovať aj s prirodzenou formuláciou a vrátiť relevantné overené výroky z archívu.
-
-### 2. Rýchlejší interný štart pre analytikov
-
-Keď príde nový politický výrok, detektor duplicít pomáha zodpovedať veľmi praktickú otázku: overovali sme už toto tvrdenie alebo niečo veľmi podobné? Znamená to menej manuálneho dohľadávania a rýchlejší začiatok skutočnej overovacej práce.
+Databáza sa dá prehľadávať bežnými otázkami a frázami. Ak sa napríklad spýtate „Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?“, systém automaticky rozpozná politickú stranu, tému aj časové obdobie. Tieto údaje rovno aplikuje ako filtre, takže výsledky presne sedia bez toho, aby ste ich museli ručne naklikávať.
 
 <p align="center">
-  <img src="docs/images/demagog-demo-fold.png" alt="Ukážka výsledkov vyhľadávania so sémanticky priradenými výrokmi z Demagogu" width="900" />
+  <img src="docs/images/semantic-search-smer-ukrajina-2022.png" alt="Vyhľadávanie pomocou celej otázky o členoch strany SMER a vojne na Ukrajine" width="1100" />
 </p>
 
-### 3. Výsledky, ktoré sa dajú hneď použiť pri ďalšom výskume
+### 2. Detailný pohľad a rešerš
 
-Nové funkcie neposúvajú iba samotné vyhľadanie výroku, ale aj to, čo nasleduje potom. Výsledky sa rozširujú o prepojené články, odkazy na analýzu a zdroje priamo na kartách výrokov a jednoduchší prechod k doplneniu nového záznamu do internej evidencie.
+Zoznamom výsledkov sa práca len začína. Tlačidlo „Preskúmať“ otvorí pracovný panel s kompletnou analýzou konkrétneho výroku, súvisiacimi článkami a zdrojmi. Všetky dôležité informácie máte na jednom mieste a môžete hneď pokračovať v rešerši.
 
-## Kľúčové scenáre ukážky
+<p align="center">
+  <img src="docs/images/search-research-workspace.png" alt="Pracovný pohľad s detailnou analýzou výroku a zdrojmi" width="1100" />
+</p>
 
-Táto ukážka je najsilnejšia v troch konkrétnych situáciách:
+### 3. Kontrola duplicít
 
-- používateľ zadá dopyt inými slovami, než ako je výrok uložený v archíve, a napriek tomu dostane správne výsledky
-- analytik vloží výrok, ktorý už bol v minulosti overený, a systém ho rýchlo identifikuje ako duplicitu
-- analytik vloží súvisiaci, ale nie totožný výrok, a systém ukáže užitočný kontext bez toho, aby vytváral falošnú zhodu
+Keď narazíte na nový výrok, systém najprv overí, či podobné tvrdenie v archíve už náhodou nie je. Detektor duplicít porovná zadaný text s databázou a hneď ukáže najbližšiu zhodu. Vďaka tomu sa redakcia vyhne opakovanému overovaniu tých istých výrokov a ušetrí množstvo času.
 
-## Nové hodnotné prvky
+<p align="center">
+  <img src="docs/images/detect-duplicate-exact-match.png" alt="Detektor duplicít našiel presnú zhodu v archíve" width="1100" />
+</p>
 
-Popri samotnom vyhľadávaní pribúdajú aj funkcie, ktoré robia nástroj praktickejším pri reálnej práci:
+### 4. Pridanie nového výroku
 
-- súvisiace články sa pripájajú priamo k výsledkom vyhľadávania aj k detekcii duplicít, takže analytik dostane ďalší kontext bez ďalšieho hľadania
-- karty výrokov zobrazujú odôvodnenie aj konkrétne zdroje analýzy, čo výrazne uľahčuje spätné dohľadanie, z čoho overenie vychádzalo
-- výsledky sa dajú preklikať späť na Demagog.sk aj na profil rečníka, takže orientácia v archíve je rýchlejšia
-- pri novom alebo iba súvisiacom výroku je jednoduchšie prejsť rovno na pridanie nového záznamu do internej evidencie
+Ak sa v archíve nič podobné nenájde, systém výrok označí ako nový a ponúkne jeho pridanie do databázy. Prechod je plynulý – vo formulári už na vás čaká text výroku predvyplnený z predchádzajúceho kroku, takže nemusíte nič zbytočne kopírovať a vkladať nanovo.
 
-## Ako tento produkt chápať
-
-Najlepšie je vnímať ho ako podporný nástroj pre redakciu:
-
-- pomáha rýchlejšie nájsť už existujúce overenia
-- analytikom dáva jasnejší východiskový bod pri nových výrokoch
-- zvyšuje využiteľnosť, viditeľnosť a opätovné použitie archívu Demagogu
-
-Ak sa prototyp ukáže ako užitočný, prirodzeným ďalším krokom nie je efektný redizajn. Je ním kvalitnejšie spracovanie tej istej základnej hodnoty: lepšie vyhľadávanie, lepšie východiská pre výskum a menej duplicitnej práce.
-
-## Lokálne spustenie
-
-Ak si chcete prototyp otvoriť lokálne:
-
-```bash
-npm install
-npm run dev
-```
-
-Snímky obrazovky vyššie boli vytvorené lokálne pomocou Playwrightu z aplikácie.
+<p align="center">
+  <img src="docs/images/detect-no-match-new-claim.png" alt="Detektor označil výrok ako nový a ponúkol jeho pridanie do databázy" width="1100" />
+</p>

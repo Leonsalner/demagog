@@ -8,11 +8,13 @@ import {
   scoreTextAgainstQuery,
   tokenizeForMatching,
 } from "@/lib/lexical-match";
+import { extractDateFiltersFromQuery, normalizeExtractedDateFilters } from "@/lib/search-date-understanding";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
 import type {
   Article,
   QueryUnderstanding,
+  MultiValueFilter,
   SearchRequest,
   SearchResponse,
   Statement,
@@ -70,6 +72,7 @@ interface ArticleMatchRow {
   datum: string | null;
   autor: string | null;
   text_content: string | null;
+  title: string | null;
   similarity: number;
 }
 
@@ -82,6 +85,7 @@ function toArticle(row: ArticleMatchRow): Article {
     datum: row.datum ?? "",
     autor: row.autor ?? "Demagog.sk",
     text: row.text_content?.trim() ?? "",
+    title: row.title ?? null,
   };
 }
 
@@ -124,27 +128,69 @@ function coerceOptionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function coerceOptionalStringOrArray(
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function toFilterArray<T>(value: MultiValueFilter<T> | null | undefined): T[] | null {
+  if (value == null) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function flattenFilterValues(
+  values: Array<string | string[] | null | undefined>
+): string[] {
+  return dedupeStrings(
+    values.flatMap((value) => {
+      if (Array.isArray(value)) {
+        return value;
+      }
+
+      return value ? [value] : [];
+    }),
+  );
+}
+
+function coerceOptionalStringArray(
   value: unknown
-): string | string[] | undefined {
+): string[] | undefined {
   if (Array.isArray(value)) {
     const items = value
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim())
       .filter(Boolean);
 
-    return items.length > 0 ? items : undefined;
+    return items.length > 0 ? dedupeStrings(items) : undefined;
   }
 
-  return coerceOptionalString(value);
+  const singleValue = coerceOptionalString(value);
+  return singleValue ? [singleValue] : undefined;
 }
 
-function coerceOptionalVerdict(value: unknown): Verdict | undefined {
-  if (typeof value !== "string") {
-    return undefined;
+function coerceOptionalVerdictArray(value: unknown):
+  | { value: Verdict[] | undefined; invalid: boolean }
+  | { value: undefined; invalid: boolean } {
+  const values = Array.isArray(value) ? value : [value];
+  const normalizedValues = values
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (normalizedValues.length === 0) {
+    return { value: undefined, invalid: false };
   }
 
-  return VERDICTS.includes(value as Verdict) ? (value as Verdict) : undefined;
+  const verdicts = normalizedValues.filter((item): item is Verdict =>
+    VERDICTS.includes(item as Verdict)
+  );
+
+  return {
+    value: verdicts.length > 0 ? dedupeStrings(verdicts) as Verdict[] : undefined,
+    invalid: verdicts.length !== normalizedValues.length,
+  };
 }
 
 function coercePositiveInteger(
@@ -172,9 +218,9 @@ function coercePositiveInteger(
 
 function buildFilterParams(body: SearchRequest) {
   return {
-    filter_strana: body.strana ?? null,
-    filter_vyhodnotenie: body.vyhodnotenie ?? null,
-    filter_meno: Array.isArray(body.meno) ? (body.meno[0] ?? null) : body.meno ?? null,
+    filter_strana: toFilterArray(body.strana),
+    filter_vyhodnotenie: toFilterArray(body.vyhodnotenie),
+    filter_meno: toFilterArray(body.meno),
     filter_datum_od: body.datum_od ?? null,
     filter_datum_do: body.datum_do ?? null,
   };
@@ -188,8 +234,9 @@ function mergeQueryFilters(
     ...body,
     meno: body.meno ?? extractedFilters.meno ?? undefined,
     strana: body.strana ?? extractedFilters.strana ?? undefined,
-    vyhodnotenie:
-      body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
+    vyhodnotenie: body.vyhodnotenie ?? extractedFilters.vyhodnotenie ?? undefined,
+    datum_od: body.datum_od ?? extractedFilters.datum_od ?? undefined,
+    datum_do: body.datum_do ?? extractedFilters.datum_do ?? undefined,
   };
 }
 
@@ -228,23 +275,25 @@ function logSearchTimings(
   });
 }
 
-function queryHasSentenceShape(query: string): boolean {
-  return /[?!,:;]/u.test(query) || query.trim().split(/\s+/u).length > 6;
+function mergeUnderstandingFilters(
+  primaryFilters: QueryUnderstanding["filters"],
+  fallbackFilters: QueryUnderstanding["filters"]
+): QueryUnderstanding["filters"] {
+  return {
+    meno: primaryFilters.meno ?? fallbackFilters.meno,
+    strana: primaryFilters.strana ?? fallbackFilters.strana,
+    vyhodnotenie: primaryFilters.vyhodnotenie ?? fallbackFilters.vyhodnotenie,
+    datum_od: primaryFilters.datum_od ?? fallbackFilters.datum_od,
+    datum_do: primaryFilters.datum_do ?? fallbackFilters.datum_do,
+  };
 }
 
-function hasStructuredSearchFilters(body: SearchRequest): boolean {
-  return Boolean(
-    body.meno ||
-      body.strana ||
-      body.vyhodnotenie ||
-      body.datum_od ||
-      body.datum_do
-  );
-}
-
-function containsTokenSequence(queryTokens: string[], candidateTokens: string[]): boolean {
+function findTokenSequenceStart(
+  queryTokens: string[],
+  candidateTokens: string[]
+): number {
   if (candidateTokens.length === 0 || candidateTokens.length > queryTokens.length) {
-    return false;
+    return -1;
   }
 
   for (let start = 0; start <= queryTokens.length - candidateTokens.length; start += 1) {
@@ -258,32 +307,59 @@ function containsTokenSequence(queryTokens: string[], candidateTokens: string[])
     }
 
     if (matches) {
-      return true;
+      return start;
     }
   }
 
-  return false;
+  return -1;
 }
 
-function findExactCandidateInQuery(query: string, candidates: string[]): string | null {
+function findExactCandidatesInQuery(query: string, candidates: string[]): string[] | null {
   const queryTokens = tokenizeForMatching(query);
-  const sortedCandidates = [...candidates].sort((left, right) => right.length - left.length);
+  const occupiedIndexes = new Set<number>();
+  const matches: Array<{ candidate: string; start: number }> = [];
+  const sortedCandidates = [...candidates].sort((left, right) => {
+    const leftTokens = tokenizeForMatching(left).length;
+    const rightTokens = tokenizeForMatching(right).length;
+
+    if (rightTokens !== leftTokens) {
+      return rightTokens - leftTokens;
+    }
+
+    return right.length - left.length;
+  });
 
   for (const candidate of sortedCandidates) {
     const candidateTokens = tokenizeForMatching(candidate);
+    const start = findTokenSequenceStart(queryTokens, candidateTokens);
 
-    if (containsTokenSequence(queryTokens, candidateTokens)) {
-      return candidate;
+    if (start < 0) {
+      continue;
     }
+
+    const overlaps = candidateTokens.some((_, index) =>
+      occupiedIndexes.has(start + index)
+    );
+
+    if (overlaps) {
+      continue;
+    }
+
+    candidateTokens.forEach((_, index) => occupiedIndexes.add(start + index));
+    matches.push({ candidate, start });
   }
 
-  return null;
+  const orderedMatches = matches
+    .sort((left, right) => left.start - right.start)
+    .map(({ candidate }) => candidate);
+
+  return orderedMatches.length > 0 ? orderedMatches : null;
 }
 
-function findUniqueNameSurnameInQuery(query: string, candidates: string[]): string | null {
-  const queryTokens = new Set(tokenizeForMatching(query));
+function findUniqueNameSurnamesInQuery(query: string, candidates: string[]): string[] | null {
+  const queryTokens = tokenizeForMatching(query);
 
-  if (queryTokens.size === 0) {
+  if (queryTokens.length === 0) {
     return null;
   }
 
@@ -306,22 +382,35 @@ function findUniqueNameSurnameInQuery(query: string, candidates: string[]): stri
     }
   }
 
+  const resolvedMatches: string[] = [];
+  const seenCandidates = new Set<string>();
+
   for (const token of queryTokens) {
     const matches = surnameMatches.get(token);
 
-    if (matches?.length === 1) {
-      return matches[0] ?? null;
+    if (!matches || matches.length !== 1) {
+      continue;
     }
+
+    const candidate = matches[0];
+    if (seenCandidates.has(candidate)) {
+      continue;
+    }
+
+    seenCandidates.add(candidate);
+    resolvedMatches.push(candidate);
   }
 
-  return null;
+  return resolvedMatches.length > 0 ? resolvedMatches : null;
 }
 
-function findNameInQuery(query: string, candidates: string[]): string | null {
-  return (
-    findExactCandidateInQuery(query, candidates) ??
-    findUniqueNameSurnameInQuery(query, candidates)
-  );
+function findNamesInQuery(query: string, candidates: string[]): string[] | null {
+  const matches = dedupeStrings([
+    ...(findExactCandidatesInQuery(query, candidates) ?? []),
+    ...(findUniqueNameSurnamesInQuery(query, candidates) ?? []),
+  ]).slice(0, 3);
+
+  return matches.length > 0 ? matches : null;
 }
 
 function getNameAliases(name: string | null | undefined): string[] {
@@ -339,16 +428,19 @@ function getNameAliases(name: string | null | undefined): string[] {
   return [name, surname];
 }
 
-function stripMatchedTerms(query: string, values: Array<string | null | undefined>): string {
+function getNameAliasesForList(names: string[] | null | undefined): string[] {
+  return names?.flatMap((name) => getNameAliases(name)) ?? [];
+}
+
+function stripMatchedTerms(
+  query: string,
+  values: Array<string | string[] | null | undefined>
+): string {
   const originalTokens = query.trim().split(/\s+/u).filter(Boolean);
   const normalizedTokens = originalTokens.map((token) => normalizeForMatching(token));
   const ignoredIndexes = new Set<number>();
-  const sequences = values
+  const sequences = flattenFilterValues(values)
     .flatMap((value) => {
-      if (!value) {
-        return [];
-      }
-
       const tokens = tokenizeForMatching(value);
       return tokens.length > 0 ? [tokens] : [];
     })
@@ -376,26 +468,33 @@ function stripMatchedTerms(query: string, values: Array<string | null | undefine
   return originalTokens.filter((_, index) => !ignoredIndexes.has(index)).join(" ").trim();
 }
 
-function detectVerdictFromQuery(query: string): Verdict | null {
-  const normalizedQuery = normalizeForMatching(query);
+function detectVerdictsFromQuery(query: string): Verdict[] | null {
+  const queryTokens = tokenizeForMatching(query);
+  const detected: Verdict[] = [];
 
-  if (normalizedQuery.includes("neoveritelne")) {
-    return "Neoveriteľné";
+  if (queryTokens.some((token) => token.startsWith("neoverit"))) {
+    detected.push("Neoveriteľné");
   }
 
-  if (normalizedQuery.includes("zavadzajuce")) {
-    return "Zavádzajúce";
+  if (queryTokens.some((token) => token.startsWith("zavadz"))) {
+    detected.push("Zavádzajúce");
   }
 
-  if (normalizedQuery.includes("nepravda")) {
-    return "Nepravda";
+  if (queryTokens.some((token) => token.startsWith("nepravd"))) {
+    detected.push("Nepravda");
   }
 
-  if (normalizedQuery.includes("pravda")) {
-    return "Pravda";
+  if (
+    queryTokens.some(
+      (token) =>
+        token === "pravda" ||
+        (token.startsWith("pravdiv") && !token.startsWith("nepravdiv"))
+    )
+  ) {
+    detected.push("Pravda");
   }
 
-  return null;
+  return detected.length > 0 ? dedupeStrings(detected) as Verdict[] : null;
 }
 
 function buildFastQueryUnderstanding(
@@ -404,54 +503,35 @@ function buildFastQueryUnderstanding(
   availableNames: string[],
   availableParties: string[]
 ): QueryUnderstanding {
-  const selectedName = Array.isArray(body.meno) ? body.meno[0] : body.meno;
-  const detectedName = selectedName ?? findNameInQuery(query, availableNames);
-  const detectedParty = body.strana ?? findExactCandidateInQuery(query, availableParties);
-  const detectedVerdict = body.vyhodnotenie ?? detectVerdictFromQuery(query);
+  const detectedNames = toFilterArray(body.meno) ?? findNamesInQuery(query, availableNames);
+  const detectedParties =
+    toFilterArray(body.strana) ??
+    findExactCandidatesInQuery(query, availableParties)?.slice(0, 3) ??
+    null;
+  const detectedVerdicts =
+    toFilterArray(body.vyhodnotenie) ?? detectVerdictsFromQuery(query);
+  const detectedDates = extractDateFiltersFromQuery(query);
   const semanticQuery =
     stripMatchedTerms(query, [
-      ...getNameAliases(detectedName),
-      detectedParty,
-      detectedVerdict,
-      ...(Array.isArray(body.meno) ? body.meno : [body.meno]),
-      body.strana,
-      body.vyhodnotenie,
+      getNameAliasesForList(detectedNames),
+      detectedParties,
+      detectedVerdicts,
+      toFilterArray(body.meno),
+      toFilterArray(body.strana),
+      toFilterArray(body.vyhodnotenie),
     ]) || query;
 
   return {
     semantic_query: semanticQuery,
     filters: {
-      meno: detectedName,
-      strana: detectedParty,
-      vyhodnotenie: detectedVerdict,
+      meno: detectedNames,
+      strana: detectedParties,
+      vyhodnotenie: detectedVerdicts,
+      datum_od: detectedDates.datum_od,
+      datum_do: detectedDates.datum_do,
     },
     related_politicians: [],
   };
-}
-
-function shouldUseFastQueryUnderstanding(
-  body: SearchRequest,
-  query: string,
-  availableNames: string[],
-  availableParties: string[]
-): boolean {
-  if (hasStructuredSearchFilters(body)) {
-    return true;
-  }
-
-  // Name-only detection no longer forces the fast path. When a name is
-  // the only signal, the LLM decides whether the user means statements
-  // FROM the politician or ABOUT the politician.
-
-  if (findExactCandidateInQuery(query, availableParties)) {
-    return true;
-  }
-
-  if (detectVerdictFromQuery(query)) {
-    return true;
-  }
-
-  return !queryHasSentenceShape(query) && !findNameInQuery(query, availableNames);
 }
 
 function resolveAvailableValue(
@@ -483,15 +563,44 @@ function resolveAvailableValue(
   return fuzzyMatch ?? null;
 }
 
+function resolveAvailableValues(
+  values: string[] | null,
+  availableValues: string[],
+  maxCount = 3
+): string[] | null {
+  if (!values || values.length === 0) {
+    return null;
+  }
+
+  const resolved = dedupeStrings(
+    values
+      .map((value) => resolveAvailableValue(value, availableValues))
+      .filter((value): value is string => Boolean(value)),
+  ).slice(0, maxCount);
+
+  return resolved.length > 0 ? resolved : null;
+}
+
 function validateExtractedFilters(
+  query: string,
   filters: QueryUnderstanding["filters"],
   availableNames: string[],
   availableParties: string[]
 ): QueryUnderstanding["filters"] {
+  const normalizedDates = normalizeExtractedDateFilters(query, {
+    datum_od: filters.datum_od,
+    datum_do: filters.datum_do,
+  });
+
   return {
-    meno: resolveAvailableValue(filters.meno, availableNames),
-    strana: resolveAvailableValue(filters.strana, availableParties),
-    vyhodnotenie: filters.vyhodnotenie,
+    meno: resolveAvailableValues(filters.meno, availableNames),
+    strana: resolveAvailableValues(filters.strana, availableParties),
+    vyhodnotenie:
+      filters.vyhodnotenie && filters.vyhodnotenie.length > 0
+        ? dedupeStrings(filters.vyhodnotenie).slice(0, 3) as Verdict[]
+        : null,
+    datum_od: normalizedDates.datum_od,
+    datum_do: normalizedDates.datum_do,
   };
 }
 
@@ -623,14 +732,16 @@ function applyStatementFilters<
 ): T {
   let nextQuery = query;
 
-  if (body.strana) {
-    nextQuery = nextQuery.eq("strana", body.strana) as typeof nextQuery;
+  const strany = toFilterArray(body.strana);
+  if (strany) {
+    nextQuery = nextQuery.in("strana", strany) as typeof nextQuery;
   }
-  if (body.vyhodnotenie) {
-    nextQuery = nextQuery.eq("vyhodnotenie", body.vyhodnotenie) as typeof nextQuery;
+  const verdicts = toFilterArray(body.vyhodnotenie);
+  if (verdicts) {
+    nextQuery = nextQuery.in("vyhodnotenie", verdicts) as typeof nextQuery;
   }
-  if (body.meno) {
-    const mena = Array.isArray(body.meno) ? body.meno : [body.meno];
+  const mena = toFilterArray(body.meno);
+  if (mena) {
     nextQuery = nextQuery.in("meno", mena) as typeof nextQuery;
   }
   if (body.datum_od) {
@@ -722,8 +833,8 @@ async function runLexicalSearchFallback(
 function buildRelatedFilterParams(body: SearchRequest, meno: string) {
   return {
     filter_strana: null,
-    filter_vyhodnotenie: body.vyhodnotenie ?? null,
-    filter_meno: meno,
+    filter_vyhodnotenie: toFilterArray(body.vyhodnotenie),
+    filter_meno: [meno],
     filter_datum_od: body.datum_od ?? null,
     filter_datum_do: body.datum_do ?? null,
   };
@@ -815,13 +926,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const rawVerdict = parsedBody.vyhodnotenie;
-  const coercedVerdict = coerceOptionalVerdict(rawVerdict);
-  if (
-    typeof rawVerdict === "string" &&
-    rawVerdict.trim().length > 0 &&
-    coercedVerdict === undefined
-  ) {
+  const coercedVerdict = coerceOptionalVerdictArray(parsedBody.vyhodnotenie);
+  if (coercedVerdict.invalid) {
     return NextResponse.json(
       { error: "Invalid verdict value" },
       { status: 400 }
@@ -830,9 +936,9 @@ export async function POST(request: NextRequest) {
 
   const body: SearchRequest = {
     query: coerceOptionalString(parsedBody.query),
-    strana: coerceOptionalString(parsedBody.strana),
-    vyhodnotenie: coercedVerdict,
-    meno: coerceOptionalStringOrArray(parsedBody.meno),
+    strana: coerceOptionalStringArray(parsedBody.strana),
+    vyhodnotenie: coercedVerdict.value,
+    meno: coerceOptionalStringArray(parsedBody.meno),
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
     page: coercePositiveInteger(parsedBody.page, 1),
@@ -861,16 +967,27 @@ export async function POST(request: NextRequest) {
       recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
 
       const understandingStartedAt = performance.now();
-      const understanding = shouldUseFastQueryUnderstanding(
+      const modelUnderstanding = await understandQuery(body.query, allNames, allParties);
+      const fallbackUnderstanding = buildFastQueryUnderstanding(
         body,
         body.query,
         allNames,
         allParties
-      )
-        ? buildFastQueryUnderstanding(body, body.query, allNames, allParties)
-        : await understandQuery(body.query, allNames, allParties);
+      );
+      const understanding = {
+        semantic_query:
+          modelUnderstanding.semantic_query.trim() ||
+          fallbackUnderstanding.semantic_query.trim() ||
+          body.query,
+        filters: mergeUnderstandingFilters(
+          modelUnderstanding.filters,
+          fallbackUnderstanding.filters
+        ),
+        related_politicians: modelUnderstanding.related_politicians,
+      } satisfies QueryUnderstanding;
       recordStageTiming(timings, "understand_query_ms", understandingStartedAt);
       const validatedFilters = validateExtractedFilters(
+        body.query,
         understanding.filters,
         allNames,
         allParties

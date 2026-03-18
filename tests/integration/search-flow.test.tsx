@@ -31,9 +31,22 @@ vi.mock("next/link", () => ({
 const { useSearch } = await import("@/hooks/useSearch");
 const { useDetect } = await import("@/hooks/useDetect");
 
+function createSearchParams(mode?: string) {
+  return Promise.resolve(mode ? { mode } : {}) as Promise<{
+    mode?: string | string[];
+  }>;
+}
+
+async function renderHome(mode?: string) {
+  return render(
+    await Home({
+      searchParams: createSearchParams(mode),
+    }),
+  );
+}
+
 const emptyFilters: FilterState = {
   strana: null,
-  oblast: null,
   vyhodnotenie: null,
   meno: null,
   datum_od: null,
@@ -42,7 +55,6 @@ const emptyFilters: FilterState = {
 
 const availableFilters: FiltersResponse = {
   strany: ["Hlas", "KDH"],
-  oblasti: ["Ekonomika", "Zdravotníctvo"],
   mena: ["Milan Majerský", "Tomáš Drucker"],
   verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
   date_range: {
@@ -59,7 +71,6 @@ function buildResults(overrides?: Partial<SearchResponse>): SearchResponse {
         vyrok: "42 % konsolidácie musí zvládať bežný občan.",
         vyhodnotenie: "Pravda",
         odovodnenie: "Rozpočtové opatrenia zaťažili aj domácnosti.",
-        oblast: "Ekonomika",
         datum: "2026-01-11",
         meno: "Milan Majerský",
         strana: "KDH",
@@ -117,6 +128,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
 function mockUseDetectReturn(overrides?: Record<string, unknown>) {
   vi.mocked(useDetect).mockReturnValue({
     result: null,
+    resultMode: null,
     loading: false,
     error: null,
     detect: vi.fn(),
@@ -136,45 +148,40 @@ describe("search page flow", () => {
     vi.useRealTimers();
   });
 
-  it("renders the initial search state", () => {
+  it("renders the initial search state", async () => {
     mockUseSearchReturn();
 
-    render(<Home />);
+    await renderHome();
 
     expect(
-      screen.getAllByText(/Vyhľadávanie a detekcia výrokov/i)[0],
+      screen.getByText(/Vyhľadávajte vo výrokoch overených Demagogom/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Filtre")).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", {
-        name: /Detekcia duplikátov/i,
-      }),
-    ).toBeInTheDocument();
   });
 
-  it("submits a query through the search button", () => {
+  it("submits a query through the search button", async () => {
     const { search, setPage } = mockUseSearchReturn({ query: "konsolidácia" });
 
-    render(<Home />);
+    await renderHome();
     fireEvent.click(screen.getByRole("button", { name: "Hľadať" }));
 
     expect(setPage).toHaveBeenCalledWith(1);
     expect(search).toHaveBeenCalledWith(1);
   });
 
-  it("passes filter changes to the hook", () => {
+  it("passes filter changes to the hook", async () => {
     const { setFilters } = mockUseSearchReturn();
 
-    render(<Home />);
+    await renderHome();
     fireEvent.click(screen.getByRole("button", { name: "Hlas" }));
 
     expect(setFilters).toHaveBeenCalledWith({
       ...emptyFilters,
-      strana: "Hlas",
+      strana: ["Hlas"],
     });
   });
 
-  it("does not auto-search when only the query changes and search is recreated", () => {
+  it("does not auto-search when only the query changes and search is recreated", async () => {
     vi.useFakeTimers();
 
     const setQuery = vi.fn();
@@ -216,8 +223,8 @@ describe("search page flow", () => {
         search: secondSearch,
       });
 
-    const view = render(<Home />);
-    view.rerender(<Home />);
+    const view = await renderHome();
+    view.rerender(await Home({ searchParams: createSearchParams() }));
 
     vi.advanceTimersByTime(600);
 
@@ -226,7 +233,7 @@ describe("search page flow", () => {
     expect(secondSearch).not.toHaveBeenCalled();
   });
 
-  it("skips the auto-search effect when filters were updated by the model", () => {
+  it("skips the auto-search effect when filters were updated by the model", async () => {
     vi.useFakeTimers();
 
     const setPage = vi.fn();
@@ -256,12 +263,13 @@ describe("search page flow", () => {
       })
       .mockReturnValueOnce({
         results: buildResults({
-        query_understanding: {
-          extracted_filters: {
-            meno: "Milan Majerský",
-            strana: null,
+          query_understanding: {
+            extracted_filters: {
+              meno: ["Milan Majerský"],
+              strana: null,
               vyhodnotenie: null,
-              oblast: null,
+              datum_od: "2022-01-01",
+              datum_do: null,
             },
             related_politicians: [],
           },
@@ -272,6 +280,7 @@ describe("search page flow", () => {
         filters: {
           ...emptyFilters,
           meno: ["Milan Majerský"],
+          datum_od: "2022-01-01",
         },
         page: 1,
         availableFilters,
@@ -286,9 +295,9 @@ describe("search page flow", () => {
         isModelFilterUpdateRef,
       });
 
-    const view = render(<Home />);
+    const view = await renderHome();
     isModelFilterUpdateRef.current = true;
-    view.rerender(<Home />);
+    view.rerender(await Home({ searchParams: createSearchParams() }));
 
     vi.advanceTimersByTime(600);
 
@@ -297,27 +306,27 @@ describe("search page flow", () => {
     expect(isModelFilterUpdateRef.current).toBe(false);
   });
 
-  it("renders empty results state", () => {
+  it("renders empty results state", async () => {
     mockUseSearchReturn({
       hasSearched: true,
       results: buildResults({ results: [], total_count: 0 }),
     });
 
-    render(<Home />);
+    await renderHome();
 
     expect(
       screen.getByText(/Žiadne výsledky pre zadané kritériá\./i),
     ).toBeInTheDocument();
   });
 
-  it("navigates pagination through rendered results", () => {
+  it("navigates pagination through rendered results", async () => {
     const { search, setPage } = mockUseSearchReturn({
       hasSearched: true,
       query: "konsolidácia",
       results: buildResults({ total_count: 23, page: 1 }),
     });
 
-    render(<Home />);
+    await renderHome();
     fireEvent.click(screen.getByRole("button", { name: "2" }));
 
     expect(setPage).toHaveBeenCalledWith(2);
