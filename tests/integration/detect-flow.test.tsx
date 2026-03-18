@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
+import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 
 import {
   mockDetectDuplicate,
@@ -47,12 +48,18 @@ function createSearchParams(mode?: string) {
   }>;
 }
 
-async function renderHome(mode?: string) {
-  return render(
-    await Home({
-      searchParams: createSearchParams(mode),
-    }),
+async function renderHomeTree(mode?: string) {
+  return (
+    <FeedbackContextProvider>
+      {await Home({
+        searchParams: createSearchParams(mode),
+      })}
+    </FeedbackContextProvider>
   );
+}
+
+async function renderHome(mode?: string) {
+  return render(await renderHomeTree(mode));
 }
 
 function mockUseSearchReturn() {
@@ -189,7 +196,7 @@ describe("detect page flow", () => {
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
 
     mockUseDetectReturn({ result: mockDetectRelated });
-    rerender(await Home({ searchParams: createSearchParams("detect") }));
+    rerender(await renderHomeTree("detect"));
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 

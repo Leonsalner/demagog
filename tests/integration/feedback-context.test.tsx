@@ -1,0 +1,187 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import HomePageClient from "@/components/home/HomePageClient";
+import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
+import FeedbackWidget from "@/components/feedback/FeedbackWidget";
+
+vi.mock("@/hooks/useSearch", () => ({
+  useSearch: vi.fn(),
+}));
+
+vi.mock("@/hooks/useDetect", () => ({
+  useDetect: vi.fn(),
+}));
+
+vi.mock("@/hooks/useResearch", () => ({
+  useResearch: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}));
+
+vi.mock("@/components/home/HomeOnboarding", () => ({
+  default: () => null,
+}));
+
+const { useSearch } = await import("@/hooks/useSearch");
+const { useDetect } = await import("@/hooks/useDetect");
+const { useResearch } = await import("@/hooks/useResearch");
+const { usePathname, useSearchParams } = await import("next/navigation");
+
+function createSearchParams(value = "") {
+  return new URLSearchParams(value) as never;
+}
+
+function renderHarness(activeTab: "search" | "detect") {
+  return render(
+    <FeedbackContextProvider>
+      <HomePageClient activeTab={activeTab} />
+      <FeedbackWidget />
+    </FeedbackContextProvider>,
+  );
+}
+
+describe("feedback context integration", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-3" }), {
+        status: 201,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(usePathname).mockReturnValue("/");
+    vi.mocked(useSearchParams).mockReturnValue(createSearchParams());
+    vi.mocked(useSearch).mockReturnValue({
+      results: null,
+      loading: false,
+      error: null,
+      query: "konsolidácia",
+      filters: {
+        strana: null,
+        vyhodnotenie: null,
+        meno: null,
+        datum_od: null,
+        datum_do: null,
+      },
+      page: 1,
+      availableFilters: {
+        strany: [],
+        mena: [],
+        verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
+        date_range: { min: null, max: null },
+      },
+      filterLoadError: false,
+      hasSearched: false,
+      setQuery: vi.fn(),
+      setFilters: vi.fn(),
+      setPage: vi.fn(),
+      setError: vi.fn(),
+      search: vi.fn(),
+      loadFilters: vi.fn().mockResolvedValue(null),
+      isModelFilterUpdateRef: { current: false },
+    });
+    vi.mocked(useDetect).mockReturnValue({
+      result: null,
+      resultMode: null,
+      loading: false,
+      error: null,
+      detect: vi.fn(),
+      reset: vi.fn(),
+    });
+    vi.mocked(useResearch).mockReturnValue({
+      data: null,
+      loading: false,
+      error: null,
+      isOpen: false,
+      openStatementResearch: vi.fn().mockResolvedValue(undefined),
+      openAggregateResearch: vi.fn().mockResolvedValue(undefined),
+      retry: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("captures the home search query in submitted feedback", async () => {
+    renderHarness("search");
+
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Prosím skontrolujte výsledky." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit?.body));
+
+    expect(payload.context.query).toBe("konsolidácia");
+    expect(payload.context.mode).toBe("search");
+    expect(payload.context.statement).toBeNull();
+  }, 10_000);
+
+  it("captures the detect draft in submitted feedback", async () => {
+    renderHarness("detect");
+
+    fireEvent.change(screen.getByLabelText("Politický výrok"), {
+      target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Tento výrok treba lepšie prepojiť." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit?.body));
+
+    expect(payload.context.mode).toBe("detect");
+    expect(payload.context.statement).toBe(
+      "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+    );
+  });
+
+  it("falls back to null query and statement on non-home routes", async () => {
+    vi.mocked(usePathname).mockReturnValue("/add");
+    vi.mocked(useSearchParams).mockReturnValue(createSearchParams());
+
+    render(
+      <FeedbackContextProvider>
+        <FeedbackWidget />
+      </FeedbackContextProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Na add stránke chýba vysvetlenie." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit?.body));
+
+    expect(payload.context.pageType).toBe("add");
+    expect(payload.context.query).toBeNull();
+    expect(payload.context.statement).toBeNull();
+  });
+});

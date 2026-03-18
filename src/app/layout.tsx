@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import {
+  FeedbackContextProvider,
+} from "@/components/feedback/FeedbackContext";
+import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import Navbar from "@/components/shared/Navbar";
 import { DARK_THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
@@ -65,14 +69,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}
       >
-        <div className="noise-overlay min-h-screen">
-          <Suspense fallback={<NavbarFallback />}>
-            <Navbar />
-          </Suspense>
-          <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-            {children}
-          </main>
-        </div>
+        <FeedbackContextProvider>
+          <div className="noise-overlay min-h-screen">
+            <Suspense fallback={<NavbarFallback />}>
+              <Navbar />
+            </Suspense>
+            <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+              {children}
+            </main>
+            <FeedbackWidget />
+          </div>
+        </FeedbackContextProvider>
       </body>
     </html>
   );

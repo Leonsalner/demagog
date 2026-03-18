@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import type { DetectMode } from "@/types";
 
 interface StatementInputProps {
+  value: string;
+  onChange: (value: string) => void;
   onSubmit: (statement: string, mode: DetectMode) => void;
   mode: DetectMode;
   onModeChange: (mode: DetectMode) => void;
@@ -49,13 +51,14 @@ function ModeIcon({ icon }: { icon: "bolt" | "idea" }) {
 }
 
 export default function StatementInput({
+  value,
+  onChange,
   onSubmit,
   mode,
   onModeChange,
   loading,
   onReset,
 }: StatementInputProps) {
-  const [value, setValue] = useState("");
   const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const trimmedValue = value.trim();
@@ -109,7 +112,7 @@ export default function StatementInput({
           id="statement"
           value={value}
           onChange={(event) => {
-            setValue(event.target.value);
+            onChange(event.target.value);
             onReset?.();
           }}
           placeholder="Vložte politický výrok na overenie..."

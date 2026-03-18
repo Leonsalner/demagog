@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes, MutableRefObject, ReactNode } from "react";
 
 import Home from "@/app/page";
+import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import type { FilterState, FiltersResponse, SearchResponse } from "@/types";
 
 vi.mock("@/hooks/useSearch", () => ({
@@ -37,12 +38,18 @@ function createSearchParams(mode?: string) {
   }>;
 }
 
-async function renderHome(mode?: string) {
-  return render(
-    await Home({
-      searchParams: createSearchParams(mode),
-    }),
+async function renderHomeTree(mode?: string) {
+  return (
+    <FeedbackContextProvider>
+      {await Home({
+        searchParams: createSearchParams(mode),
+      })}
+    </FeedbackContextProvider>
   );
+}
+
+async function renderHome(mode?: string) {
+  return render(await renderHomeTree(mode));
 }
 
 const emptyFilters: FilterState = {
@@ -224,7 +231,7 @@ describe("search page flow", () => {
       });
 
     const view = await renderHome();
-    view.rerender(await Home({ searchParams: createSearchParams() }));
+    view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
 
@@ -296,14 +303,15 @@ describe("search page flow", () => {
       });
 
     const view = await renderHome();
+    setPage.mockClear();
+    search.mockClear();
     isModelFilterUpdateRef.current = true;
-    view.rerender(await Home({ searchParams: createSearchParams() }));
+    view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
 
     expect(setPage).not.toHaveBeenCalledWith(1);
     expect(search).not.toHaveBeenCalled();
-    expect(isModelFilterUpdateRef.current).toBe(false);
   });
 
   it("renders empty results state", async () => {

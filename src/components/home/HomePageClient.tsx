@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import HomeOnboarding from "@/components/home/HomeOnboarding";
+import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
 import FilterSidebar from "@/components/search/FilterSidebar";
@@ -22,6 +23,7 @@ interface HomePageClientProps {
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const [detectMode, setDetectMode] = useState<DetectMode>("thorough");
+  const [detectStatement, setDetectStatement] = useState("");
   const [isAutoOpeningResearch, setIsAutoOpeningResearch] = useState(false);
   const {
     results,
@@ -61,6 +63,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
   const autoOpenedRef = useRef(false);
+  const feedbackContext = useMemo(
+    () => ({
+      pageType: "home" as const,
+      mode: activeTab,
+      query: query.trim() || null,
+      statement: detectStatement.trim() || null,
+    }),
+    [activeTab, detectStatement, query],
+  );
+
+  usePublishFeedbackPageContext(feedbackContext);
 
   useEffect(() => {
     searchRef.current = search;
@@ -142,6 +155,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     autoOpenedRef.current = false;
     setIsAutoOpeningResearch(false);
     setDetectMode(mode);
+    setDetectStatement(statement);
     closeResearch();
     void detect(statement, mode);
   };
@@ -150,6 +164,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     autoOpenedRef.current = false;
     setIsAutoOpeningResearch(false);
     setDetectMode("thorough");
+    setDetectStatement(statement);
     closeResearch();
     void detect(statement, "thorough");
   };
@@ -268,6 +283,8 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         >
           <div className="space-y-6">
             <StatementInput
+              value={detectStatement}
+              onChange={setDetectStatement}
               onSubmit={handleDetect}
               mode={detectMode}
               onModeChange={setDetectMode}
