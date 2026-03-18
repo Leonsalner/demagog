@@ -4,7 +4,6 @@ import { pathToFileURL } from "node:url";
 
 import { getGeminiModel } from "@/lib/gemini";
 import { supabaseAdmin } from "@/lib/supabase";
-import { extractPseudoTitle } from "@/lib/utils";
 
 loadEnvConfig(process.cwd(), true);
 
@@ -16,10 +15,13 @@ type ClankyRow = {
 
 const BATCH_SIZE = 10;
 const RETRY_DELAYS_MS = [2_000, 5_000] as const;
-const MAX_TITLE_BODY_CHARS = 77;
-const MAX_TITLE_CHARS = 80;
-const TITLE_ELLIPSIS = "...";
+const MAX_TITLE_CHARS = 78;
 const TITLE_MODEL_OPTIONS = new Set(["flash", "lite", "pro"]);
+const INVALID_TITLE_PATTERNS = [
+  /\b\d+\s*characters?\b/i,
+  /\bDraft\b/i,
+  /\bIdea\s*\d+\b/i,
+] as const;
 
 type TitleModelKind = "flash" | "lite" | "pro";
 
@@ -108,25 +110,59 @@ async function fetchPendingBatch(
 }
 
 export function sanitizeTitle(rawTitle: string): string {
-  const normalizedWhitespace = rawTitle.replace(/\s+/g, " ").trim();
-  const hasTrailingEllipsis = normalizedWhitespace.endsWith(TITLE_ELLIPSIS);
-  const titleBody = hasTrailingEllipsis
-    ? normalizedWhitespace.slice(0, -TITLE_ELLIPSIS.length)
-    : normalizedWhitespace;
-  const cleanedBody = titleBody
+  return rawTitle
+    .replace(/\s+/g, " ")
     .replace(/^["'„“]+|["'“”.,:;!?]+$/g, "")
     .trim();
-  const cleaned = hasTrailingEllipsis ? `${cleanedBody}${TITLE_ELLIPSIS}` : cleanedBody;
+}
 
-  if (!cleaned) {
+function isValidTitle(title: string): boolean {
+  if (!title) {
+    return false;
+  }
+
+  if (title.length > MAX_TITLE_CHARS) {
+    return false;
+  }
+
+  if (title.includes("...") || title.includes("…")) {
+    return false;
+  }
+
+  if (INVALID_TITLE_PATTERNS.some((pattern) => pattern.test(title))) {
+    return false;
+  }
+
+  if (title.length < 12) {
+    return false;
+  }
+
+  return true;
+}
+
+function extractOpeningSentenceCandidate(text: string): string {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
     return "";
   }
 
-  if (cleaned.length <= MAX_TITLE_CHARS) {
-    return cleaned;
+  const match = trimmed.match(/^.+?[.!?](?:\s|$)/);
+  return sanitizeTitle(match ? match[0] : "");
+}
+
+function chooseFallbackTitle(text: string, existingTitle: string | null): string {
+  const existing = sanitizeTitle(existingTitle ?? "");
+  if (isValidTitle(existing)) {
+    return existing;
   }
 
-  return `${cleaned.slice(0, MAX_TITLE_BODY_CHARS).trim()}${TITLE_ELLIPSIS}`;
+  const openingSentence = extractOpeningSentenceCandidate(text);
+  if (isValidTitle(openingSentence)) {
+    return openingSentence;
+  }
+
+  return "Bez názvu článku";
 }
 
 async function generateTitle(text: string, modelKind: TitleModelKind): Promise<string> {
@@ -157,18 +193,22 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
           parts: [
             {
               text: [
-                "Vytváraš krátke navigačné názvy pre fact-check články v slovenčine.",
-                "Tieto názvy slúžia analytikom v internom rozhraní, nie širokej verejnosti.",
-                "Majú pôsobiť profesionálne, vecne a opisne.",
-                "Vráť iba samotný názov bez úvodzoviek, bodky alebo komentára.",
-                "Názov nesmie byť zhrnutie, má len pomôcť orientácii v bočnom paneli a v hlavičke článku.",
-                "Pomenuj presný overovaný nárok, tému alebo zavádzajúce tvrdenie.",
-                "Buď konkrétny, stručný a opisný.",
-                "Uprednostni 3 až 8 slov.",
-                "Nepoužívaj clickbait, emotívne formulácie ani publicistický štýl.",
-                "Nevracaj neúplné fragmenty, jedno písmeno, jednu slabiku ani meta text ako '77 characters'.",
-                "Ak sa názov nezmestí, skráť ho na najviac 77 znakov a pridaj na koniec tri bodky (...).",
-                "Celý výsledok vrátane troch bodiek môže mať najviac 80 znakov.",
+                "Píš stručné, profesionálne názvy fact-check článkov v slovenčine.",
+                "Ide o interné názvy článkov pre analytikov.",
+                "Názov má vystihnúť tému článku ako celku, nie jednotlivý výrok, citát ani detail.",
+                "Preferuj prirodzený redakčný titulok so 4 až 9 slovami.",
+                "Ak je to možné, uprednostni neutrálny názov v tvare témy alebo predmetu článku pred celou vetou.",
+                "Buď konkrétny, ale bez zbytočných detailov.",
+                "Použi mená, organizácie a miesta len vtedy, keď zlepšujú orientáciu.",
+                "Nepripisuj ľuďom právny alebo faktický status, ktorý titulok nepotrebuje na orientáciu.",
+                "Ak si nie si istý formuláciou, zvoľ neutrálnejšie pomenovanie témy článku.",
+                "Nepoužívaj clickbait, emotívne formulácie, právne skratky ani technické meta texty.",
+                "Nevracaj fragment, heslo, osnovu, pracovný návrh ani skrátený titulok s tromi bodkami.",
+                "Názov musí byť hotový a prirodzený.",
+                "Maximálna dĺžka je 78 znakov vrátane medzier.",
+                "Ak by bol dlhší, prepíš ho od začiatku kratšie tak, aby znel prirodzene.",
+                "Nikdy nič netrunkuj a nikdy nepouži tri bodky.",
+                "Vráť iba samotný názov bez úvodzoviek a bez bodky na konci.",
               ].join(" "),
             },
           ],
@@ -223,10 +263,20 @@ async function generateTitle(text: string, modelKind: TitleModelKind): Promise<s
     );
   }
 
-  return sanitizeTitle(title);
+  const sanitizedTitle = sanitizeTitle(title);
+
+  if (!isValidTitle(sanitizedTitle)) {
+    throw new Error(`Gemini title request returned invalid title: ${JSON.stringify(sanitizedTitle)}`);
+  }
+
+  return sanitizedTitle;
 }
 
-async function generateTitleWithRetry(text: string, modelKind: TitleModelKind): Promise<string> {
+async function generateTitleWithRetry(
+  text: string,
+  existingTitle: string | null,
+  modelKind: TitleModelKind,
+): Promise<string> {
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
       const title = await generateTitle(text, modelKind);
@@ -235,7 +285,7 @@ async function generateTitleWithRetry(text: string, modelKind: TitleModelKind): 
       }
     } catch (error) {
       if (attempt >= RETRY_DELAYS_MS.length) {
-        return sanitizeTitle(extractPseudoTitle(text));
+        return chooseFallbackTitle(text, existingTitle);
       }
 
       const delayMs = RETRY_DELAYS_MS[attempt];
@@ -246,7 +296,7 @@ async function generateTitleWithRetry(text: string, modelKind: TitleModelKind): 
     }
   }
 
-  return sanitizeTitle(extractPseudoTitle(text));
+  return chooseFallbackTitle(text, existingTitle);
 }
 
 async function updateTitle(id: number, title: string): Promise<void> {
@@ -282,7 +332,7 @@ async function main(): Promise<void> {
     const results = await Promise.all(
       rows.map(async (row) => ({
         id: row.id,
-        title: await generateTitleWithRetry(row.text_content, model),
+        title: await generateTitleWithRetry(row.text_content, row.title, model),
       })),
     );
 
