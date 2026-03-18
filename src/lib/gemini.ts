@@ -1,3 +1,4 @@
+import { OBLAST_OPTIONS } from "@/lib/statement-topics";
 import type { QueryUnderstanding, Verdict } from "@/types";
 import { isRecord, VERDICTS } from "@/lib/utils";
 
@@ -156,6 +157,13 @@ function toVerdictArray(value: unknown): Verdict[] | null {
   const values = Array.isArray(value) ? value : [value];
   const verdicts = values.filter(isVerdict);
   return verdicts.length > 0 ? Array.from(new Set(verdicts)) : null;
+}
+
+function toOblastOption(value: unknown): string | null {
+  const candidate = toOptionalString(value);
+  return candidate && OBLAST_OPTIONS.includes(candidate as (typeof OBLAST_OPTIONS)[number])
+    ? candidate
+    : null;
 }
 
 function getCurrentDateInTimeZone(timeZone: string): string {
@@ -403,5 +411,51 @@ Odpovedz VÝHRADNE ako JSON. Žiadny iný text:
       }));
   } catch {
     return fallbackQueryUnderstanding(query);
+  }
+}
+
+export async function suggestStatementOblast(
+  statement: string,
+  modelOverride = getGeminiModel("lite"),
+): Promise<string | null> {
+  const trimmedStatement = statement.trim();
+  if (trimmedStatement.length < 20) {
+    return null;
+  }
+
+  const prompt = `Si asistent Demagog.sk na tematické zaraďovanie politických výrokov.
+Vyber presne jednu najvhodnejšiu oblasť pre nasledujúci výrok, alebo null ak je príliš nejasný, príliš všeobecný alebo sa nedá spoľahlivo zaradiť.
+
+VÝROK:
+\"\"\"${trimmedStatement}\"\"\"
+
+POVOLENÉ OBLASTI (použi iba presnú hodnotu z tohto zoznamu): ${OBLAST_OPTIONS.join(", ")}
+
+Pravidlá:
+- vyber iba jednu hodnotu zo zoznamu alebo null
+- nevracaj vysvetlenie
+- ak výrok patrí do viacerých oblastí, vyber tú najkonkrétnejšiu a najužšiu
+- ak ide skôr o stranícku taktiku, kampaň, koaličné spory alebo personálne útoky, preferuj \"Život politických strán\"
+- ak ide o vojnu, armádu alebo políciu, preferuj najpresnejšiu bezpečnostnú oblasť
+
+Odpovedz VÝHRADNE ako JSON objekt:
+{ "oblast": "..." | null }`;
+
+  try {
+    const parsed = await parseJsonWithRetry((value) => {
+      if (!isRecord(value) || !("oblast" in value)) {
+        throw new Error("Gemini oblast response is invalid");
+      }
+
+      return toOblastOption(value.oblast);
+    }, () =>
+      generateJsonText({
+        prompt,
+        model: modelOverride,
+      }));
+
+    return parsed;
+  } catch {
+    return null;
   }
 }

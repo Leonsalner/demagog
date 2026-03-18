@@ -2,6 +2,7 @@
 
 import type React from "react";
 
+import { OBLAST_OPTIONS } from "@/lib/statement-topics";
 import { cn, VERDICTS } from "@/lib/utils";
 import type { Verdict } from "@/types";
 
@@ -24,29 +25,6 @@ export type StatementFormState = {
 };
 
 export const OPTIONAL_FIELD_BADGE = "Voliteľné";
-
-export const OBLAST_OPTIONS = [
-  "Ekonomika",
-  "Sociálna politika",
-  "Zdravotníctvo",
-  "Školstvo",
-  "Obrana, bezpečnosť, polícia",
-  "Zahraničná politika",
-  "Európska únia",
-  "Doprava",
-  "Spravodlivosť a súdnictvo",
-  "Korupcia a klientelizmus",
-  "Legislatívny proces a hlasovania",
-  "Život politických strán",
-  "Regionálna problematika",
-  "Poľnohospodárstvo",
-  "Kultúra a médiá",
-  "Národnostné a etnické otázky",
-  "LGBTI+",
-  "Vojna na Ukrajine",
-  "Hodnoty",
-  "Iné",
-] as const;
 
 const EMPTY_SOURCE_ROW: StatementSourceDraft = {
   label: "",
@@ -182,6 +160,7 @@ type StatementFormFieldsProps = {
   primaryActionLabel: string;
   secondaryAction?: React.ReactNode;
   note?: string;
+  oblastHint?: React.ReactNode;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   updateField: <K extends keyof StatementFormState>(
     field: K,
@@ -202,6 +181,7 @@ export default function StatementFormFields({
   primaryActionLabel,
   secondaryAction,
   note = "Povinné polia: výrok, meno, strana, vyhodnotenie.",
+  oblastHint,
   onSubmit,
   updateField,
   updateSourceField,
@@ -308,6 +288,11 @@ export default function StatementFormFields({
               <SelectChevronIcon />
             </ControlIcon>
           </div>
+          {oblastHint ? (
+            <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              {oblastHint}
+            </p>
+          ) : null}
         </div>
 
         <div>

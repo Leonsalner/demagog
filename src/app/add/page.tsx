@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import StatementFormFields, {
   applySourceDraftChange,
@@ -10,6 +10,9 @@ import StatementFormFields, {
   type StatementFormState,
   type StatementFormStatus,
 } from "@/components/add/StatementFormFields";
+
+const OBLAST_AUTO_DETECT_DEBOUNCE_MS = 700;
+const MIN_OBLAST_AUTO_DETECT_LENGTH = 20;
 
 function AddStatementForm() {
   const searchParams = useSearchParams();
@@ -19,18 +22,119 @@ function AddStatementForm() {
   const [status, setStatus] = useState<StatementFormStatus>("idle");
   const [savedId, setSavedId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDetectingOblast, setIsDetectingOblast] = useState(false);
+  const oblastWasManualRef = useRef(false);
+  const oblastValueRef = useRef(form.oblast);
+  const lastAutoDetectedOblastRef = useRef<string | null>(null);
+  const detectRequestRef = useRef(0);
 
   useEffect(() => {
     const vyrok = searchParams.get("vyrok");
     if (vyrok) {
+      oblastWasManualRef.current = false;
+      lastAutoDetectedOblastRef.current = null;
       setForm((current) => (current.vyrok ? current : createInitialStatementFormState(vyrok)));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    oblastValueRef.current = form.oblast;
+  }, [form.oblast]);
+
+  useEffect(() => {
+    const query = form.vyrok.trim();
+    if (query.length < MIN_OBLAST_AUTO_DETECT_LENGTH) {
+      setIsDetectingOblast(false);
+      if (!query && !oblastValueRef.current) {
+        oblastWasManualRef.current = false;
+        lastAutoDetectedOblastRef.current = null;
+      }
+      return;
+    }
+
+    if (oblastWasManualRef.current) {
+      return;
+    }
+
+    const requestId = detectRequestRef.current + 1;
+    detectRequestRef.current = requestId;
+
+    const timeoutId = window.setTimeout(async () => {
+      setIsDetectingOblast(true);
+
+      try {
+        const response = await fetch("/api/statements/oblast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { oblast?: string | null };
+        if (detectRequestRef.current !== requestId || oblastWasManualRef.current) {
+          return;
+        }
+
+        const nextOblast =
+          typeof payload.oblast === "string" && payload.oblast.trim()
+            ? payload.oblast.trim()
+            : null;
+
+        const previousAutoDetectedOblast = lastAutoDetectedOblastRef.current;
+        lastAutoDetectedOblastRef.current = nextOblast;
+        setForm((current) => {
+          const currentOblast = current.oblast.trim();
+          const isStillAutoControlled =
+            !currentOblast ||
+            currentOblast === previousAutoDetectedOblast ||
+            currentOblast === nextOblast;
+
+          if (!isStillAutoControlled) {
+            return current;
+          }
+
+          return {
+            ...current,
+            oblast: nextOblast ?? "",
+          };
+        });
+      } catch {
+        // Ignore optional oblast suggestion failures.
+      } finally {
+        if (detectRequestRef.current === requestId) {
+          setIsDetectingOblast(false);
+        }
+      }
+    }, OBLAST_AUTO_DETECT_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (detectRequestRef.current === requestId) {
+        setIsDetectingOblast(false);
+      }
+    };
+  }, [form.vyrok]);
 
   function updateField<K extends keyof StatementFormState>(
     field: K,
     value: StatementFormState[K],
   ) {
+    if (field === "oblast") {
+      const nextOblast = String(value).trim();
+      oblastWasManualRef.current =
+        nextOblast.length > 0 && nextOblast !== lastAutoDetectedOblastRef.current;
+
+      if (!nextOblast) {
+        oblastWasManualRef.current = false;
+        lastAutoDetectedOblastRef.current = null;
+      }
+    }
+
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -72,6 +176,8 @@ function AddStatementForm() {
 
       setSavedId(payload.id);
       setStatus("success");
+      oblastWasManualRef.current = false;
+      lastAutoDetectedOblastRef.current = null;
       setForm(createInitialStatementFormState());
     } catch (error) {
       setStatus("error");
@@ -151,6 +257,11 @@ function AddStatementForm() {
               errorMessage={errorMessage}
               idPrefix="add-page"
               primaryActionLabel={status === "saving" ? "Ukladám..." : "Uložiť výrok"}
+              oblastHint={
+                isDetectingOblast
+                  ? "Rozpoznávam oblasť z výroku…"
+                  : "Oblasť doplníme automaticky z textu výroku, môžeš ju kedykoľvek upraviť."
+              }
               onSubmit={handleSubmit}
               updateField={updateField}
               updateSourceField={updateSourceField}
