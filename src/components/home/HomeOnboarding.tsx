@@ -191,12 +191,12 @@ function IntroStage() {
 
 function ReadyStage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="inline-flex rounded-full border border-[#cfe4db] bg-[#edf8f3] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1f6b52] dark:border-[#275445] dark:bg-[#0f231d] dark:text-[#8fe0bc]">
         Pripravené na prácu
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {[
           {
             label: "Vyhľadať",
@@ -213,42 +213,27 @@ function ReadyStage() {
         ].map((item) => (
           <article
             key={item.label}
-            className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.24)] dark:border-slate-700/80 dark:bg-slate-950/85 dark:shadow-[0_28px_72px_-44px_rgba(2,6,23,0.92)]"
+            className="rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.24)] dark:border-slate-700/80 dark:bg-slate-950/85 dark:shadow-[0_28px_72px_-44px_rgba(2,6,23,0.92)]"
           >
             <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 dark:bg-slate-900 dark:text-slate-200">
               {item.label}
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
               {item.text}
             </p>
           </article>
         ))}
       </div>
 
-      <div className="rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/85 dark:shadow-[0_24px_72px_-44px_rgba(2,6,23,0.95)]">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            {
-              title: "Návod zostáva dostupný",
-              body: "Ak si budete chcieť neskôr pripomenúť jednotlivé kroky, otvoríte ho znovu cez tlačidlo vpravo dole.",
-            },
-            {
-              title: "Máte pripomienku? zostáva dole vľavo",
-              body: "Keď budete chcieť nahlásiť chybu alebo poslať návrh, tlačidlo nájdete na tom istom mieste.",
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
-            >
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                {item.title}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {item.body}
-              </p>
-            </div>
-          ))}
+      <div className="rounded-[1.55rem] border border-slate-200 bg-white px-5 py-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/85 dark:shadow-[0_24px_72px_-44px_rgba(2,6,23,0.95)]">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex rounded-full bg-[#edf8f3] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1f6b52] dark:bg-[#0f231d] dark:text-[#8fe0bc]">
+            Návod a spätná väzba
+          </span>
+          <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            K návodu sa vrátite cez tlačidlo Návod. Ak narazíte na chybu alebo máte nápad,
+            napíšte nám cez {`"Máte pripomienku?"`}.
+          </p>
         </div>
       </div>
     </div>
@@ -501,10 +486,6 @@ export default function HomeOnboarding({
                 </div>
               </div>
 
-              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
-                Návod je neskôr vždy dostupný cez tlačidlo Návod v pravom dolnom rohu.
-              </div>
-
               <div
                 key={`copy-${currentStep.id}`}
                 className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3"
@@ -617,8 +598,7 @@ export default function HomeOnboarding({
                   Máte postreh z prvého používania?
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Tlačidlo Máte pripomienku? zostáva dole vľavo, keď budete chcieť poslať chybu
-                  alebo krátky návrh.
+                  Máte nápad alebo ste našli chybu? Napíšte nám cez {`"Máte pripomienku?"`}.
                 </p>
               </div>
 

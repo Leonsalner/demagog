@@ -116,8 +116,8 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     title: "K návodu sa môžete kedykoľvek vrátiť.",
     body: [
       "Ak si budete chcieť neskôr pripomenúť jednotlivé kroky, návod si znovu otvoríte cez tlačidlo Návod v pravom dolnom rohu.",
-      "Tlačidlo Máte pripomienku? zostáva dole vľavo. Môžete nám cezň poslať chybu, nepresnosť alebo návrh, ktorý by vám uľahčil prácu.",
-      "Demagog vám má pri práci skrátiť cestu od prvého dopytu k hotovému overeniu.",
+      "Máte nápad alebo ste našli chybu? Napíšte nám cez \"Máte pripomienku?\".",
+      "Demagog vám má skrátiť cestu od prvého dopytu k hotovému overeniu.",
     ],
     media: {
       kind: "text",
