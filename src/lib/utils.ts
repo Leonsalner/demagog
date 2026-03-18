@@ -45,10 +45,14 @@ export function formatSlovakDate(dateStr: string | null): string | null {
     return null;
   }
 
-  const normalized = /^(\d{4})-(\d{2})-(\d{2})$/.test(dateStr)
-    ? `${dateStr}T00:00:00.000Z`
-    : dateStr;
-  const parsed = new Date(normalized);
+  const plainDateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parsed = plainDateMatch
+    ? new Date(
+        Number.parseInt(plainDateMatch[1], 10),
+        Number.parseInt(plainDateMatch[2], 10) - 1,
+        Number.parseInt(plainDateMatch[3], 10),
+      )
+    : new Date(dateStr);
 
   if (Number.isNaN(parsed.getTime())) {
     return dateStr;

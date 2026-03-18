@@ -110,9 +110,19 @@ async function fetchPendingBatch(
 }
 
 export function sanitizeTitle(rawTitle: string): string {
-  return rawTitle
+  const sanitized = rawTitle
     .replace(/\s+/g, " ")
     .replace(/^["'„“]+|["'“”.,:;!?]+$/g, "")
+    .trim();
+
+  if (sanitized.length <= MAX_TITLE_CHARS) {
+    return sanitized;
+  }
+
+  return sanitized
+    .slice(0, MAX_TITLE_CHARS)
+    .trimEnd()
+    .replace(/["'“”.,:;!?]+$/g, "")
     .trim();
 }
 
