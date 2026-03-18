@@ -26,7 +26,7 @@ function DemoStatementInput({
 
       <button
         disabled
-        className="inline-flex items-center gap-2 rounded-lg bg-[#e03e1a] px-5 py-2.5 text-sm font-medium text-white opacity-80 shadow-sm"
+        className="inline-flex items-center gap-2 rounded-lg bg-[#d95830] px-5 py-2.5 text-sm font-medium text-white opacity-80 shadow-sm"
       >
         {loading ? <LoadingSpinner size="sm" /> : null}
         Analyzovať
@@ -144,7 +144,7 @@ function DemoAddForm({ statement }: { statement: string }) {
 
       <button
         disabled
-        className="inline-flex items-center rounded-lg bg-[#e03e1a] px-5 py-2.5 text-sm font-medium text-white opacity-80 shadow-sm"
+        className="inline-flex items-center rounded-lg bg-[#d95830] px-5 py-2.5 text-sm font-medium text-white opacity-80 shadow-sm"
       >
         Odoslať na overenie
       </button>
@@ -302,7 +302,7 @@ export default function DemoDetectPage() {
     <div className="space-y-8 pb-[calc(100vh-560px)]">
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium uppercase tracking-[0.18em] text-[#e03e1a]">
+          <span className="text-sm font-medium uppercase tracking-[0.18em] text-[#d95830]">
             Demagog.sk
           </span>
           <h1 className="text-3xl font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
@@ -358,7 +358,7 @@ export default function DemoDetectPage() {
                   </p>
                   <button
                     style={{ transition: "transform 200ms ease-out, box-shadow 200ms ease-out" }}
-                    className={`inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#e03e1a] text-white shadow-md ${
+                    className={`inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#d95830] text-white shadow-md ${
                       state.buttonPulsing
                         ? "scale-125 shadow-[0_0_0_6px_rgba(224,62,26,0.25)]"
                         : "scale-100"

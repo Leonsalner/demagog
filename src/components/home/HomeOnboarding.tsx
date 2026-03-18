@@ -65,7 +65,7 @@ function TextStage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.28)] dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_72px_-40px_rgba(2,6,23,0.95)]">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex rounded-full bg-[#e03e1a] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-[#ff5a2a]">
+            <span className="inline-flex rounded-full bg-[#d95830] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white dark:bg-[#f07850]">
               Vyhľadávanie
             </span>
             <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
@@ -214,7 +214,7 @@ function ProgressDots({
           aria-current={index === activeStep ? "step" : undefined}
           className={`h-2.5 rounded-full transition-all ${
             index === activeStep
-              ? "w-8 bg-[#e03e1a] dark:bg-[#ff3300]"
+              ? "w-8 bg-[#d95830] dark:bg-[#f07850]"
               : "w-2.5 bg-slate-300 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600"
           }`}
         />
@@ -323,7 +323,7 @@ export default function HomeOnboarding({
             <div className="flex flex-col overflow-visible bg-white/96 p-5 dark:bg-slate-950/65 sm:p-7 lg:min-h-0 lg:overflow-y-auto">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#b53015] dark:text-[#ff9c85]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c04a25] dark:text-[#f07850]">
                     {currentStep.eyebrow}
                   </p>
                   <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2rem]">
@@ -404,7 +404,7 @@ export default function HomeOnboarding({
                         persistStatus("completed");
                         setManualOpenState("closed");
                       }}
-                      className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
+                      className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
                     >
                       Hotovo
                     </button>
@@ -414,7 +414,7 @@ export default function HomeOnboarding({
                       onClick={() =>
                         setActiveStep((stepIndex) => Math.min(steps.length - 1, stepIndex + 1))
                       }
-                      className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
+                      className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
                     >
                       Ďalej
                     </button>

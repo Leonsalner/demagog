@@ -88,8 +88,8 @@ export default function PoliticianPickerPanel({
                     aria-label={`${politician.meno} ${politician.strana}`}
                     className={`flex flex-col items-center gap-1.5 rounded-2xl border px-2 py-3 text-center transition duration-200 ${
                       isSelected
-                        ? "border-[#e03e1a]/40 bg-[#e03e1a]/8 ring-2 ring-[#e03e1a]"
-                        : "border-slate-200 bg-white hover:border-[#e03e1a]/35 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900 dark:hover:border-[#e03e1a]/45"
+                        ? "border-[#d95830]/40 bg-[#d95830]/8 ring-2 ring-[#d95830]"
+                        : "border-slate-200 bg-white hover:border-[#d95830]/35 hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900 dark:hover:border-[#d95830]/45"
                     }`}
                   >
                     {showFallback ? (

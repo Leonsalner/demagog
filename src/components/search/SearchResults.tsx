@@ -200,7 +200,7 @@ export default function SearchResults({
                 aria-current={item === results.page ? "page" : undefined}
                 className={`min-w-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   item === results.page
-                    ? "bg-[#e03e1a] text-white shadow-sm dark:bg-[#ff3300]"
+                    ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
                     : "border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
               >

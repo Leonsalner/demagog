@@ -64,7 +64,7 @@ function FilterSection({
 }
 
 function baseControlClassName() {
-  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-[#e03e1a] focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#ff3300] dark:focus:ring-[#ff3300]/20";
+  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-[#d95830] focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#f07850] dark:focus:ring-[#f07850]/20";
 }
 
 function normalizeListValue(value: string) {
@@ -215,7 +215,7 @@ export default function FilterSidebar({
           </p>
         </div>
         {activeFilterCount > 0 ? (
-          <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-[#e03e1a]/12 px-2.5 py-1 text-xs font-semibold text-[#b53015] dark:bg-[#e03e1a]/20 dark:text-[#ff8c71]">
+          <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-[#d95830]/12 px-2.5 py-1 text-xs font-semibold text-[#c04a25] dark:bg-[#d95830]/20 dark:text-[#f07850]">
             {activeFilterCount}
           </span>
         ) : null}
@@ -268,8 +268,8 @@ export default function FilterSidebar({
                   onClick={() => toggleParty(party.value)}
                   className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                     isActive
-                      ? "bg-[#e03e1a] text-white shadow-sm dark:bg-[#ff3300]"
-                      : "border border-slate-200 bg-white text-slate-700 hover:border-[#e03e1a]/35 hover:text-[#b53015] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-[#ff3300]/45 dark:hover:text-[#ff8c71]"
+                      ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
+                      : "border border-slate-200 bg-white text-slate-700 hover:border-[#d95830]/35 hover:text-[#c04a25] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-[#f07850]/45 dark:hover:text-[#f07850]"
                   }`}
                 >
                   {party.label}
@@ -292,7 +292,7 @@ export default function FilterSidebar({
                   ? "Skryť panel odporúčaných politikov"
                   : "Zobraziť panel odporúčaných politikov"
               }
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-[#e03e1a]/35 hover:text-[#b53015] dark:border-slate-700 dark:text-slate-300 dark:hover:border-[#ff3300]/45 dark:hover:text-[#ff8c71]"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-[#d95830]/35 hover:text-[#c04a25] dark:border-slate-700 dark:text-slate-300 dark:hover:border-[#f07850]/45 dark:hover:text-[#f07850]"
             >
               Rýchly výber
               <svg
@@ -330,7 +330,7 @@ export default function FilterSidebar({
                     type="button"
                     onClick={() => togglePolitician(person)}
                     aria-label={`Odstrániť ${person}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#e03e1a]/10 px-3 py-1.5 text-sm font-medium text-[#b53015] transition hover:bg-[#e03e1a]/16 dark:bg-[#e03e1a]/18 dark:text-[#ff8c71]"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#d95830]/10 px-3 py-1.5 text-sm font-medium text-[#c04a25] transition hover:bg-[#d95830]/16 dark:bg-[#d95830]/18 dark:text-[#f07850]"
                   >
                     {person}
                     <span aria-hidden="true">×</span>
@@ -353,7 +353,7 @@ export default function FilterSidebar({
                         aria-pressed={isSelected}
                         className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
                           isSelected
-                            ? "bg-[#e03e1a]/12 text-[#a62d13] dark:bg-[#e03e1a]/20 dark:text-[#ff8c71]"
+                            ? "bg-[#d95830]/12 text-[#c04a25] dark:bg-[#d95830]/20 dark:text-[#f07850]"
                             : "text-slate-700 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                         }`}
                       >

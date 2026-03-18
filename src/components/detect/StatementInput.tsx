@@ -114,7 +114,7 @@ export default function StatementInput({
           }}
           placeholder="Vložte politický výrok na overenie..."
           rows={5}
-          className="min-h-36 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-950 dark:focus:ring-[#ff3300]/20"
+          className="min-h-36 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-950 dark:focus:ring-[#f07850]/20"
         />
 
         <div
@@ -131,7 +131,7 @@ export default function StatementInput({
           <button
             type="submit"
             disabled={isDisabled}
-            className="inline-flex min-w-48 items-center justify-center rounded-full bg-[#e03e1a] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[#c73414] disabled:cursor-not-allowed disabled:bg-[#e03e1a]/40 disabled:text-white/80 dark:hover:bg-[#ff3300] dark:disabled:bg-[#ff3300]/28 dark:disabled:text-white/70"
+            className="inline-flex min-w-48 items-center justify-center rounded-full bg-[#d95830] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[#c04a25] disabled:cursor-not-allowed disabled:bg-[#d95830]/40 disabled:text-white/80 dark:hover:bg-[#f07850] dark:disabled:bg-[#f07850]/28 dark:disabled:text-white/70"
           >
             {loading ? (
               <>
@@ -157,7 +157,7 @@ export default function StatementInput({
               aria-haspopup="listbox"
               aria-expanded={isModeMenuOpen}
               onClick={() => setIsModeMenuOpen((open) => !open)}
-              className="flex w-full items-center gap-3 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-left text-sm font-medium text-slate-800 outline-none transition hover:border-slate-400 focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#ff3300] dark:focus:bg-slate-950 dark:focus:ring-[#ff3300]/20"
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-left text-sm font-medium text-slate-800 outline-none transition hover:border-slate-400 focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#f07850] dark:focus:bg-slate-950 dark:focus:ring-[#f07850]/20"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
                 <ModeIcon icon={activeMode.icon} />
@@ -201,14 +201,14 @@ export default function StatementInput({
                       }}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
                         isActive
-                          ? "bg-[#e03e1a]/10 text-[#b53015] dark:bg-[#ff3300]/16 dark:text-[#ff8c71]"
+                          ? "bg-[#d95830]/10 text-[#c04a25] dark:bg-[#f07850]/16 dark:text-[#f07850]"
                           : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                       }`}
                     >
                       <span
                         className={`flex h-8 w-8 items-center justify-center rounded-full ${
                           isActive
-                            ? "bg-white text-[#e03e1a] dark:bg-slate-950 dark:text-[#ff8c71]"
+                            ? "bg-white text-[#d95830] dark:bg-slate-950 dark:text-[#f07850]"
                             : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"
                         }`}
                       >

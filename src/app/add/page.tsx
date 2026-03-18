@@ -90,7 +90,7 @@ function AddStatementForm() {
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#e03e1a] dark:text-[#ff3300]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#d95830] dark:text-[#f07850]">
               Analyst Entry
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
@@ -125,7 +125,7 @@ function AddStatementForm() {
                   setStatus("idle");
                   setSavedId(null);
                 }}
-                className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]"
+                className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
               >
                 Pridať ďalší výrok
               </button>
@@ -158,7 +158,7 @@ function AddStatementForm() {
                   rows={5}
                   required
                   placeholder="Plné znenie politického výroku..."
-                  className="min-h-40 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                  className="min-h-40 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                 />
               </div>
 
@@ -176,7 +176,7 @@ function AddStatementForm() {
                     onChange={(event) => updateField("meno", event.target.value)}
                     required
                     placeholder="Robert Fico"
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                   />
                 </div>
 
@@ -193,7 +193,7 @@ function AddStatementForm() {
                     onChange={(event) => updateField("strana", event.target.value)}
                     required
                     placeholder="SMER-SD"
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                   />
                 </div>
               </div>
@@ -212,7 +212,7 @@ function AddStatementForm() {
                     updateField("vyhodnotenie", event.target.value as FormState["vyhodnotenie"])
                   }
                   required
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                 >
                   <option value="">Vybrať hodnotenie</option>
                   {VERDICTS.map((verdict) => (
@@ -235,7 +235,7 @@ function AddStatementForm() {
                   type="date"
                   value={form.datum}
                   onChange={(event) => updateField("datum", event.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                 />
               </div>
 
@@ -252,7 +252,7 @@ function AddStatementForm() {
                   onChange={(event) => updateField("odovodnenie", event.target.value)}
                   rows={4}
                   placeholder="Stručné vysvetlenie pre internú evidenciu..."
-                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#e03e1a] focus:bg-white focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#ff3300] dark:focus:bg-slate-800 dark:focus:ring-[#ff3300]/15"
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-800 dark:focus:ring-[#f07850]/15"
                 />
               </div>
 
@@ -266,7 +266,7 @@ function AddStatementForm() {
                 <button
                   type="submit"
                   disabled={status === "saving"}
-                  className="inline-flex items-center justify-center rounded-full bg-[#e03e1a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#c73414] disabled:cursor-not-allowed disabled:bg-[#e03e1a]/50 dark:bg-[#ff3300] dark:hover:bg-[#e63a00] dark:disabled:bg-[#ff3300]/50"
+                  className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#c04a25] disabled:cursor-not-allowed disabled:bg-[#d95830]/50 dark:bg-[#f07850] dark:hover:bg-[#d95830] dark:disabled:bg-[#f07850]/50"
                 >
                   {status === "saving" ? "Ukladám..." : "Uložiť výrok"}
                 </button>

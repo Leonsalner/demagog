@@ -7,7 +7,7 @@ type ButtonVariant = "default" | "outline";
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
-    "bg-[#e03e1a] text-white shadow-sm hover:bg-[#c73414] dark:bg-[#ff3300] dark:hover:bg-[#e63a00]",
+    "bg-[#d95830] text-white shadow-sm hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]",
   outline:
     "border border-slate-300/90 bg-white/90 text-slate-600 shadow-sm hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:text-white",
 };
