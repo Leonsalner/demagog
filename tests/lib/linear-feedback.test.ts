@@ -7,7 +7,7 @@ import type { FeedbackRequestPayload } from "@/lib/feedback";
 
 const BASE_ENV = {
   LINEAR_API_KEY: "linear-api-key",
-  LINEAR_FEEDBACK_ISSUE_ID: "issue-123",
+  LINEAR_FEEDBACK_PROJECT_ID: "project-123",
 };
 
 const feedbackPayload: FeedbackRequestPayload = {
@@ -30,7 +30,8 @@ describe("linear-feedback", () => {
   beforeEach(() => {
     originalEnv = { ...process.env };
     process.env.LINEAR_API_KEY = BASE_ENV.LINEAR_API_KEY;
-    process.env.LINEAR_FEEDBACK_ISSUE_ID = BASE_ENV.LINEAR_FEEDBACK_ISSUE_ID;
+    process.env.LINEAR_FEEDBACK_PROJECT_ID = BASE_ENV.LINEAR_FEEDBACK_PROJECT_ID;
+    delete process.env.LINEAR_FEEDBACK_ISSUE_ID;
     delete process.env.LINEAR_ANONYMOUS_CUSTOMER_ID;
     delete process.env.LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID;
     delete process.env.LINEAR_ANONYMOUS_CUSTOMER_NAME;
@@ -123,7 +124,8 @@ describe("linear-feedback", () => {
     const [, requestInit] = fetchMock.mock.calls[1];
     const requestBody = JSON.parse(String(requestInit?.body));
 
-    expect(requestBody.variables.input.issueId).toBe("issue-123");
+    expect(requestBody.variables.input.projectId).toBe("project-123");
+    expect(requestBody.variables.input.issueId).toBeUndefined();
     expect(requestBody.variables.input.customerId).toBe("customer-456");
     expect(requestBody.variables.input.body).toContain("Toto je testovacia správa.");
     expect(requestBody.variables.input.body).toContain("**Cesta:** /add");
@@ -154,6 +156,23 @@ describe("linear-feedback", () => {
         message: "Issue not found",
         status: 502,
       }),
+    );
+  });
+
+  it("reports missing destination configuration", () => {
+    delete process.env.LINEAR_FEEDBACK_PROJECT_ID;
+    delete process.env.LINEAR_FEEDBACK_ISSUE_ID;
+
+    expect(getLinearFeedbackConfigError()).toBe(
+      "Missing LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID",
+    );
+  });
+
+  it("reports conflicting project and issue destinations", () => {
+    process.env.LINEAR_FEEDBACK_ISSUE_ID = "issue-123";
+
+    expect(getLinearFeedbackConfigError()).toBe(
+      "Set only one of LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID",
     );
   });
 
@@ -188,6 +207,63 @@ describe("linear-feedback", () => {
 
     const [, requestInit] = fetchMock.mock.calls[0];
     const requestBody = JSON.parse(String(requestInit?.body));
+    expect(requestBody.variables.input.projectId).toBe("project-123");
     expect(requestBody.variables.input.customerId).toBe("customer-999");
+  });
+
+  it("falls back to issue-backed customer requests when only an issue id is configured", async () => {
+    delete process.env.LINEAR_FEEDBACK_PROJECT_ID;
+    process.env.LINEAR_FEEDBACK_ISSUE_ID = "issue-123";
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              customerUpsert: {
+                success: true,
+                customer: {
+                  id: "customer-456",
+                },
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              customerNeedCreate: {
+                success: true,
+                need: {
+                  id: "need-789",
+                },
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      );
+
+    const result = await submitLinearFeedbackCustomerRequest(feedbackPayload);
+
+    expect(result).toEqual({ id: "need-789" });
+
+    const [, requestInit] = fetchMock.mock.calls[1];
+    const requestBody = JSON.parse(String(requestInit?.body));
+    expect(requestBody.variables.input.issueId).toBe("issue-123");
+    expect(requestBody.variables.input.projectId).toBeUndefined();
   });
 });

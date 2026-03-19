@@ -52,6 +52,19 @@ describe("POST /api/feedback", () => {
     });
   });
 
+  it("returns 503 when the Linear feedback destination is missing", async () => {
+    vi.mocked(getLinearFeedbackConfigError).mockReturnValue(
+      "Missing LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID",
+    );
+
+    const response = await POST(createRequest("{}"));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "Missing LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID",
+    });
+  });
+
   it("returns 400 for invalid JSON", async () => {
     const response = await POST(createRequest("{"));
 

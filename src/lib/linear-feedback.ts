@@ -33,7 +33,8 @@ const CUSTOMER_UPSERT_MUTATION = `
 
 interface LinearFeedbackConfig {
   apiKey: string;
-  issueId: string;
+  issueId: string | null;
+  projectId: string | null;
   anonymousCustomerId: string | null;
   anonymousCustomerExternalId: string | null;
   anonymousCustomerName: string;
@@ -66,7 +67,8 @@ function readTrimmedEnv(name: string): string | null {
 function readLinearFeedbackConfig(): LinearFeedbackConfig {
   return {
     apiKey: readTrimmedEnv("LINEAR_API_KEY") ?? "",
-    issueId: readTrimmedEnv("LINEAR_FEEDBACK_ISSUE_ID") ?? "",
+    issueId: readTrimmedEnv("LINEAR_FEEDBACK_ISSUE_ID"),
+    projectId: readTrimmedEnv("LINEAR_FEEDBACK_PROJECT_ID"),
     anonymousCustomerId: readTrimmedEnv("LINEAR_ANONYMOUS_CUSTOMER_ID"),
     anonymousCustomerExternalId:
       readTrimmedEnv("LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID") ??
@@ -83,8 +85,12 @@ export function getLinearFeedbackConfigError(): string | null {
     return "Missing LINEAR_API_KEY";
   }
 
-  if (!config.issueId) {
-    return "Missing LINEAR_FEEDBACK_ISSUE_ID";
+  if (config.projectId && config.issueId) {
+    return "Set only one of LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID";
+  }
+
+  if (!config.projectId && !config.issueId) {
+    return "Missing LINEAR_FEEDBACK_PROJECT_ID or LINEAR_FEEDBACK_ISSUE_ID";
   }
 
   return null;
@@ -200,13 +206,18 @@ export async function submitLinearFeedbackCustomerRequest(
   const config = readLinearFeedbackConfig();
   const customerId = await ensureAnonymousCustomerId(config);
   const input: Record<string, string> = {
-    issueId: config.issueId,
     body: buildFeedbackMarkdown({
       ...payload,
       submittedAtIso: new Date().toISOString(),
     }),
     customerId,
   };
+
+  if (config.projectId) {
+    input.projectId = config.projectId;
+  } else if (config.issueId) {
+    input.issueId = config.issueId;
+  }
 
   const attachmentUrl = getAttachableFeedbackUrl(payload.context.url);
   if (attachmentUrl) {
