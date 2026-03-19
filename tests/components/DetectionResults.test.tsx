@@ -28,30 +28,12 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
 }
 
 describe("DetectionResults", () => {
-  it("shows the aggregate research trigger in thorough mode", () => {
-    const onOpenAggregateResearch = vi.fn();
-
-    render(
-      <DetectionResults
-        result={buildResult({
-        })}
-        resultMode="thorough"
-        onOpenAggregateResearch={onOpenAggregateResearch}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /otvoriť prieskum/i }));
-
-    expect(onOpenAggregateResearch).toHaveBeenCalledWith([1]);
-  }, 20_000);
-
-  it("passes the per-statement research trigger in fast mode", () => {
+  it("passes the per-statement research trigger", () => {
     const onOpenStatementResearch = vi.fn();
 
     render(
       <DetectionResults
         result={buildResult()}
-        resultMode="fast"
         onOpenStatementResearch={onOpenStatementResearch}
       />,
     );
@@ -61,59 +43,70 @@ describe("DetectionResults", () => {
     expect(onOpenStatementResearch).toHaveBeenCalledWith(1);
   });
 
-  it("offers a rerun button in fast mode", () => {
-    const onRerunThorough = vi.fn();
+  it("offers manual research preparation for weak matches", () => {
+    const onPrepareAggregateResearch = vi.fn();
 
     render(
       <DetectionResults
         result={buildResult()}
-        resultMode="fast"
-        onRerunThorough={onRerunThorough}
+        showManualResearchPreparation
+        onPrepareAggregateResearch={onPrepareAggregateResearch}
+        onOpenAddStatement={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /spustiť prieskum/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Pripraviť prieskum" }));
 
-    expect(onRerunThorough).toHaveBeenCalledWith("Nový výrok");
+    expect(onPrepareAggregateResearch).toHaveBeenCalled();
   });
 
-  it.each([
-    "DUPLICATE_FOUND",
-    "RELATED_ONLY",
-    "NEW_CLAIM",
-  ] as const)(
-    "styles the add button with the shared primary orange for %s",
-    (overallStatus) => {
-      render(<DetectionResults result={buildResult({ overall_status: overallStatus })} />);
+  it("shows the prepared aggregate research action", () => {
+    const onOpenPreparedResearch = vi.fn();
 
-      const addButton = screen.getByRole("link", { name: "Pridať výrok" });
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="ready"
+        onOpenPreparedResearch={onOpenPreparedResearch}
+        onOpenAddStatement={vi.fn()}
+      />,
+    );
 
-      expect(addButton).toHaveClass("bg-[var(--brand-accent)]");
-      expect(addButton).toHaveClass("!text-white");
-      expect(addButton).toHaveClass("dark:bg-[var(--brand-accent)]");
-    },
-  );
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť prieskum" }));
 
-  it.each([
-    "DUPLICATE_FOUND",
-    "RELATED_ONLY",
-    "NEW_CLAIM",
-  ] as const)(
-    "styles the fast-mode research trigger with the shared primary orange for %s",
-    (overallStatus) => {
-      render(
-        <DetectionResults
-          result={buildResult({ overall_status: overallStatus })}
-          resultMode="fast"
-          onRerunThorough={vi.fn()}
-        />,
-      );
+    expect(onOpenPreparedResearch).toHaveBeenCalled();
+  });
 
-      const rerunButton = screen.getByRole("button", { name: "Spustiť Prieskum" });
+  it("shows a retry action when aggregate preparation fails", () => {
+    const onPrepareResearchRetry = vi.fn();
 
-      expect(rerunButton).toHaveClass("bg-[var(--brand-accent)]");
-      expect(rerunButton).toHaveClass("text-white");
-      expect(rerunButton).toHaveClass("dark:bg-[var(--brand-accent)]");
-    },
-  );
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="error"
+        onPrepareResearchRetry={onPrepareResearchRetry}
+        onOpenAddStatement={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Skúsiť pripraviť prieskum znova" }));
+
+    expect(onPrepareResearchRetry).toHaveBeenCalled();
+  });
+
+  it("opens the add flow from the preparation state", () => {
+    const onOpenAddStatement = vi.fn();
+
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="preparing"
+        onOpenAddStatement={onOpenAddStatement}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
+
+    expect(onOpenAddStatement).toHaveBeenCalled();
+  });
 });

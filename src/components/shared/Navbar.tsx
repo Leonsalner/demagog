@@ -10,7 +10,6 @@ export default function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHome = pathname === "/";
-  const isAddPage = pathname === "/add";
   const activeHomeTab = searchParams.get("mode") === "detect" ? "detect" : "search";
 
   return (
@@ -88,16 +87,6 @@ export default function Navbar() {
         )}
 
         <div className="ml-auto flex items-center gap-3">
-          {!isAddPage ? (
-            <Link
-              href="/add"
-              prefetch={false}
-              className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-4 py-2.5 text-sm font-semibold !text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] visited:!text-white hover:!text-white dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
-            >
-              Pridať nový výrok
-            </Link>
-          ) : null}
-
           <ThemeToggle />
         </div>
       </div>

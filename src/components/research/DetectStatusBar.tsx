@@ -5,6 +5,7 @@ import type { DetectResponse } from "@/types";
 interface DetectStatusBarProps {
   inputStatement: string;
   overallStatus: DetectResponse["overall_status"];
+  onClose: () => void;
   onAddStatement: () => void;
 }
 
@@ -18,7 +19,8 @@ const statusConfig = {
     label: "Súvisiace výroky",
   },
   NEW_CLAIM: {
-    container: "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)]/90 dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/90",
+    container:
+      "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)]/90 dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/90",
     label: "Nový výrok",
   },
 } as const;
@@ -29,26 +31,45 @@ const addStatementButtonClassName =
 export default function DetectStatusBar({
   inputStatement,
   overallStatus,
+  onClose,
   onAddStatement,
 }: DetectStatusBarProps) {
   const status = statusConfig[overallStatus];
 
   return (
-    <div className={`sticky top-0 z-20 border-b px-5 py-3 backdrop-blur sm:px-6 ${status.container}`}>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 lg:max-w-[48%]">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-300">
-            {status.label}
+    <div className={`sticky top-0 z-20 border-b px-5 py-4 backdrop-blur sm:px-6 ${status.container}`}>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0 xl:max-w-[60%]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            Súhrnný prieskum
           </p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Detekovaný vstup
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Širší kontext zhôd
+            </h1>
+            <span className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-950/75 dark:text-slate-200">
+              {status.label}
+            </span>
+          </div>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            Detegovaný vstup
           </p>
-          <p className="mt-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+          <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-800 dark:text-slate-100">
             {inputStatement}
           </p>
         </div>
 
-        <div className="flex justify-start lg:justify-end">
+        <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-500 transition hover:bg-white hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100"
+            aria-label="Zavrieť prieskum"
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={onAddStatement}

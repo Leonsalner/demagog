@@ -105,7 +105,6 @@ describe("feedback context integration", () => {
     });
     vi.mocked(useDetect).mockReturnValue({
       result: null,
-      resultMode: null,
       loading: false,
       error: null,
       detect: vi.fn(),
@@ -120,6 +119,7 @@ describe("feedback context integration", () => {
       isPendingReveal: false,
       openStatementResearch: vi.fn().mockResolvedValue(undefined),
       openAggregateResearch: vi.fn().mockResolvedValue(undefined),
+      openPreparedResearch: vi.fn(),
       retry: vi.fn().mockResolvedValue(undefined),
       close: vi.fn(),
     });

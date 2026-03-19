@@ -8,6 +8,7 @@ import StatementFormFields, {
   type StatementFormState,
   type StatementFormStatus,
 } from "@/components/add/StatementFormFields";
+import ViewportPortal from "@/components/shared/ViewportPortal";
 
 const OBLAST_AUTO_DETECT_DEBOUNCE_MS = 700;
 const MIN_OBLAST_AUTO_DETECT_LENGTH = 20;
@@ -160,6 +161,28 @@ export default function AddStatementModal({
     [],
   );
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   function updateField<K extends keyof StatementFormState>(
     field: K,
     value: StatementFormState[K],
@@ -231,100 +254,117 @@ export default function AddStatementModal({
   }
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-      <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
-      <section className="relative z-10 max-h-full w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white shadow-[0_48px_140px_-58px_rgba(15,23,42,0.55)] dark:bg-slate-950 dark:shadow-[0_56px_150px_-56px_rgba(2,6,23,0.98)]">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 px-6 py-5 dark:border-slate-800/80 sm:px-8">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.18em] text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
-              Analyst Entry
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-              Pridať nový výrok
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-              Vyplň analýzu, oblasť a použité zdroje bez toho, aby si musel
-              opustiť prieskum.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Zavrieť formulár"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-          >
-            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-              <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-            </svg>
-          </button>
-        </div>
-
-        {status === "success" ? (
-          <div className="space-y-5 px-6 py-6 sm:px-8">
-            <div className="rounded-[1.75rem] bg-emerald-50 p-5 dark:bg-emerald-950/30">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Výrok uložený
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Záznam{" "}
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
-                  #{savedId}
-                </span>{" "}
-                je uložený a zostáva dostupný aj s doplnenými zdrojmi.
+    <ViewportPortal>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+        style={{
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
+          paddingLeft: "calc(env(safe-area-inset-left, 0px) + 1rem)",
+          paddingRight: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
+        }}
+      >
+        <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-statement-modal-title"
+          className="relative z-10 max-h-full w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white shadow-[0_48px_140px_-58px_rgba(15,23,42,0.55)] dark:bg-slate-950 dark:shadow-[0_56px_150px_-56px_rgba(2,6,23,0.98)]"
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 px-6 py-5 dark:border-slate-800/80 sm:px-8">
+            <div className="max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
+                Analyst Entry
+              </p>
+              <h2
+                id="add-statement-modal-title"
+                className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100"
+              >
+                Pridať nový výrok
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                Vyplňte analýzu, oblasť a použité zdroje bez toho, aby ste museli opustiť aktuálnu prácu.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setStatus("idle");
-                  setSavedId(null);
-                  setErrorMessage(null);
-                  setForm(createInitialStatementFormState(initialStatement));
-                }}
-                className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)]"
-              >
-                Pridať ďalší výrok
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center justify-center rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Zavrieť
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Zavrieť formulár"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            >
+              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </button>
           </div>
-        ) : (
-          <div className="px-6 py-6 sm:px-8">
-            <StatementFormFields
-              form={form}
-              status={status}
-              errorMessage={errorMessage}
-              idPrefix="workspace-add"
-              primaryActionLabel={status === "saving" ? "Ukladám..." : "Uložiť výrok"}
-              oblastHint={
-                isDetectingOblast
-                  ? "Rozpoznávam oblasť z výroku…"
-                  : "Oblasť doplníme automaticky z textu výroku, môžeš ju kedykoľvek upraviť."
-              }
-              secondaryAction={
+
+          {status === "success" ? (
+            <div className="space-y-5 px-6 py-6 sm:px-8">
+              <div className="rounded-[1.75rem] bg-emerald-50 p-5 dark:bg-emerald-950/30">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Výrok uložený
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Záznam{" "}
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    #{savedId}
+                  </span>{" "}
+                  je uložený a zostáva dostupný aj s doplnenými zdrojmi.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("idle");
+                    setSavedId(null);
+                    setErrorMessage(null);
+                    setForm(createInitialStatementFormState(initialStatement));
+                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent)]"
+                >
+                  Pridať ďalší výrok
+                </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-full bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Zavrieť
                 </button>
-              }
-              note="Povinné polia zostávajú rovnaké, doplnkové polia sú označené ako voliteľné."
-              onSubmit={handleSubmit}
-              updateField={updateField}
-              updateSourceField={updateSourceField}
-            />
-          </div>
-        )}
-      </section>
-    </div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-6 py-6 sm:px-8">
+              <StatementFormFields
+                form={form}
+                status={status}
+                errorMessage={errorMessage}
+                idPrefix="workspace-add"
+                primaryActionLabel={status === "saving" ? "Ukladám..." : "Uložiť výrok"}
+                oblastHint={
+                  isDetectingOblast
+                    ? "Rozpoznávam oblasť z výroku…"
+                    : "Oblasť doplníme automaticky z textu výroku, môžete ju kedykoľvek upraviť."
+                }
+                secondaryAction={
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Zavrieť
+                  </button>
+                }
+                note="Povinné polia zostávajú rovnaké, doplnkové polia sú označené ako voliteľné."
+                onSubmit={handleSubmit}
+                updateField={updateField}
+                updateSourceField={updateSourceField}
+              />
+            </div>
+          )}
+        </section>
+      </div>
+    </ViewportPortal>
   );
 }

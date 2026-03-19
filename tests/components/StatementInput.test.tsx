@@ -11,8 +11,6 @@ describe("StatementInput", () => {
         value="Ukrajina je Rusko."
         onChange={vi.fn()}
         onSubmit={onSubmit}
-        mode="thorough"
-        onModeChange={vi.fn()}
         loading={false}
       />,
     );
@@ -20,7 +18,7 @@ describe("StatementInput", () => {
     const textarea = screen.getByLabelText("Politický výrok");
     fireEvent.keyDown(textarea, { key: "Enter" });
 
-    expect(onSubmit).toHaveBeenCalledWith("Ukrajina je Rusko.", "thorough");
+    expect(onSubmit).toHaveBeenCalledWith("Ukrajina je Rusko.");
   });
 
   it("keeps Shift+Enter available for a newline", () => {
@@ -31,8 +29,6 @@ describe("StatementInput", () => {
         value="Ukrajina je Rusko."
         onChange={vi.fn()}
         onSubmit={onSubmit}
-        mode="thorough"
-        onModeChange={vi.fn()}
         loading={false}
       />,
     );

@@ -70,12 +70,12 @@ function buildSearchResults(): SearchResponse {
 function buildFastDetectResult(): DetectResponse {
   return {
     input_statement: "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-    overall_status: "DUPLICATE_FOUND",
+    overall_status: "RELATED_ONLY",
     query_time_ms: 180,
     matches: [
       {
-        classification: "DUPLICATE",
-        similarity: 0.96,
+        classification: "RELATED",
+        similarity: 0.24,
         statement: {
           id: 42,
           vyrok: "Pediatrov na severe Slovenska je akútny nedostatok.",
@@ -147,7 +147,6 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
 function mockUseDetectReturn(overrides?: Record<string, unknown>) {
   vi.mocked(useDetect).mockReturnValue({
     result: null,
-    resultMode: null,
     loading: false,
     error: null,
     detect: vi.fn(),
@@ -300,7 +299,6 @@ describe("research workspace overlay", () => {
     mockUseSearchReturn();
     mockUseDetectReturn({
       result: buildFastDetectResult(),
-      resultMode: "fast",
     });
     const pending = deferredResponse();
     vi.mocked(fetch).mockReturnValue(pending.promise);
@@ -359,12 +357,11 @@ describe("research workspace overlay", () => {
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "136px" });
   });
 
-  it("keeps thorough detect auto-open deferred until aggregate research is ready", async () => {
+  it("keeps background aggregate preparation hidden until it is manually opened", async () => {
     setViewport(1280, 900);
     mockUseSearchReturn();
     mockUseDetectReturn({
       result: buildThoroughDetectResult(),
-      resultMode: "thorough",
     });
     const pending = deferredResponse();
     vi.mocked(fetch).mockReturnValue(pending.promise);
@@ -381,7 +378,7 @@ describe("research workspace overlay", () => {
       );
     });
 
-    expect(screen.getByText("Pripravujem prieskum výroku a súvisiace zdroje...")).toBeInTheDocument();
+    expect(screen.getByText("Pripravujem súhrnný prieskum")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
 
     await act(async () => {
@@ -391,8 +388,8 @@ describe("research workspace overlay", () => {
           mode: "aggregate",
           items: [
             {
-              id: "article:109",
-              kind: "article",
+              id: "source:109",
+              kind: "external_source",
               title: "Nepravdivé tvrdenia o príčinách vojny na Ukrajine",
               body: "Obsah článku.",
               url: "https://demagog.sk/article",
@@ -407,7 +404,11 @@ describe("research workspace overlay", () => {
       await pending.promise;
     });
 
+    expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Otvoriť prieskum" })[0]);
+
     await screen.findByRole("dialog", { name: "Research workspace" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

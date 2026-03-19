@@ -2,41 +2,14 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import {
+  createAggregateResearchRequest,
+  createStatementResearchRequest,
+  fetchResearch,
+  type OpenResearchOptions,
+  type ResearchRequest,
+} from "@/lib/research-client";
 import type { ResearchWorkspaceMode, ResearchWorkspaceResponse } from "@/types";
-
-type ResearchRequest =
-  | {
-      mode: "statement";
-      endpoint: "/api/research/statement";
-      body: { statement_id: number };
-    }
-  | {
-      mode: "aggregate";
-      endpoint: "/api/research/detect";
-      body: { statement_ids: number[] };
-    };
-
-interface OpenResearchOptions {
-  revealWhenReady?: boolean;
-}
-
-async function fetchResearch(
-  request: ResearchRequest,
-  signal?: AbortSignal,
-): Promise<ResearchWorkspaceResponse> {
-  const response = await fetch(request.endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request.body),
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error("Nepodarilo sa načítať prieskum.");
-  }
-
-  return (await response.json()) as ResearchWorkspaceResponse;
-}
 
 export function useResearch() {
   const [data, setData] = useState<ResearchWorkspaceResponse | null>(null);
@@ -92,24 +65,31 @@ export function useResearch() {
 
   const openStatementResearch = useCallback(
     async (statementId: number, options?: OpenResearchOptions) => {
-      await open({
-        mode: "statement",
-        endpoint: "/api/research/statement",
-        body: { statement_id: statementId },
-      }, options);
+      await open(createStatementResearchRequest(statementId), options);
     },
     [open],
   );
 
   const openAggregateResearch = useCallback(
     async (statementIds: number[], options?: OpenResearchOptions) => {
-      await open({
-        mode: "aggregate",
-        endpoint: "/api/research/detect",
-        body: { statement_ids: statementIds },
-      }, options);
+      await open(createAggregateResearchRequest(statementIds), options);
     },
     [open],
+  );
+
+  const openPreparedResearch = useCallback(
+    (request: ResearchRequest, preparedData: ResearchWorkspaceResponse) => {
+      requestIdRef.current += 1;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      setLastRequest(request);
+      setActiveMode(preparedData.mode);
+      setData(preparedData);
+      setError(null);
+      setLoading(false);
+      setIsOpen(true);
+    },
+    [],
   );
 
   const retry = useCallback(async () => {
@@ -140,6 +120,7 @@ export function useResearch() {
     error,
     openStatementResearch,
     openAggregateResearch,
+    openPreparedResearch,
     retry,
     close,
   };

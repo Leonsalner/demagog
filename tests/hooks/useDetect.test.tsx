@@ -28,7 +28,7 @@ describe("useDetect", () => {
     expect(result.current.error).toBe("Detekcia zlyhala.");
   });
 
-  it("forwards the selected detect mode to the API", async () => {
+  it("defaults detect requests to the fast mode", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -42,7 +42,7 @@ describe("useDetect", () => {
     const { result } = renderHook(() => useDetect());
 
     await act(async () => {
-      await result.current.detect("Testovaci vyrok", "fast");
+      await result.current.detect("Testovaci vyrok");
     });
 
     expect(fetch).toHaveBeenCalledWith(

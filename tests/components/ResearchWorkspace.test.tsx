@@ -147,6 +147,9 @@ describe("ResearchWorkspace", () => {
   });
 
   it("keeps the main pane aligned with the active aggregate tab", async () => {
+    const onClose = vi.fn();
+    const onAddStatement = vi.fn();
+
     render(
       <>
         <header
@@ -213,10 +216,18 @@ describe("ResearchWorkspace", () => {
               },
             ],
           }}
-          onClose={vi.fn()}
+          onClose={onClose}
+          onAddStatement={onAddStatement}
         />
       </>,
     );
+
+    expect(screen.queryByText("Research Workspace")).not.toBeInTheDocument();
+    expect(screen.getByText("Širší kontext zhôd")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
+    expect(onAddStatement).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
+    expect(onClose).toHaveBeenCalled();
 
     expect(
       await screen.findByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),

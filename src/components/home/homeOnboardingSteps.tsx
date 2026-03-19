@@ -62,7 +62,7 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     title: "Najprv zistite, či už výrok nebol overený.",
     body: [
       "Vložte text výroku a nástroj vám obratom ukáže, či k nemu v archíve existuje použiteľné staršie overenie.",
-      "Rýchly režim vám hneď ponúkne najbližšie zhody. Ak potrebujete vidieť širší kontext a podobné tvrdenia, prepnite sa do Prieskumu.",
+      "Detekcia vám najprv ukáže najbližšie zhody. Ak sa oplatí pripraviť širší kontext, súhrnný prieskum sa nachystá na pozadí.",
       "Ak medzi výsledkami nenájdete nič použiteľné, môžete prejsť priamo na Pridať nový výrok, kde už na vás bude čakať predvyplnený formulár.",
     ],
     media: {
@@ -79,16 +79,16 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     eyebrow: "4. Preskúmať",
     title: "Všetky zistenia na jednom mieste.",
     body: [
-      "Vo Vyhľadávaní a v Rýchlej detekcii sa do detailu dostanete cez tlačidlo Preskúmať. Pri režime Prieskum sa pracovné rozhranie otvorí automaticky.",
+      "Vo Vyhľadávaní aj v Detekcii sa do detailu výroku dostanete cez tlačidlo Preskúmať.",
       "Nájdete tu detailnú analýzu, súvisiace články z Demagogu a konkrétne zdroje, o ktoré sa overenie opiera.",
-      "Pri Prieskume sa navyše zobrazí súhrn viacerých zistení naraz, takže si širší kontext pozriete bez ďalšieho preklikávania.",
+      "Keď je pripravený aj súhrnný prieskum zhôd, otvoríte si z neho širší kontext bez ďalšieho preklikávania.",
     ],
     media: {
       kind: "image",
       lightSrc: "/onboarding/step-04-research-light.png",
       darkSrc: "/onboarding/step-04-research-dark.png",
       alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
-      caption: "Preskúmať a Prieskum vedú do rovnakého pracovného priestoru, ktorý podľa režimu ukáže detail výroku alebo širší súhrn.",
+      caption: "Preskúmať otvorí detail výroku a pripravený súhrnný prieskum rozšíri pohľad na viacero zhôd naraz.",
       aspectRatio: "16 / 9",
     },
   },
@@ -97,7 +97,7 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     eyebrow: "5. Pridať nový výrok",
     title: "Ak nič nesedí, pokračujte rovno do databázy.",
     body: [
-      "Na Pridať nový výrok sa dostanete z horného tlačidla v navigácii alebo priamo z Detekcie duplicít, keď vo výsledkoch nenájdete použiteľnú zhodu.",
+      "Na Pridať nový výrok sa dostanete priamo z Detekcie duplicít alebo zo súhrnného prieskumu, keď vo výsledkoch nenájdete použiteľnú zhodu.",
       "Otvorí sa formulár, v ktorom už bude text výroku predvyplnený. Doplniť potom stačí meno, stranu, hodnotenie, dátum a stručné odôvodnenie.",
       "Tento krok použite vtedy, keď ste si cez Vyhľadávanie alebo Detekciu duplicít overili, že výrok v databáze ešte nemá vlastný záznam.",
     ],

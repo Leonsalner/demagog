@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
+import type { DetectResponse } from "@/types";
 
 import {
   mockDetectDuplicate,
@@ -17,6 +18,10 @@ vi.mock("@/hooks/useSearch", () => ({
 
 vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
+}));
+
+vi.mock("@/hooks/usePreparedAggregateResearch", () => ({
+  usePreparedAggregateResearch: vi.fn(),
 }));
 
 vi.mock("@/hooks/useResearch", () => ({
@@ -40,6 +45,7 @@ vi.mock("next/link", () => ({
 }));
 
 const { useDetect } = await import("@/hooks/useDetect");
+const { usePreparedAggregateResearch } = await import("@/hooks/usePreparedAggregateResearch");
 const { useResearch } = await import("@/hooks/useResearch");
 const { useSearch } = await import("@/hooks/useSearch");
 
@@ -103,7 +109,6 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
 
   vi.mocked(useDetect).mockReturnValue({
     result: null,
-    resultMode: null,
     loading: false,
     error: null,
     detect,
@@ -114,9 +119,29 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
   return { detect, reset };
 }
 
+function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unknown>) {
+  const prepare = vi.fn().mockResolvedValue(undefined);
+  const retry = vi.fn().mockResolvedValue(undefined);
+  const reset = vi.fn();
+
+  vi.mocked(usePreparedAggregateResearch).mockReturnValue({
+    status: "idle",
+    data: null,
+    error: null,
+    statementIds: [],
+    prepare,
+    retry,
+    reset,
+    ...overrides,
+  });
+
+  return { prepare, retry, reset };
+}
+
 function mockUseResearchReturn(overrides?: Record<string, unknown>) {
   const openStatementResearch = vi.fn().mockResolvedValue(undefined);
   const openAggregateResearch = vi.fn().mockResolvedValue(undefined);
+  const openPreparedResearch = vi.fn();
   const retry = vi.fn().mockResolvedValue(undefined);
   const close = vi.fn();
 
@@ -129,12 +154,36 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     error: null,
     openStatementResearch,
     openAggregateResearch,
+    openPreparedResearch,
     retry,
     close,
     ...overrides,
   });
 
-  return { openStatementResearch, openAggregateResearch, retry, close };
+  return { openStatementResearch, openAggregateResearch, openPreparedResearch, retry, close };
+}
+
+function buildWeakDetectResult(): DetectResponse {
+  return {
+    input_statement: "Ukrajina je Rusko.",
+    overall_status: "RELATED_ONLY",
+    query_time_ms: 180,
+    matches: [
+      {
+        classification: "RELATED",
+        similarity: 0.24,
+        statement: {
+          id: 201,
+          vyrok: "Tvrdenie o konflikte na Ukrajine.",
+          vyhodnotenie: "Nepravda",
+          odovodnenie: "Testovacie odôvodnenie.",
+          datum: "2025-05-14",
+          meno: "Testovací politik",
+          strana: "Test",
+        },
+      },
+    ],
+  };
 }
 
 describe("detect page flow", () => {
@@ -154,6 +203,7 @@ describe("detect page flow", () => {
       }),
     });
     mockUseSearchReturn();
+    mockUsePreparedAggregateResearchReturn();
     mockUseResearchReturn();
   });
 
@@ -166,27 +216,10 @@ describe("detect page flow", () => {
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeInTheDocument();
   }, 40_000);
 
-  it("submits a statement for analysis", async () => {
+  it("submits a statement through the single fast detect path", async () => {
     const { detect } = mockUseDetectReturn();
 
     await renderHome("detect");
-    fireEvent.change(screen.getByLabelText("Politický výrok"), {
-      target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Analyzovať" }));
-
-    expect(detect).toHaveBeenCalledWith(
-      "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "thorough",
-    );
-  }, 20_000);
-
-  it("forwards the selected research mode", async () => {
-    const { detect } = mockUseDetectReturn();
-
-    await renderHome("detect");
-    fireEvent.click(screen.getByRole("button", { name: /Prieskum/ }));
-    fireEvent.click(screen.getByRole("option", { name: /Rýchly/ }));
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
@@ -198,13 +231,13 @@ describe("detect page flow", () => {
     );
   }, 20_000);
 
-  it("shows loading feedback while detect is running", async () => {
+  it("shows quick loading feedback while detect is running", async () => {
     mockUseDetectReturn({ loading: true });
 
     await renderHome("detect");
 
     expect(
-      screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i),
+      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
     ).toBeInTheDocument();
   });
 
@@ -228,8 +261,10 @@ describe("detect page flow", () => {
     ).toBeInTheDocument();
   });
 
-  it("clears stale detect results while editing and supports another submit", async () => {
+  it("clears stale detect and prepared aggregate state while editing", async () => {
     const { reset } = mockUseDetectReturn({ result: mockDetectDuplicate });
+    const { reset: resetPreparedAggregateResearch } = mockUsePreparedAggregateResearchReturn();
+    const { close } = mockUseResearchReturn();
 
     await renderHome("detect");
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
@@ -237,59 +272,63 @@ describe("detect page flow", () => {
     });
 
     expect(reset).toHaveBeenCalledTimes(1);
+    expect(resetPreparedAggregateResearch).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeEnabled();
   });
 
-  it("auto-opens aggregate research for thorough duplicate results", async () => {
-    const openAggregateResearch = vi.fn(() => new Promise(() => {}));
-    mockUseResearchReturn({ openAggregateResearch });
+  it("starts background aggregate preparation for strong matches", async () => {
+    const { prepare } = mockUsePreparedAggregateResearchReturn();
     mockUseDetectReturn({
       result: mockDetectDuplicate,
-      resultMode: "thorough",
-    });
-
-    await act(async () => {
-      await renderHome("detect");
-    });
-
-    await waitFor(() => {
-      expect(openAggregateResearch).toHaveBeenCalledWith([109, 111], {
-        revealWhenReady: false,
-      });
-    });
-  });
-
-  it("keeps the detect spinner visible while thorough auto-open is being kicked off", async () => {
-    const openAggregateResearch = vi.fn(() => new Promise(() => {}));
-    mockUseResearchReturn({
-      isPendingReveal: true,
-      openAggregateResearch,
-    });
-    mockUseDetectReturn({
-      result: mockDetectDuplicate,
-      resultMode: "thorough",
-    });
-
-    await act(async () => {
-      await renderHome("detect");
-      await Promise.resolve();
-    });
-
-    expect(
-      screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdený duplicitný výrok/i)).not.toBeInTheDocument();
-  });
-
-  it("does not auto-open aggregate research for thorough new-claim results", async () => {
-    const { openAggregateResearch } = mockUseResearchReturn();
-    mockUseDetectReturn({
-      result: mockDetectNew,
-      resultMode: "thorough",
     });
 
     await renderHome("detect");
 
-    expect(openAggregateResearch).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(prepare).toHaveBeenCalledWith([109, 111]);
+    });
+  });
+
+  it("does not auto-start aggregate preparation for new claims", async () => {
+    const { prepare } = mockUsePreparedAggregateResearchReturn();
+    mockUseDetectReturn({
+      result: mockDetectNew,
+    });
+
+    await renderHome("detect");
+
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it("keeps weak matches on a manual preparation path", async () => {
+    const { prepare } = mockUsePreparedAggregateResearchReturn();
+    mockUseDetectReturn({
+      result: buildWeakDetectResult(),
+    });
+
+    await renderHome("detect");
+
+    expect(prepare).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Pripraviť prieskum" }));
+    expect(prepare).toHaveBeenCalledWith([201]);
+  });
+
+  it("opens the in-app add modal from the preparation state", async () => {
+    mockUseDetectReturn({
+      result: mockDetectDuplicate,
+    });
+    mockUsePreparedAggregateResearchReturn({
+      status: "preparing",
+      statementIds: [109, 111],
+    });
+
+    await renderHome("detect");
+
+    fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Pridať nový výrok" }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import type {
   DetectResponse,
@@ -11,7 +11,6 @@ import type {
 } from "@/types";
 import { APP_NAVBAR_ID } from "@/lib/layout";
 
-import AddStatementModal from "./AddStatementModal";
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
@@ -27,6 +26,8 @@ interface ResearchWorkspaceProps {
   loading: boolean;
   error: string | null;
   detectResult?: DetectResponse | null;
+  isAddModalOpen?: boolean;
+  onAddStatement?: () => void;
   onClose: () => void;
   onRetry?: () => void;
 }
@@ -87,13 +88,14 @@ export default function ResearchWorkspace({
   loading,
   error,
   detectResult,
+  isAddModalOpen = false,
+  onAddStatement,
   onClose,
   onRetry,
 }: ResearchWorkspaceProps) {
   const [selection, setSelection] = useState<WorkspaceSelection>(null);
   const [isMounted, setIsMounted] = useState(isOpen);
   const [isVisible, setIsVisible] = useState(isOpen);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
   const [navbarOffset, setNavbarOffset] = useState(0);
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
@@ -118,7 +120,11 @@ export default function ResearchWorkspace({
     } else if (selection?.type === "research-item") {
       const isVisibleItem = visibleArticleItems.some((item) => item.id === selection.id);
 
-      if (sidebarTab === "articles" && isSelectionValid(selection, items, detectMatches) && isVisibleItem) {
+      if (
+        sidebarTab === "articles" &&
+        isSelectionValid(selection, items, detectMatches) &&
+        isVisibleItem
+      ) {
         return selection;
       }
     }
@@ -187,7 +193,6 @@ export default function ResearchWorkspace({
     });
     const timeout = window.setTimeout(() => {
       setIsMounted(false);
-      setIsAddModalOpen(false);
     }, 300);
 
     return () => {
@@ -196,7 +201,7 @@ export default function ResearchWorkspace({
     };
   }, [isOpen]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isMounted) {
       return;
     }
@@ -246,14 +251,15 @@ export default function ResearchWorkspace({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        if (isAddModalOpen) {
-          setIsAddModalOpen(false);
-          return;
-        }
-
-        handleClose();
+      if (event.key !== "Escape") {
+        return;
       }
+
+      if (isAddModalOpen) {
+        return;
+      }
+
+      handleClose();
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -278,11 +284,7 @@ export default function ResearchWorkspace({
           paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
         }}
       >
-        <div
-          className="absolute inset-0"
-          aria-hidden="true"
-          onClick={handleClose}
-        />
+        <div className="absolute inset-0" aria-hidden="true" onClick={handleClose} />
         <section
           role="dialog"
           aria-modal="true"
@@ -291,30 +293,33 @@ export default function ResearchWorkspace({
             isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-[0.98] opacity-0"
           }`}
         >
-          <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
-              <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
-              </h1>
-            </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
-              aria-label="Zavrieť prieskum"
-            >
-              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-              </svg>
-            </button>
-          </header>
+          {workspaceMode === "statement" || !detectResult ? (
+            <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
+                <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
+                </h1>
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                aria-label="Zavrieť prieskum"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                  <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+            </header>
+          ) : null}
 
           {workspaceMode === "aggregate" && detectResult ? (
             <DetectStatusBar
               inputStatement={detectResult.input_statement}
               overallStatus={detectResult.overall_status}
-              onAddStatement={() => setIsAddModalOpen(true)}
+              onClose={handleClose}
+              onAddStatement={() => onAddStatement?.()}
             />
           ) : null}
 
@@ -378,12 +383,6 @@ export default function ResearchWorkspace({
               ) : null}
             </main>
           </div>
-
-          <AddStatementModal
-            isOpen={workspaceMode === "aggregate" && isAddModalOpen}
-            initialStatement={workspaceMode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
-            onClose={() => setIsAddModalOpen(false)}
-          />
         </section>
       </div>
     </ViewportPortal>

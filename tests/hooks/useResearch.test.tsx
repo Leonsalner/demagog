@@ -1,6 +1,11 @@
 import { act, renderHook } from "@testing-library/react";
 
+import {
+  createAggregateResearchRequest,
+  type ResearchRequest,
+} from "@/lib/research-client";
 import { useResearch } from "@/hooks/useResearch";
+import type { ResearchWorkspaceResponse } from "@/types";
 
 function deferredResponse() {
   let resolve!: (value: Response) => void;
@@ -50,26 +55,7 @@ describe("useResearch", () => {
         ok: true,
         json: async () => ({
           mode: "statement",
-          items: [
-            {
-              id: "analysis:42",
-              kind: "analysis",
-              title: "Analýza výroku",
-              body: "Obsah",
-              url: null,
-              domain: null,
-              author: null,
-              date: null,
-              statement_refs: [
-                {
-                  statement_id: 42,
-                  vyrok: "Výrok",
-                  meno: "Robert Fico",
-                  strana: "Smer-SD",
-                },
-              ],
-            },
-          ],
+          items: [],
         }),
       } as Response);
       await pending.promise;
@@ -114,34 +100,22 @@ describe("useResearch", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it("opens immediately for manual aggregate research while keeping the spinner active", async () => {
-    const pending = deferredResponse();
-    vi.mocked(fetch).mockReturnValue(pending.promise);
-
+  it("opens prepared research without refetching", () => {
     const { result } = renderHook(() => useResearch());
+    const request: ResearchRequest = createAggregateResearchRequest([21]);
+    const preparedData: ResearchWorkspaceResponse = {
+      mode: "aggregate",
+      items: [],
+    };
 
     act(() => {
-      void result.current.openAggregateResearch([21]);
+      result.current.openPreparedResearch(request, preparedData);
     });
 
-    expect(result.current.isOpen).toBe(true);
-    expect(result.current.activeMode).toBe("aggregate");
-    expect(result.current.isPendingReveal).toBe(false);
-    expect(result.current.loading).toBe(true);
-
-    await act(async () => {
-      pending.resolve({
-        ok: true,
-        json: async () => ({
-          mode: "aggregate",
-          items: [],
-        }),
-      } as Response);
-      await pending.promise;
-    });
-
+    expect(fetch).not.toHaveBeenCalled();
     expect(result.current.isOpen).toBe(true);
     expect(result.current.activeMode).toBe("aggregate");
     expect(result.current.loading).toBe(false);
+    expect(result.current.data).toEqual(preparedData);
   });
 });

@@ -67,13 +67,23 @@ export default function ResearchSidebar({
         </p>
 
         {showTabs ? (
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-200/80 p-1 dark:bg-slate-800">
+          <div className="relative mt-4 grid grid-cols-2 rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
+              style={{
+                transform:
+                  activeTab === "articles"
+                    ? "translateX(0)"
+                    : "translateX(calc(100% + 0.25rem))",
+              }}
+            />
             <button
               type="button"
               onClick={() => onTabChange?.("articles")}
-              className={`rounded-xl px-3 py-2 text-sm font-medium transition ${
+              className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:focus-visible:ring-[var(--brand-accent-dark)]/35 dark:focus-visible:ring-offset-slate-900 ${
                 activeTab === "articles"
-                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100"
+                  ? "text-slate-900 dark:text-slate-100"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
               }`}
             >
@@ -82,9 +92,9 @@ export default function ResearchSidebar({
             <button
               type="button"
               onClick={() => onTabChange?.("statements")}
-              className={`rounded-xl px-3 py-2 text-sm font-medium transition ${
+              className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:focus-visible:ring-[var(--brand-accent-dark)]/35 dark:focus-visible:ring-offset-slate-900 ${
                 activeTab === "statements"
-                  ? "bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100"
+                  ? "text-slate-900 dark:text-slate-100"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
               }`}
             >
