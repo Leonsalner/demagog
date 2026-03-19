@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import type { DetectMode } from "@/types";
 
 interface StatementInputProps {
@@ -99,6 +99,20 @@ export default function StatementInput({
     onSubmit(nextValue, mode);
   }
 
+  function handleTextareaKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isDisabled) {
+      return;
+    }
+
+    onSubmit(trimmedValue, mode);
+  }
+
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
       <div className="relative">
@@ -111,6 +125,7 @@ export default function StatementInput({
         <textarea
           id="statement"
           value={value}
+          onKeyDown={handleTextareaKeyDown}
           onChange={(event) => {
             onChange(event.target.value);
             onReset?.();
