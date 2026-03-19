@@ -177,7 +177,7 @@ describe("search page flow", () => {
     await renderHome();
 
     expect(
-      screen.getByText(/Vyhľadávajte vo výrokoch overených Demagogom/i),
+      screen.getByText(/Prehľadávajte overené výroky politikov\./i),
     ).toBeInTheDocument();
     expect(screen.getByText("Filtre")).toBeInTheDocument();
   });

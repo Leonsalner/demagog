@@ -78,6 +78,10 @@ function baseControlClassName() {
   return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-[#d95830] focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#f07850] dark:focus:ring-[#f07850]/20";
 }
 
+function dateControlClassName() {
+  return `${baseControlClassName()} demagog-date-input appearance-none pr-12`;
+}
+
 function normalizeListValue(value: string) {
   return value.replace(/\s+/gu, " ").trim().toLocaleLowerCase();
 }
@@ -408,7 +412,7 @@ export default function FilterSidebar({
           </div>
         </FilterSection>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
           <FilterSection label="Dátum od">
             <input
               type="date"
@@ -419,7 +423,7 @@ export default function FilterSidebar({
               onChange={(event) =>
                 updateFilter("datum_od", event.target.value || null)
               }
-              className={baseControlClassName()}
+              className={dateControlClassName()}
             />
           </FilterSection>
 
@@ -433,7 +437,7 @@ export default function FilterSidebar({
               onChange={(event) =>
                 updateFilter("datum_do", event.target.value || null)
               }
-              className={baseControlClassName()}
+              className={dateControlClassName()}
             />
           </FilterSection>
         </div>

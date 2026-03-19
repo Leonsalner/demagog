@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import HomeOnboarding from "@/components/home/HomeOnboarding";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
@@ -13,7 +13,7 @@ import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useDetect } from "@/hooks/useDetect";
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
-import type { DetectMode } from "@/types";
+import type { DetectMode, FilterState } from "@/types";
 
 export type HomeTab = "search" | "detect";
 
@@ -21,10 +21,24 @@ interface HomePageClientProps {
   activeTab: HomeTab;
 }
 
+function hasActiveFilters(filters: FilterState) {
+  return Boolean(
+    filters.strana?.length ||
+      filters.vyhodnotenie?.length ||
+      filters.meno?.length ||
+      filters.datum_od ||
+      filters.datum_do,
+  );
+}
+
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const [detectMode, setDetectMode] = useState<DetectMode>("thorough");
   const [detectStatement, setDetectStatement] = useState("");
   const [hasAutoOpenedResearch, setHasAutoOpenedResearch] = useState(false);
+  const [panelHeights, setPanelHeights] = useState<Record<HomeTab, number>>({
+    search: 0,
+    detect: 0,
+  });
   const {
     results,
     loading,
@@ -64,6 +78,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
+  const searchPanelRef = useRef<HTMLElement | null>(null);
+  const detectPanelRef = useRef<HTMLElement | null>(null);
+  const hasAnyActiveFilters = hasActiveFilters(filters);
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
@@ -95,13 +112,55 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       return;
     }
 
+    if (!hasSearched && !hasAnyActiveFilters) {
+      return;
+    }
+
     setPage(1);
     const timeout = window.setTimeout(() => {
       void searchRef.current(1);
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [filters, isModelFilterUpdateRef, setPage]);
+  }, [filters, hasAnyActiveFilters, hasSearched, isModelFilterUpdateRef, setPage]);
+
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const trackedPanels: Array<[HomeTab, RefObject<HTMLElement | null>]> = [
+      ["search", searchPanelRef],
+      ["detect", detectPanelRef],
+    ];
+
+    const observers = trackedPanels.flatMap(([tab, ref]) => {
+      const element = ref.current;
+      if (!element) {
+        return [];
+      }
+
+      const updateHeight = () => {
+        const nextHeight = Math.ceil(element.getBoundingClientRect().height);
+        setPanelHeights((current) =>
+          current[tab] === nextHeight ? current : { ...current, [tab]: nextHeight },
+        );
+      };
+
+      updateHeight();
+
+      const observer = new ResizeObserver(() => {
+        updateHeight();
+      });
+      observer.observe(element);
+
+      return [observer];
+    });
+
+    return () => {
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, []);
 
   const handleSearch = () => {
     setPage(1);
@@ -165,11 +224,16 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     detectLoading ||
     shouldAutoOpenAggregateResearch ||
     (resultMode === "thorough" && isResearchPendingReveal && !isResearchOpen);
+  const activePanelHeight = panelHeights[activeTab];
 
   return (
     <div className="relative min-h-[400px]">
-      <div className="relative">
+      <div
+        className="relative overflow-hidden transition-[height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={activePanelHeight > 0 ? { height: `${activePanelHeight}px` } : undefined}
+      >
         <section
+          ref={searchPanelRef}
           role="tabpanel"
           id="search-panel"
           aria-labelledby="navbar-search-tab"
@@ -177,7 +241,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
           className={`transition-[opacity,transform] duration-200 will-change-[opacity,transform] ${
             activeTab === "search"
               ? "relative translate-y-0 opacity-100"
-              : "pointer-events-none absolute inset-0 translate-y-3 opacity-0"
+              : "pointer-events-none absolute left-0 top-0 w-full translate-y-3 opacity-0"
           }`}
         >
           <div className="space-y-6">
@@ -190,7 +254,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               />
             </div>
 
-            <section className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[336px_minmax(0,1fr)]">
               <FilterSidebar
                 filters={filters}
                 availableFilters={availableFilters}
@@ -201,14 +265,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               <div className="min-h-[360px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 sm:p-6">
                 {!hasSearched && !loading && !error && !results ? (
                   <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      Vyhľadávajte vo výrokoch overených Demagogom
+                    <h2 className="max-w-2xl text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                      Prehľadávajte overené výroky politikov.
                     </h2>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Zadajte tému, citáciu alebo meno politika — systém
-                      automaticky rozpozná filtre. Výsledky spustíte Enterom alebo
-                      tlačidlom Hľadať.
-                    </p>
                   </div>
                 ) : null}
 
@@ -265,6 +324,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         </section>
 
         <section
+          ref={detectPanelRef}
           role="tabpanel"
           id="detect-panel"
           aria-labelledby="navbar-detect-tab"
@@ -272,7 +332,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
           className={`transition-[opacity,transform] duration-200 will-change-[opacity,transform] ${
             activeTab === "detect"
               ? "relative translate-y-0 opacity-100"
-              : "pointer-events-none absolute inset-0 translate-y-3 opacity-0"
+              : "pointer-events-none absolute left-0 top-0 w-full translate-y-3 opacity-0"
           }`}
         >
           <div className="space-y-6">
