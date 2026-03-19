@@ -255,16 +255,23 @@ export default function FilterSidebar({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => toggleVerdict(verdict)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
+                  className={`relative inline-flex items-center justify-center rounded-full border py-2 pr-3 text-sm font-medium transition-all duration-200 ease-out ${
                     isActive
                       ? verdictStyles[verdict].active
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                  } ${
+                    isActive ? "pl-3" : "pl-[2.375rem]"
                   }`}
                 >
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${verdictStyles[verdict].dot}`}
+                    aria-hidden="true"
+                    className={`absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full transition-all duration-200 ease-out ${verdictStyles[verdict].dot} ${
+                      isActive ? "scale-75 opacity-0" : "scale-100 opacity-100"
+                    }`}
                   />
-                  {verdict}
+                  <span className="transition-transform duration-200 ease-out">
+                    {verdict}
+                  </span>
                 </button>
               );
             })}
