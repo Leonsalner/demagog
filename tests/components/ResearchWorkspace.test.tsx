@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 
@@ -20,5 +20,79 @@ describe("ResearchWorkspace", () => {
     expect(screen.getByText("Súhrnný prieskum")).toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByText("Načítavam prieskum…")).toBeInTheDocument();
+  });
+
+  it("selects external sources in the workspace instead of opening a new window", () => {
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    render(
+      <ResearchWorkspace
+        isOpen
+        activeMode="statement"
+        data={{
+          mode: "statement",
+          items: [
+            {
+              id: "analysis:42",
+              kind: "analysis",
+              title: "Analýza výroku",
+              body: "Analýza obsahu výroku.",
+              url: null,
+              domain: null,
+              author: null,
+              date: null,
+              statement_refs: [
+                {
+                  statement_id: 42,
+                  vyrok: "Testovací výrok",
+                  meno: "Testovací politik",
+                  strana: "Test",
+                  verdict: "Pravda",
+                  url: null,
+                },
+              ],
+              verdict: "Pravda",
+            },
+            {
+              id: "source:9",
+              kind: "external_source",
+              title: "Ministerstvo zdravotníctva",
+              body: null,
+              url: "https://health.gov.example/report",
+              domain: "health.gov.example",
+              author: null,
+              date: null,
+              statement_refs: [
+                {
+                  statement_id: 42,
+                  vyrok: "Testovací výrok",
+                  meno: "Testovací politik",
+                  strana: "Test",
+                  verdict: "Pravda",
+                  url: null,
+                },
+              ],
+            },
+          ],
+        }}
+        loading={false}
+        error={null}
+        detectResult={null}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Ministerstvo zdravotníctva/i }));
+
+    expect(windowOpenSpy).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Otvoriť zdroj" })).toHaveAttribute(
+      "href",
+      "https://health.gov.example/report",
+    );
+
+    windowOpenSpy.mockRestore();
   });
 });

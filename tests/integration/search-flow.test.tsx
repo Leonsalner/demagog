@@ -3,6 +3,7 @@ import type { AnchorHTMLAttributes, MutableRefObject, ReactNode } from "react";
 
 import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import type { FilterState, FiltersResponse, SearchResponse } from "@/types";
 
 vi.mock("@/hooks/useSearch", () => ({
@@ -40,11 +41,13 @@ function createSearchParams(mode?: string) {
 
 async function renderHomeTree(mode?: string) {
   return (
-    <FeedbackContextProvider>
-      {await Home({
-        searchParams: createSearchParams(mode),
-      })}
-    </FeedbackContextProvider>
+    <FooterHelperVisibilityProvider>
+      <FeedbackContextProvider>
+        {await Home({
+          searchParams: createSearchParams(mode),
+        })}
+      </FeedbackContextProvider>
+    </FooterHelperVisibilityProvider>
   );
 }
 
@@ -147,6 +150,19 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
 describe("search page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     window.scrollTo = vi.fn();
     mockUseDetectReturn();
   });

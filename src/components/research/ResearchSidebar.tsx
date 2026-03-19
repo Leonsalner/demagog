@@ -143,45 +143,6 @@ export default function ResearchSidebar({
               <div className="mt-3 space-y-1">
                 {section.items.map((item) => {
                   const isSelected = item.id === selectedId;
-                  const sourceUrl = item.url;
-
-                  if (item.kind === "external_source" && sourceUrl) {
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => window.open(sourceUrl, "_blank", "noopener,noreferrer")}
-                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-transparent px-3 py-3 text-left text-sm text-slate-600 transition hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"
-                      >
-                        <span className="min-w-0">
-                        <span className="block break-words font-medium">{item.title}</span>
-                          <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-                            {item.domain || "Externý zdroj"}
-                          </span>
-                        </span>
-                        <svg
-                          aria-hidden="true"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
-                        >
-                          <path
-                            d="M5 11 11.1 4.9"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M8.4 4.9h2.7v2.7"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    );
-                  }
 
                   return (
                     <button
@@ -197,7 +158,9 @@ export default function ResearchSidebar({
                     >
                       <span className="block break-words font-medium">{item.title}</span>
                       <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-                        {item.statement_refs.length === 1
+                        {item.kind === "external_source"
+                          ? item.domain || "Externý zdroj"
+                          : item.statement_refs.length === 1
                           ? item.statement_refs[0]?.meno
                           : `${item.statement_refs.length} výroky`}
                       </span>

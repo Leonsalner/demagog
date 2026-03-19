@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -94,6 +95,51 @@ export default function FeedbackWidget() {
   }, [feedbackInstantCollapseVersion]);
 
   useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setCategory(DEFAULT_CATEGORY);
+    setMessage("");
+    setStatus("idle");
+    setErrorMessage(null);
+  }, []);
+
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const closePanel = useCallback(
+    (resetAfterClose = false) => {
+      if (isSubmitting) {
+        return;
+      }
+
+      clearCloseTimeout();
+      setIsOpen(false);
+      setErrorMessage(null);
+
+      if (resetAfterClose) {
+        resetForm();
+      } else if (status === "success") {
+        setStatus("idle");
+      }
+
+      window.setTimeout(() => {
+        triggerRef.current?.focus();
+      }, 0);
+    },
+    [clearCloseTimeout, isSubmitting, resetForm, status],
+  );
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -113,12 +159,7 @@ export default function FeedbackWidget() {
         return;
       }
 
-      setIsOpen(false);
-      setStatus((currentStatus) => (currentStatus === "success" ? "idle" : currentStatus));
-      setErrorMessage(null);
-      window.setTimeout(() => {
-        triggerRef.current?.focus();
-      }, 0);
+      closePanel(status === "success");
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -126,12 +167,7 @@ export default function FeedbackWidget() {
         return;
       }
 
-      setIsOpen(false);
-      setStatus((currentStatus) => (currentStatus === "success" ? "idle" : currentStatus));
-      setErrorMessage(null);
-      window.setTimeout(() => {
-        triggerRef.current?.focus();
-      }, 0);
+      closePanel(status === "success");
     }
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -142,41 +178,7 @@ export default function FeedbackWidget() {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, isSubmitting]);
-
-  useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current !== null) {
-        window.clearTimeout(closeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  function resetForm() {
-    setCategory(DEFAULT_CATEGORY);
-    setMessage("");
-    setStatus("idle");
-    setErrorMessage(null);
-  }
-
-  function closePanel(resetAfterClose = false) {
-    if (isSubmitting) {
-      return;
-    }
-
-    setIsOpen(false);
-    setErrorMessage(null);
-
-    if (resetAfterClose) {
-      resetForm();
-    } else if (status === "success") {
-      setStatus("idle");
-    }
-
-    window.setTimeout(() => {
-      triggerRef.current?.focus();
-    }, 0);
-  }
+  }, [closePanel, isOpen, isSubmitting, status]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -185,10 +187,7 @@ export default function FeedbackWidget() {
       return;
     }
 
-    if (closeTimeoutRef.current !== null) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
+    clearCloseTimeout();
 
     setStatus("submitting");
     setErrorMessage(null);
@@ -355,6 +354,7 @@ export default function FeedbackWidget() {
             return;
           }
 
+          clearCloseTimeout();
           setIsOpen((open) => !open);
           if (status === "success") {
             resetForm();

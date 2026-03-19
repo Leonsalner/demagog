@@ -3,6 +3,7 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 
 import {
   mockDetectDuplicate,
@@ -50,11 +51,13 @@ function createSearchParams(mode?: string) {
 
 async function renderHomeTree(mode?: string) {
   return (
-    <FeedbackContextProvider>
-      {await Home({
-        searchParams: createSearchParams(mode),
-      })}
-    </FeedbackContextProvider>
+    <FooterHelperVisibilityProvider>
+      <FeedbackContextProvider>
+        {await Home({
+          searchParams: createSearchParams(mode),
+        })}
+      </FeedbackContextProvider>
+    </FooterHelperVisibilityProvider>
   );
 }
 
@@ -137,6 +140,19 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
 describe("detect page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     mockUseSearchReturn();
     mockUseResearchReturn();
   });

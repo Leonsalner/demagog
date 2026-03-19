@@ -27,6 +27,14 @@ function AddStatementForm() {
   const oblastValueRef = useRef(form.oblast);
   const lastAutoDetectedOblastRef = useRef<string | null>(null);
   const detectRequestRef = useRef(0);
+  const detectAbortRef = useRef<AbortController | null>(null);
+
+  function invalidateOblastDetection() {
+    detectRequestRef.current += 1;
+    detectAbortRef.current?.abort();
+    detectAbortRef.current = null;
+    setIsDetectingOblast(false);
+  }
 
   useEffect(() => {
     const vyrok = searchParams.get("vyrok");
@@ -44,7 +52,7 @@ function AddStatementForm() {
   useEffect(() => {
     const query = form.vyrok.trim();
     if (query.length < MIN_OBLAST_AUTO_DETECT_LENGTH) {
-      setIsDetectingOblast(false);
+      invalidateOblastDetection();
       if (!query && !oblastValueRef.current) {
         oblastWasManualRef.current = false;
         lastAutoDetectedOblastRef.current = null;
@@ -53,11 +61,15 @@ function AddStatementForm() {
     }
 
     if (oblastWasManualRef.current) {
+      invalidateOblastDetection();
       return;
     }
 
     const requestId = detectRequestRef.current + 1;
     detectRequestRef.current = requestId;
+    detectAbortRef.current?.abort();
+    const controller = new AbortController();
+    detectAbortRef.current = controller;
 
     const timeoutId = window.setTimeout(async () => {
       setIsDetectingOblast(true);
@@ -69,6 +81,7 @@ function AddStatementForm() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ query }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -103,22 +116,38 @@ function AddStatementForm() {
             oblast: nextOblast ?? "",
           };
         });
-      } catch {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         // Ignore optional oblast suggestion failures.
       } finally {
         if (detectRequestRef.current === requestId) {
           setIsDetectingOblast(false);
+        }
+
+        if (detectAbortRef.current === controller) {
+          detectAbortRef.current = null;
         }
       }
     }, OBLAST_AUTO_DETECT_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timeoutId);
-      if (detectRequestRef.current === requestId) {
-        setIsDetectingOblast(false);
+      controller.abort();
+      if (detectAbortRef.current === controller) {
+        detectAbortRef.current = null;
       }
     };
   }, [form.vyrok]);
+
+  useEffect(
+    () => () => {
+      detectAbortRef.current?.abort();
+    },
+    [],
+  );
 
   function updateField<K extends keyof StatementFormState>(
     field: K,
@@ -176,6 +205,7 @@ function AddStatementForm() {
 
       setSavedId(payload.id);
       setStatus("success");
+      invalidateOblastDetection();
       oblastWasManualRef.current = false;
       lastAutoDetectedOblastRef.current = null;
       setForm(createInitialStatementFormState());

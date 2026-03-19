@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FeedbackContextProvider, usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
@@ -193,4 +193,47 @@ describe("FeedbackWidget", () => {
     fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
     expect(screen.getByLabelText("Správa")).toHaveValue("");
   }, 10_000);
+
+  it("clears the previous success auto-close timer before starting a new draft", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-4" }), {
+        status: 201,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+
+    renderWidget();
+
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Prvá úspešná správa." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getAllByText("Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame."),
+    ).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Zavrieť spätnú väzbu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.change(screen.getByLabelText("Správa"), {
+      target: { value: "Toto je nový draft." },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Správa")).toHaveValue("Toto je nový draft.");
+  });
 });
