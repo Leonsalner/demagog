@@ -1,5 +1,6 @@
 "use client";
 
+import type { FocusEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import ViewportPortal from "@/components/shared/ViewportPortal";
@@ -58,6 +59,20 @@ export default function ResearchReadyToast({
     }
 
     scheduleDismiss(remainingMsRef.current || AUTO_DISMISS_MS);
+  }
+
+  function handleFocusCapture() {
+    handleMouseEnter();
+  }
+
+  function handleBlurCapture(event: FocusEvent<HTMLDivElement>) {
+    const nextFocusedElement = event.relatedTarget;
+
+    if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) {
+      return;
+    }
+
+    handleMouseLeave();
   }
 
   useEffect(() => {
@@ -127,6 +142,8 @@ export default function ResearchReadyToast({
             className="pointer-events-auto relative overflow-hidden rounded-[1.35rem] border border-white/70 bg-[linear-gradient(140deg,rgba(255,255,255,0.96),rgba(255,246,240,0.82))] p-3 shadow-[0_24px_64px_-36px_rgba(15,23,42,0.42)] backdrop-blur-xl dark:border-white/8 dark:bg-[linear-gradient(140deg,rgba(15,23,42,0.94),rgba(34,21,16,0.9))] dark:shadow-[0_28px_72px_-40px_rgba(2,6,23,0.98)]"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            onFocusCapture={handleFocusCapture}
+            onBlurCapture={handleBlurCapture}
           >
             <div
               aria-hidden="true"
