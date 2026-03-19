@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import FooterHelperDock from "@/components/shared/FooterHelperDock";
 import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
@@ -317,6 +318,7 @@ function ProgressDots({
 export default function HomeOnboarding({
   includeOptionalSteps = false,
 }: HomeOnboardingProps) {
+  const pathname = usePathname();
   const steps = useMemo(
     () =>
       HOME_ONBOARDING_STEPS.filter((step) => includeOptionalSteps || !step.optional),
@@ -347,13 +349,14 @@ export default function HomeOnboarding({
   const [showFeedbackToast, setShowFeedbackToast] = useState(false);
   const [showScrollCue, setShowScrollCue] = useState(true);
   const currentStep = steps[activeStep] ?? steps[0];
+  const shouldAutoOpen = pathname === "/";
   useFooterHelperExpansionHold("feedback", showFeedbackToast);
   const isOpen =
     manualOpenState === "open"
       ? true
       : manualOpenState === "closed"
         ? false
-        : storedStatus === null;
+        : storedStatus === null && shouldAutoOpen;
 
   useEffect(() => {
     if (!isOpen) {
@@ -440,7 +443,7 @@ export default function HomeOnboarding({
 
   return (
     <>
-      <FooterHelperDock slot="guide">
+      <FooterHelperDock slot="guide" side="right">
         <FooterHelperTrigger
           onClick={() => {
             setActiveStep(0);

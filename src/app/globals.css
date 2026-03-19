@@ -112,8 +112,15 @@ body {
 
 .footer-helper-dock {
   position: fixed;
-  left: calc(env(safe-area-inset-left, 0px) + var(--footer-helper-offset));
   max-width: min(24rem, calc(100vw - (2 * var(--footer-helper-offset))));
+}
+
+.footer-helper-dock[data-side="left"] {
+  left: calc(env(safe-area-inset-left, 0px) + var(--footer-helper-offset));
+}
+
+.footer-helper-dock[data-side="right"] {
+  right: calc(env(safe-area-inset-right, 0px) + var(--footer-helper-offset));
 }
 
 .footer-helper-dock[data-slot="feedback"] {

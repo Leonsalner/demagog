@@ -9,7 +9,6 @@ import {
   type RefObject,
 } from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
-import HomeOnboarding from "@/components/home/HomeOnboarding";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
@@ -584,7 +583,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
           void retryResearch();
         }}
       />
-      <HomeOnboarding />
     </div>
   );
 }

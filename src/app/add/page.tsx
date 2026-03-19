@@ -319,9 +319,9 @@ function AddStatementForm() {
 
   return (
     <section className="px-1 py-5 sm:py-7">
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-5 sm:space-y-6">
         <section className="rounded-[2rem] bg-white/80 p-6 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.4)] backdrop-blur-sm dark:bg-slate-950/80 dark:shadow-[0_34px_100px_-60px_rgba(2,6,23,0.95)] sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
             <div className="max-w-3xl">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
                 Analyst Entry
@@ -339,7 +339,7 @@ function AddStatementForm() {
             <Link
               href="/"
               prefetch={false}
-              className="inline-flex items-center justify-center rounded-full bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex self-start sm:shrink-0 items-center justify-center rounded-full bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               Späť na hlavnú stránku
             </Link>

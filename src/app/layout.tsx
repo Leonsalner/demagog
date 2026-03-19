@@ -5,6 +5,7 @@ import {
   FeedbackContextProvider,
 } from "@/components/feedback/FeedbackContext";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
+import HomeOnboarding from "@/components/home/HomeOnboarding";
 import {
   FooterHelperVisibilityProvider,
 } from "@/components/shared/FooterHelperVisibility";
@@ -81,6 +82,9 @@ export default function RootLayout({
               <main className="mx-auto w-full max-w-[86rem] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
                 {children}
               </main>
+              <Suspense fallback={null}>
+                <HomeOnboarding />
+              </Suspense>
               <Suspense fallback={null}>
                 <FeedbackWidget />
               </Suspense>

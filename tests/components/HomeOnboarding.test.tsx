@@ -1,9 +1,18 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { vi } from "vitest";
 
 import HomeOnboarding, {
   HOME_ONBOARDING_STORAGE_KEY,
 } from "@/components/home/HomeOnboarding";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
+
+const { usePathnameMock } = vi.hoisted(() => ({
+  usePathnameMock: vi.fn(() => "/"),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: usePathnameMock,
+}));
 
 function renderOnboarding() {
   return render(
@@ -18,6 +27,7 @@ describe("HomeOnboarding", () => {
 
   beforeEach(() => {
     storage = new Map<string, string>();
+    usePathnameMock.mockReturnValue("/");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -82,6 +92,17 @@ describe("HomeOnboarding", () => {
 
   it("does not reopen automatically after completion", async () => {
     window.localStorage.setItem(HOME_ONBOARDING_STORAGE_KEY, "completed");
+
+    renderOnboarding();
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("button", { name: "Otvoriť návod" })).toBeInTheDocument();
+  });
+
+  it("keeps the guide available on /add without auto-opening the onboarding", async () => {
+    usePathnameMock.mockReturnValue("/add");
 
     renderOnboarding();
 
