@@ -230,7 +230,7 @@ export default function FilterSidebar({
             {VERDICT_ROWS.map((row, rowIndex) => (
               <div
                 key={rowIndex}
-                className="grid grid-cols-[max-content,max-content] justify-start gap-2"
+                className="flex items-center gap-2"
               >
                 {row.map((verdict) => {
                   const isActive = selectedVerdicts.includes(verdict);
