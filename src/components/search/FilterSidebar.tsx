@@ -7,7 +7,7 @@ import {
   PARTY_FILTER_OPTIONS,
   PARTY_GROUPS,
 } from "@/lib/politician-data";
-import { VERDICTS } from "@/lib/utils";
+import { VERDICT_ROWS, VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, FiltersResponse, Verdict } from "@/types";
 
 interface FilterSidebarProps {
@@ -16,33 +16,6 @@ interface FilterSidebarProps {
   filterLoadError?: boolean;
   onChange: (filters: FilterState) => void;
 }
-
-const verdictOptions: Verdict[] = VERDICTS;
-
-const verdictStyles: Record<
-  Verdict,
-  {
-    active: string;
-    dot: string;
-  }
-> = {
-  Pravda: {
-    active: "border-transparent bg-green-600 text-white dark:bg-green-500",
-    dot: "bg-green-600 dark:bg-green-500",
-  },
-  Nepravda: {
-    active: "border-transparent bg-red-600 text-white dark:bg-red-500",
-    dot: "bg-red-600 dark:bg-red-500",
-  },
-  "Zavádzajúce": {
-    active: "border-transparent bg-amber-500 text-slate-950 dark:bg-amber-400",
-    dot: "bg-amber-500 dark:bg-amber-400",
-  },
-  "Neoveriteľné": {
-    active: "border-transparent bg-slate-700 text-white dark:bg-slate-500",
-    dot: "bg-slate-700 dark:bg-slate-500",
-  },
-};
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -249,38 +222,41 @@ export default function FilterSidebar({
         ) : null}
 
         <FilterSection label="Hodnotenie">
-          <div className="flex flex-wrap gap-2">
-            {verdictOptions.map((verdict) => {
-              const isActive = selectedVerdicts.includes(verdict);
+          <div className="space-y-2">
+            {VERDICT_ROWS.map((row, rowIndex) => (
+              <div key={rowIndex} className="grid grid-cols-2 gap-2">
+                {row.map((verdict) => {
+                  const isActive = selectedVerdicts.includes(verdict);
+                  const theme = VERDICT_THEME[verdict];
 
-              return (
-                <button
-                  key={verdict}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => toggleVerdict(verdict)}
-                  className={`inline-flex items-center rounded-full border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,gap] duration-200 ease-in-out ${
-                    isActive
-                      ? verdictStyles[verdict].active
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
-                  } ${
-                    isActive ? "gap-0" : "gap-2"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`flex h-2.5 shrink-0 items-center justify-center overflow-hidden transition-[width,opacity,transform] duration-200 ease-in-out ${
-                      isActive ? "w-0 scale-75 opacity-0" : "w-2.5 scale-100 opacity-100"
-                    }`}
-                  >
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${verdictStyles[verdict].dot}`}
-                    />
-                  </span>
-                  <span>{verdict}</span>
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={verdict}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => toggleVerdict(verdict)}
+                      className={`inline-flex min-w-0 items-center justify-self-start whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,gap] duration-200 ease-in-out ${
+                        isActive
+                          ? theme.chipActive
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                      } ${isActive ? "gap-0" : "gap-2"}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-2.5 shrink-0 items-center justify-center overflow-hidden transition-[width,opacity,transform] duration-200 ease-in-out ${
+                          isActive ? "w-0 scale-75 opacity-0" : "w-2.5 scale-100 opacity-100"
+                        }`}
+                      >
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${theme.chipDot}`}
+                        />
+                      </span>
+                      <span>{verdict}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </FilterSection>
 

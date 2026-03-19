@@ -14,8 +14,8 @@ interface DetectionResultsProps {
 
 export const detectStatusConfig = {
   DUPLICATE_FOUND: {
-    container: "border-red-200 bg-red-50 dark:border-red-800/60 dark:bg-red-950/40",
-    icon: "⚠",
+    container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
+    icon: "✓",
     title: "Nájdený duplicitný výrok",
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
@@ -36,8 +36,8 @@ export const detectStatusConfig = {
       "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(217,88,48,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
   NEW_CLAIM: {
-    container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
-    icon: "✓",
+    container: "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)] dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/80",
+    icon: "+",
     title: "Nový výrok",
     description: "V databáze sa nenašiel podobný overený nárok.",
     detail: "Tento výrok vyžaduje úplné overenie.",

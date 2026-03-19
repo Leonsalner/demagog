@@ -10,24 +10,21 @@ interface DetectStatusBarProps {
 
 const statusConfig = {
   DUPLICATE_FOUND: {
-    container: "border-red-200 bg-red-50/90 dark:border-red-800/60 dark:bg-red-950/70",
+    container: "border-green-200 bg-green-50/90 dark:border-green-800/60 dark:bg-green-950/70",
     label: "Duplicitný výrok",
-    button:
-      "border-red-300/80 bg-red-200 text-red-950 hover:border-red-400 hover:bg-red-300 dark:border-red-500/60 dark:bg-red-600 dark:text-white dark:hover:bg-red-500",
   },
   RELATED_ONLY: {
     container: "border-amber-200 bg-amber-50/90 dark:border-amber-800/60 dark:bg-amber-950/70",
     label: "Súvisiace výroky",
-    button:
-      "border-amber-300/80 bg-amber-200 text-amber-950 hover:border-amber-400 hover:bg-amber-300 dark:border-amber-500/60 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500",
   },
   NEW_CLAIM: {
-    container: "border-green-200 bg-green-50/90 dark:border-green-800/60 dark:bg-green-950/70",
+    container: "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)]/90 dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/90",
     label: "Nový výrok",
-    button:
-      "border-green-300/80 bg-green-200 text-green-950 hover:border-green-400 hover:bg-green-300 dark:border-green-500/60 dark:bg-green-600 dark:text-white dark:hover:bg-green-500",
   },
 } as const;
+
+const addStatementButtonClassName =
+  "inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-accent)] bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:text-white dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]";
 
 export default function DetectStatusBar({
   inputStatement,
@@ -55,7 +52,7 @@ export default function DetectStatusBar({
           <button
             type="button"
             onClick={onAddStatement}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition ${status.button}`}
+            className={addStatementButtonClassName}
           >
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
