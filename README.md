@@ -1,37 +1,41 @@
-# AI vyhľadávanie a kontrola duplicít pre Demagog.sk
+# Demagog: vyhľadávanie, kontrola duplicít a rešerš výroku
 
-Táto ukážka približuje, ako sa dá archív Demagogu sprístupniť pre bežné vyhľadávanie aj každodennú redakčnú prácu. Namiesto presných kľúčových slov tu môžete hľadať overenia podľa ich významu a kontextu.
+Tento prototyp zjednodušuje prácu s archívom Demagogu. Pomáha rýchlo zistiť, či už bol výrok v minulosti overovaný, nájsť k nemu súvisiace záznamy a pokračovať k detailnejšej rešerši alebo k pridaniu nového výroku.
 
-Nástroj pomáha rýchlo zistiť, či už bol výrok v minulosti overený. Od hľadania sa dá následne plynulo prejsť priamo k detailnej analýze alebo k pridaniu úplne nového záznamu.
+Rozhranie je navrhnuté tak, aby sa v ňom dalo začať bez dlhého zaúčania. Pri prvom otvorení vás prevedie krátky vstavaný návod a neskôr sa k nemu dá vrátiť cez tlačidlo **`Návod`**.
 
-### 1. Vyhľadávanie v prirodzenom jazyku
+## Čo tento nástroj zjednodušuje
 
-Databáza sa dá prehľadávať bežnými otázkami a frázami. Ak sa napríklad spýtate „Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?“, systém automaticky rozpozná politickú stranu, tému aj časové obdobie. Tieto údaje rovno aplikuje ako filtre, takže výsledky presne sedia bez toho, aby ste ich museli ručne naklikávať.
+- Vyhľadávanie a kontrola duplicít na seba priamo nadväzujú, nie sú to dva oddelené nástroje.
+- Redakcia sa vie rýchlejšie rozhodnúť, či už k výroku existuje použiteľné staršie overenie, alebo treba ísť do širšej rešerše.
+- Ak výrok v databáze chýba, dá sa plynulo pokračovať k pridaniu nového záznamu.
 
-<p align="center">
-  <img src="docs/images/semantic-search-smer-ukrajina-2022.png" alt="Vyhľadávanie pomocou celej otázky o členoch strany SMER a vojne na Ukrajine" width="1100" />
-</p>
+## Rýchla kontrola, či sa už výrok neoveroval
 
-### 2. Detailný pohľad a rešerš
+Vo Vyhľadávaní stačí napísať otázku, tému, meno alebo citáciu vlastnými slovami. Vyhľadávanie samo rozozná, čo asi hľadáte, takže sa k relevantným výsledkom dostanete aj bez ručného nastavovania filtrov.
 
-Zoznamom výsledkov sa práca len začína. Tlačidlo „Preskúmať“ otvorí pracovný panel s kompletnou analýzou konkrétneho výroku, súvisiacimi článkami a zdrojmi. Všetky dôležité informácie máte na jednom mieste a môžete hneď pokračovať v rešerši.
-
-<p align="center">
-  <img src="docs/images/search-research-workspace.png" alt="Pracovný pohľad s detailnou analýzou výroku a zdrojmi" width="1100" />
-</p>
-
-### 3. Kontrola duplicít
-
-Keď narazíte na nový výrok, systém najprv overí, či podobné tvrdenie v archíve už náhodou nie je. Detektor duplicít porovná zadaný text s databázou a hneď ukáže najbližšiu zhodu. Vďaka tomu sa redakcia vyhne opakovanému overovaniu tých istých výrokov a ušetrí množstvo času.
+Ak už máte konkrétny výrok, stačí sa prepnúť do kontroly duplicít. Rýchly režim ukáže najbližšie zhody hneď. Režim `Prieskum` ide hlbšie a otvorí širší kontext podobných výrokov.
 
 <p align="center">
-  <img src="docs/images/detect-duplicate-exact-match.png" alt="Detektor duplicít našiel presnú zhodu v archíve" width="1100" />
+  <img src="public/onboarding/step-02-search-light.png" alt="Ukážka prirodzeného vyhľadávania a automatického filtrovania výrokov." width="1100" />
 </p>
 
-### 4. Pridanie nového výroku
+## Priestor na ďalšiu rešerš
 
-Ak sa v archíve nič podobné nenájde, systém výrok označí ako nový a ponúkne jeho pridanie do databázy. Prechod je plynulý – vo formulári už na vás čaká text výroku predvyplnený z predchádzajúceho kroku, takže nemusíte nič zbytočne kopírovať a vkladať nanovo.
+Ak chcete s nájdeným výrokom ďalej pracovať, tlačidlo `Preskúmať` otvorí detail výroku so všetkým potrebným na jednom mieste. Nájdete v ňom analýzu, súvisiace články Demagogu aj ďalší kontext k overeniu.
+
+Pri režime `Prieskum` sa tento pohľad otvorí automaticky a zobrazí spoločný súhrn pre viac podobných výrokov naraz. Netreba preto všetko otvárať po jednom.
 
 <p align="center">
-  <img src="docs/images/detect-no-match-new-claim.png" alt="Detektor označil výrok ako nový a ponúkol jeho pridanie do databázy" width="1100" />
+  <img src="public/onboarding/step-04-research-light.png" alt="Pracovný priestor s analýzou, článkami a zdrojmi pre ďalšiu rešerš." width="1100" />
 </p>
+
+## Keď ide o nový výrok
+
+Ak sa ukáže, že výrok ešte v databáze nie je, dá sa plynulo pokračovať na `Pridať nový výrok`. Formulár nadviaže na predchádzajúci krok a text výroku už zostane predvyplnený, aby ste ho nemuseli znova kopírovať.
+
+## Spätná väzba
+
+Toto README je len stručný prehľad pre interné použitie. Samotná aplikácia vás základnými krokmi prevedie sama.
+
+Ak pri skúšaní narazíte na chybu, nejasnosť alebo máte nápad na zlepšenie, napíšte nám priamo cez tlačidlo `Máte pripomienku?` v aplikácii.
