@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HomePageClient from "@/components/home/HomePageClient";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 
 vi.mock("@/hooks/useSearch", () => ({
@@ -35,10 +36,12 @@ function createSearchParams(value = "") {
 
 function renderHarness(activeTab: "search" | "detect") {
   return render(
-    <FeedbackContextProvider>
-      <HomePageClient activeTab={activeTab} />
-      <FeedbackWidget />
-    </FeedbackContextProvider>,
+    <FooterHelperVisibilityProvider>
+      <FeedbackContextProvider>
+        <HomePageClient activeTab={activeTab} />
+        <FeedbackWidget />
+      </FeedbackContextProvider>
+    </FooterHelperVisibilityProvider>,
   );
 }
 
@@ -47,6 +50,19 @@ describe("feedback context integration", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-3" }), {
         status: 201,
@@ -142,10 +158,12 @@ describe("feedback context integration", () => {
     });
 
     view.rerender(
-      <FeedbackContextProvider>
-        <HomePageClient activeTab="search" />
-        <FeedbackWidget />
-      </FeedbackContextProvider>,
+      <FooterHelperVisibilityProvider>
+        <FeedbackContextProvider>
+          <HomePageClient activeTab="search" />
+          <FeedbackWidget />
+        </FeedbackContextProvider>
+      </FooterHelperVisibilityProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
@@ -197,9 +215,11 @@ describe("feedback context integration", () => {
     vi.mocked(useSearchParams).mockReturnValue(createSearchParams());
 
     render(
-      <FeedbackContextProvider>
-        <FeedbackWidget />
-      </FeedbackContextProvider>,
+      <FooterHelperVisibilityProvider>
+        <FeedbackContextProvider>
+          <FeedbackWidget />
+        </FeedbackContextProvider>
+      </FooterHelperVisibilityProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));

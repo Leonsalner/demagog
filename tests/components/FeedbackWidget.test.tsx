@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FeedbackContextProvider, usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import type { FeedbackPageContext } from "@/lib/feedback";
 
@@ -21,10 +22,12 @@ function ContextPublisher({ value }: { value: FeedbackPageContext }) {
 
 function renderWidget(pageContext?: FeedbackPageContext) {
   return render(
-    <FeedbackContextProvider>
-      {pageContext ? <ContextPublisher value={pageContext} /> : null}
-      <FeedbackWidget />
-    </FeedbackContextProvider>,
+    <FooterHelperVisibilityProvider>
+      <FeedbackContextProvider>
+        {pageContext ? <ContextPublisher value={pageContext} /> : null}
+        <FeedbackWidget />
+      </FeedbackContextProvider>
+    </FooterHelperVisibilityProvider>,
   );
 }
 
@@ -33,6 +36,19 @@ describe("FeedbackWidget", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     vi.mocked(usePathname).mockReturnValue("/");
     vi.mocked(useSearchParams).mockReturnValue(createSearchParams());
     fetchMock = vi.fn();
