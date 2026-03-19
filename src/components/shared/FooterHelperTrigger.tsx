@@ -7,6 +7,7 @@ interface FooterHelperTriggerProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   icon: ReactNode;
   iconClassName?: string;
+  instantCollapse?: boolean;
   isExpandedByDefault?: boolean;
   isExpandedWhenActive?: boolean;
   label: string;
@@ -19,6 +20,7 @@ export const FooterHelperTrigger = forwardRef<HTMLButtonElement, FooterHelperTri
       disabled,
       icon,
       iconClassName,
+      instantCollapse = false,
       isExpandedByDefault = false,
       isExpandedWhenActive = false,
       label,
@@ -59,8 +61,9 @@ export const FooterHelperTrigger = forwardRef<HTMLButtonElement, FooterHelperTri
           onBlur?.(event);
         }}
         className={cn(
-          "pointer-events-auto inline-flex h-11 items-center rounded-full border border-slate-200 bg-white/96 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition-[width,padding,border-color,color,box-shadow,background-color] duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white",
-          isExpanded ? "px-4" : "w-11 justify-center px-0",
+          "pointer-events-auto inline-flex h-11 items-center rounded-full border border-slate-200 bg-white/96 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition-[width,padding,border-color,color,box-shadow,background-color] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white",
+          instantCollapse ? "duration-0" : "duration-[260ms]",
+          isExpanded ? "px-4" : "w-11 px-2.5",
           className,
         )}
       >
@@ -75,10 +78,11 @@ export const FooterHelperTrigger = forwardRef<HTMLButtonElement, FooterHelperTri
         <span
           aria-hidden={!isExpanded}
           className={cn(
-            "overflow-hidden whitespace-nowrap text-left transition-[max-width,opacity,transform,margin] duration-[180ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            "overflow-hidden whitespace-nowrap text-left transition-[max-width,opacity,margin] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            instantCollapse ? "duration-0" : "duration-[180ms]",
             isExpanded
-              ? "ml-2 max-w-[12rem] translate-x-0 opacity-100"
-              : "ml-0 max-w-0 translate-x-1 opacity-0",
+              ? "ml-2 max-w-[12rem] opacity-100"
+              : "ml-0 max-w-0 opacity-0",
           )}
         >
           {label}

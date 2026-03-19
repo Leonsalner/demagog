@@ -25,6 +25,8 @@ interface FooterHelperVisibilityValue {
   isFirstVisit: boolean;
   isMobile: boolean;
   prefersReducedMotion: boolean;
+  getInstantCollapseVersion: (target: FooterHelperTarget) => number;
+  requestInstantCollapse: (target: FooterHelperTarget) => void;
   requestExpansionWindow: (target: FooterHelperTarget, durationMs: number) => void;
   setExpansionHold: (target: FooterHelperTarget, isActive: boolean) => void;
   shouldForceExpand: (target: FooterHelperTarget) => boolean;
@@ -102,6 +104,12 @@ export function FooterHelperVisibilityProvider({
     feedback: false,
     guide: false,
   });
+  const [instantCollapseVersions, setInstantCollapseVersions] = useState<
+    Record<FooterHelperTarget, number>
+  >({
+    feedback: 0,
+    guide: 0,
+  });
   const timedHoldTimeoutsRef = useRef<Partial<Record<FooterHelperTarget, number>>>({});
 
   useEffect(() => {
@@ -177,19 +185,35 @@ export function FooterHelperVisibilityProvider({
     [],
   );
 
+  const requestInstantCollapse = useCallback((target: FooterHelperTarget) => {
+    setInstantCollapseVersions((currentVersions) => ({
+      ...currentVersions,
+      [target]: currentVersions[target] + 1,
+    }));
+  }, []);
+
+  const getInstantCollapseVersion = useCallback(
+    (target: FooterHelperTarget) => instantCollapseVersions[target],
+    [instantCollapseVersions],
+  );
+
   const value = useMemo(
     () => ({
+      getInstantCollapseVersion,
       isFirstVisit,
       isMobile,
       prefersReducedMotion,
+      requestInstantCollapse,
       requestExpansionWindow,
       setExpansionHold,
       shouldForceExpand,
     }),
     [
+      getInstantCollapseVersion,
       isFirstVisit,
       isMobile,
       prefersReducedMotion,
+      requestInstantCollapse,
       requestExpansionWindow,
       setExpansionHold,
       shouldForceExpand,

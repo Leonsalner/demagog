@@ -51,8 +51,9 @@ export default function FeedbackWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pageContext = useFeedbackPageContext();
-  const { shouldForceExpand } = useFooterHelperVisibility();
+  const { getInstantCollapseVersion, shouldForceExpand } = useFooterHelperVisibility();
   const [isOpen, setIsOpen] = useState(false);
+  const [instantCollapse, setInstantCollapse] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<SubmissionStatus>("idle");
@@ -74,8 +75,23 @@ export default function FeedbackWidget() {
     [pageContext, pathname, searchParams],
   );
   const isSubmitting = status === "submitting";
+  const feedbackInstantCollapseVersion = getInstantCollapseVersion("feedback");
   const trimmedMessage = message.trim();
   const submitDisabled = trimmedMessage.length === 0 || isSubmitting;
+
+  useEffect(() => {
+    if (feedbackInstantCollapseVersion === 0) {
+      return;
+    }
+
+    setInstantCollapse(true);
+
+    const timeout = window.setTimeout(() => {
+      setInstantCollapse(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [feedbackInstantCollapseVersion]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -346,6 +362,7 @@ export default function FeedbackWidget() {
             setErrorMessage(null);
           }
         }}
+        instantCollapse={instantCollapse}
         isExpandedByDefault={shouldForceExpand("feedback")}
         isExpandedWhenActive={isOpen}
         label="Máte pripomienku?"

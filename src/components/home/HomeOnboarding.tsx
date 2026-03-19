@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
 import {
   useFooterHelperExpansionHold,
@@ -330,8 +330,13 @@ export default function HomeOnboarding({
     readActiveTheme,
     () => "light",
   );
-  const { isFirstVisit, isMobile, requestExpansionWindow, shouldForceExpand } =
-    useFooterHelperVisibility();
+  const {
+    isFirstVisit,
+    isMobile,
+    requestExpansionWindow,
+    requestInstantCollapse,
+    shouldForceExpand,
+  } = useFooterHelperVisibility();
   const dialogRef = useRef<HTMLElement | null>(null);
   const mediaPaneRef = useRef<HTMLDivElement | null>(null);
   const contentPaneRef = useRef<HTMLDivElement | null>(null);
@@ -395,11 +400,17 @@ export default function HomeOnboarding({
     }
 
     const timeout = window.setTimeout(() => {
+      requestInstantCollapse("feedback");
       setShowFeedbackToast(false);
     }, isFirstVisit ? 30_000 : 6_000);
 
     return () => window.clearTimeout(timeout);
-  }, [isFirstVisit, showFeedbackToast]);
+  }, [isFirstVisit, requestInstantCollapse, showFeedbackToast]);
+
+  const hideFeedbackToast = useCallback(() => {
+    requestInstantCollapse("feedback");
+    setShowFeedbackToast(false);
+  }, [requestInstantCollapse]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -614,7 +625,7 @@ export default function HomeOnboarding({
 
               <button
                 type="button"
-                onClick={() => setShowFeedbackToast(false)}
+                onClick={hideFeedbackToast}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
                 aria-label="Zavrieť upozornenie na pripomienky"
               >
