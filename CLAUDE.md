@@ -143,6 +143,18 @@ Feature flags / debugging:
 - `ENABLE_SEARCH_RERANK`
 - `DEBUG_SEARCH_TIMINGS`
 
+Feedback integration:
+
+- `LINEAR_API_KEY`
+- `LINEAR_FEEDBACK_ISSUE_ID`: Linear issue UUID that incoming feedback should be attached to as a customer request
+- `LINEAR_ANONYMOUS_CUSTOMER_ID`: existing Linear customer UUID for anonymous feedback aggregation
+- `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`: existing external id on that customer; can be used instead of `LINEAR_ANONYMOUS_CUSTOMER_ID`
+
+Feedback does not use a Linear workspace id. The API route currently creates a `customerNeed` against one specific issue, so it needs an API key plus both sides of that attachment:
+
+- a target issue via `LINEAR_FEEDBACK_ISSUE_ID`
+- a pre-existing customer via `LINEAR_ANONYMOUS_CUSTOMER_ID` or `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`
+
 ## Working Notes
 
 - The main user experience lives on `/`; `/detect` currently redirects rather than hosting a separate page.

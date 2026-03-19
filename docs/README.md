@@ -46,6 +46,22 @@ GEMINI_API_KEY=...
 NEXT_PUBLIC_USE_DETECT_MOCK=false
 ```
 
+If you want the in-app feedback widget to submit into Linear, add these too:
+
+```bash
+LINEAR_API_KEY=...
+LINEAR_FEEDBACK_ISSUE_ID=...
+LINEAR_ANONYMOUS_CUSTOMER_ID=...
+# or, instead of LINEAR_ANONYMOUS_CUSTOMER_ID:
+LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID=...
+```
+
+Feedback does not need a Linear workspace id. It creates a customer request on one specific Linear issue, so you must provide:
+
+- an API key
+- the destination issue UUID in `LINEAR_FEEDBACK_ISSUE_ID`
+- an existing Linear customer id or external id for anonymous feedback aggregation
+
 3. Initialize the database:
 
 ```bash
