@@ -228,7 +228,10 @@ export default function FilterSidebar({
         <FilterSection label="Hodnotenie">
           <div className="space-y-2">
             {VERDICT_ROWS.map((row, rowIndex) => (
-              <div key={rowIndex} className="grid grid-cols-2 gap-2">
+              <div
+                key={rowIndex}
+                className="grid grid-cols-[max-content,max-content] justify-start gap-2"
+              >
                 {row.map((verdict) => {
                   const isActive = selectedVerdicts.includes(verdict);
                   const theme = VERDICT_THEME[verdict];
