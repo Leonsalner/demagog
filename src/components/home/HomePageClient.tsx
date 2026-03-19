@@ -463,7 +463,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     role="dialog"
                     aria-modal="true"
                     aria-label="Filtre vyhľadávania"
-                    className="relative max-h-[85dvh] w-full overflow-y-auto p-3 pt-10"
+                    className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] border-x border-t border-slate-200 bg-white/98 p-3 pt-16 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] overscroll-contain [-webkit-overflow-scrolling:touch] dark:border-slate-700/80 dark:bg-slate-950/98"
                     onClick={(event) => event.stopPropagation()}
                     style={{
                       paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
@@ -474,7 +474,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     <button
                       type="button"
                       onClick={() => setIsMobileFilterOpen(false)}
-                      className="absolute right-6 top-0 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+                      className="absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
                       aria-label="Zavrieť filtre"
                     >
                       <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">

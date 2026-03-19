@@ -443,7 +443,7 @@ export default function HomeOnboarding({
 
   return (
     <>
-      <FooterHelperDock slot="guide" side="right">
+      <FooterHelperDock slot="guide">
         <FooterHelperTrigger
           onClick={() => {
             setActiveStep(0);
