@@ -13,6 +13,9 @@
   --brand-border-soft: #f3c2b1;
   --brand-surface-dark: #2a1510;
   --brand-border-dark: #7a3a28;
+  --footer-helper-offset: 1rem;
+  --footer-helper-gap: 0.75rem;
+  --footer-helper-trigger-height: 2.75rem;
   color-scheme: light;
 }
 
@@ -35,6 +38,12 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --footer-helper-offset: 1.5rem;
+  }
 }
 
 .demagog-date-input {
@@ -99,6 +108,34 @@ body {
     radial-gradient(circle at 80% 30%, rgba(15, 23, 42, 0.22) 0.6px, transparent 0.8px),
     radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.2) 0.6px, transparent 0.8px);
   background-size: 22px 22px, 28px 28px, 18px 18px;
+}
+
+.footer-helper-dock {
+  position: fixed;
+  left: calc(env(safe-area-inset-left, 0px) + var(--footer-helper-offset));
+  max-width: min(24rem, calc(100vw - (2 * var(--footer-helper-offset))));
+}
+
+.footer-helper-dock[data-slot="feedback"] {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--footer-helper-offset));
+}
+
+.footer-helper-dock[data-slot="guide"] {
+  bottom: calc(
+    env(safe-area-inset-bottom, 0px) +
+      var(--footer-helper-offset) +
+      var(--footer-helper-trigger-height) +
+      var(--footer-helper-gap)
+  );
+}
+
+.footer-helper-dock[data-slot="toast"] {
+  bottom: calc(
+    env(safe-area-inset-bottom, 0px) +
+      var(--footer-helper-offset) +
+      (var(--footer-helper-trigger-height) * 2) +
+      (var(--footer-helper-gap) * 2)
+  );
 }
 
 a {

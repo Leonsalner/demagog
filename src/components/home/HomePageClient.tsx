@@ -6,7 +6,7 @@ import HomeOnboarding from "@/components/home/HomeOnboarding";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
-import FilterSidebar from "@/components/search/FilterSidebar";
+import FilterSidebar, { countActiveFilters } from "@/components/search/FilterSidebar";
 import SearchBar from "@/components/search/SearchBar";
 import SearchResults from "@/components/search/SearchResults";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
@@ -35,6 +35,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const [detectMode, setDetectMode] = useState<DetectMode>("thorough");
   const [detectStatement, setDetectStatement] = useState("");
   const [hasAutoOpenedResearch, setHasAutoOpenedResearch] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [panelHeights, setPanelHeights] = useState<Record<HomeTab, number>>({
     search: 0,
     detect: 0,
@@ -81,6 +82,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const hasAnyActiveFilters = hasActiveFilters(filters);
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
@@ -166,6 +168,28 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setPage(1);
     void search(1);
   };
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMobileFilterOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileFilterOpen]);
 
   const handlePageChange = (nextPage: number) => {
     setPage(nextPage);
@@ -255,14 +279,50 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
             </div>
 
             <section className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[336px_minmax(0,1fr)]">
-              <FilterSidebar
-                filters={filters}
-                availableFilters={availableFilters}
-                filterLoadError={filterLoadError}
-                onChange={setFilters}
-              />
+              <div className="hidden lg:block">
+                <FilterSidebar
+                  filters={filters}
+                  availableFilters={availableFilters}
+                  filterLoadError={filterLoadError}
+                  onChange={setFilters}
+                />
+              </div>
 
               <div className="min-h-[360px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 sm:p-6">
+                <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFilterOpen(true)}
+                    className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-slate-50"
+                    aria-haspopup="dialog"
+                    aria-expanded={isMobileFilterOpen}
+                    aria-controls="mobile-search-filters"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-4 w-4"
+                    >
+                      <path d="M3 5h14M6 10h8m-11 5h14" strokeLinecap="round" />
+                    </svg>
+                    <span>Filtre</span>
+                    {activeFilterCount > 0 ? (
+                      <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#d95830] px-2 py-0.5 text-xs text-white dark:bg-[#f07850] dark:text-slate-950">
+                        {activeFilterCount}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  <p className="text-right text-xs text-slate-500 dark:text-slate-400">
+                    {activeFilterCount > 0
+                      ? `${activeFilterCount} aktívne filtre`
+                      : "Bez aktívnych filtrov"}
+                  </p>
+                </div>
+
                 {!hasSearched && !loading && !error && !results ? (
                   <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                     <h2 className="max-w-2xl text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
@@ -320,6 +380,46 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 ) : null}
               </div>
             </section>
+
+            {isMobileFilterOpen ? (
+              <div
+                className="fixed inset-0 z-40 flex items-end bg-slate-950/45 backdrop-blur-sm lg:hidden"
+                onClick={() => setIsMobileFilterOpen(false)}
+              >
+                <section
+                  id="mobile-search-filters"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Filtre vyhľadávania"
+                  className="relative max-h-[85dvh] w-full overflow-y-auto p-3 pt-10"
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
+                    paddingLeft: "calc(env(safe-area-inset-left, 0px) + 0.75rem)",
+                    paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFilterOpen(false)}
+                    className="absolute right-6 top-0 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+                    aria-label="Zavrieť filtre"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                      <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </button>
+
+                  <FilterSidebar
+                    className="rounded-[2rem] shadow-[0_32px_80px_-44px_rgba(15,23,42,0.45)]"
+                    filters={filters}
+                    availableFilters={availableFilters}
+                    filterLoadError={filterLoadError}
+                    onChange={setFilters}
+                  />
+                </section>
+              </div>
+            ) : null}
           </div>
         </section>
 

@@ -179,7 +179,7 @@ describe("search page flow", () => {
     expect(
       screen.getByText(/Prehľadávajte overené výroky politikov\./i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Filtre")).toBeInTheDocument();
+    expect(screen.getAllByText("Filtre").length).toBeGreaterThan(0);
   });
 
   it("submits a query through the search button", async () => {
@@ -203,6 +203,24 @@ describe("search page flow", () => {
       strana: ["Hlas"],
     });
   }, 20_000);
+
+  it("opens and closes the mobile filter drawer from the trigger", async () => {
+    mockUseSearchReturn();
+
+    await renderHome();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Filtre/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Filtre vyhľadávania" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zavrieť filtre" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Filtre vyhľadávania" }),
+    ).not.toBeInTheDocument();
+  });
 
   it("does not auto-search when only the query changes and search is recreated", async () => {
     vi.useFakeTimers();

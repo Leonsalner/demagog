@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import FooterHelperDock from "@/components/shared/FooterHelperDock";
 import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
 import {
   useFooterHelperExpansionHold,
   useFooterHelperVisibility,
 } from "@/components/shared/FooterHelperVisibility";
+import ViewportPortal from "@/components/shared/ViewportPortal";
 import { readActiveTheme, type ThemeMode } from "@/lib/theme";
 
 import { HOME_ONBOARDING_STEPS, type HomeOnboardingStep } from "./homeOnboardingSteps";
@@ -438,7 +440,7 @@ export default function HomeOnboarding({
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-4 right-4 z-30 sm:bottom-6 sm:right-6">
+      <FooterHelperDock slot="guide">
         <FooterHelperTrigger
           onClick={() => {
             setActiveStep(0);
@@ -452,156 +454,183 @@ export default function HomeOnboarding({
           iconClassName="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
           icon="?"
         />
-      </div>
+      </FooterHelperDock>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+        <ViewportPortal>
           <div
-            className="absolute inset-0"
-            aria-hidden="true"
-            onClick={() => closeOnboarding("dismissed")}
-          />
-
-          <section
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Rýchly návod k práci s Demagogom"
-            onScroll={(event) => {
-              if (activeStep === 0 && event.currentTarget.scrollTop > 24) {
-                setShowScrollCue(false);
-              }
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:items-center sm:p-6"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
+              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 0.75rem)",
+              paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
             }}
-            className="relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
           >
-            <button
-              type="button"
+            <div
+              className="absolute inset-0"
+              aria-hidden="true"
               onClick={() => closeOnboarding("dismissed")}
-              className="absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
-              aria-label="Zavrieť návod"
-            >
-              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-              </svg>
-            </button>
+            />
 
-            <div
-              ref={mediaPaneRef}
-              className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 pt-16 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] sm:p-6 sm:pt-16 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 lg:pt-20 xl:p-10 xl:pt-20"
+            <section
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Rýchly návod k práci s Demagogom"
+              onScroll={(event) => {
+                if (activeStep === 0 && event.currentTarget.scrollTop > 24) {
+                  setShowScrollCue(false);
+                }
+              }}
+              className="relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] sm:max-h-[calc(100dvh-3rem)] lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
             >
-              <MediaStage step={currentStep} theme={theme} />
-            </div>
+              <div className="sticky top-0 z-30 flex items-center justify-end border-b border-slate-200/80 bg-white/94 px-3 py-3 backdrop-blur sm:px-4 lg:hidden dark:border-slate-800/80 dark:bg-slate-950/92">
+                <button
+                  type="button"
+                  onClick={() => closeOnboarding("dismissed")}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
+                  aria-label="Zavrieť návod"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                    <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                  </svg>
+                </button>
+              </div>
 
-            <div
-              ref={contentPaneRef}
-              className="flex flex-col overflow-visible bg-white/96 p-5 pt-6 dark:bg-slate-950/65 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
-            >
-              <div className="pr-14">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c04a25] dark:text-[#f07850]">
-                    {currentStep.eyebrow}
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2rem]">
-                    {currentStep.title}
-                  </h2>
-                </div>
+              <button
+                type="button"
+                onClick={() => closeOnboarding("dismissed")}
+                aria-hidden="true"
+                className="absolute right-4 top-4 z-20 hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950 lg:inline-flex"
+                tabIndex={-1}
+                aria-label="Zavrieť návod"
+              >
+                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                  <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+
+              <div
+                ref={mediaPaneRef}
+                className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 lg:pt-20 xl:p-10 xl:pt-20"
+              >
+                <MediaStage step={currentStep} theme={theme} />
               </div>
 
               <div
-                key={`copy-${currentStep.id}`}
-                className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3"
+                ref={contentPaneRef}
+                className="flex flex-col overflow-visible bg-white/96 p-5 pt-6 dark:bg-slate-950/65 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
               >
-                {currentStep.body.map((line) => (
-                  <p key={line} className="text-sm leading-7 text-slate-600 dark:text-slate-300">
-                    {line}
-                  </p>
-                ))}
-              </div>
-
-              <div className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-slate-200 bg-white/94 px-5 pb-5 pt-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/94 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0">
-                <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200/90 bg-white/92 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_56px_-40px_rgba(2,6,23,0.95)]">
+                <div className="pr-0 lg:pr-14">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                      Krok {activeStep + 1} z {steps.length}
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c04a25] dark:text-[#f07850]">
+                      {currentStep.eyebrow}
                     </p>
-                    <div className="mt-3">
-                      <ProgressDots
-                        steps={steps}
-                        activeStep={activeStep}
-                        onSelect={(stepIndex) => {
-                          setActiveStep(stepIndex);
-                          setShowScrollCue(stepIndex === 0);
-                        }}
-                      />
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2rem]">
+                      {currentStep.title}
+                    </h2>
+                  </div>
+                </div>
+
+                <div
+                  key={`copy-${currentStep.id}`}
+                  className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3"
+                >
+                  {currentStep.body.map((line) => (
+                    <p key={line} className="text-sm leading-7 text-slate-600 dark:text-slate-300">
+                      {line}
+                    </p>
+                  ))}
+                </div>
+
+                <div
+                  className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-slate-200 bg-white/94 px-5 pb-5 pt-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/94 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
+                  style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 1.25rem)" }}
+                >
+                  <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200/90 bg-white/92 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_56px_-40px_rgba(2,6,23,0.95)]">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
+                        Krok {activeStep + 1} z {steps.length}
+                      </p>
+                      <div className="mt-3">
+                        <ProgressDots
+                          steps={steps}
+                          activeStep={activeStep}
+                          onSelect={(stepIndex) => {
+                            setActiveStep(stepIndex);
+                            setShowScrollCue(stepIndex === 0);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      {activeStep > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveStep((stepIndex) => {
+                              const nextStepIndex = Math.max(0, stepIndex - 1);
+                              setShowScrollCue(nextStepIndex === 0);
+                              return nextStepIndex;
+                            })
+                          }
+                          className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                        >
+                          Späť
+                        </button>
+                      ) : null}
+
+                      {isLastStep ? (
+                        <button
+                          type="button"
+                          onClick={() => closeOnboarding("completed")}
+                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                        >
+                          Hotovo
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveStep((stepIndex) => {
+                              const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
+                              setShowScrollCue(false);
+                              return nextStepIndex;
+                            })
+                          }
+                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                        >
+                          Ďalej
+                        </button>
+                      )}
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="flex flex-wrap items-center justify-end gap-3">
-                    {activeStep > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveStep((stepIndex) => {
-                            const nextStepIndex = Math.max(0, stepIndex - 1);
-                            setShowScrollCue(nextStepIndex === 0);
-                            return nextStepIndex;
-                          })
-                        }
-                        className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
-                      >
-                        Späť
-                      </button>
-                    ) : null}
-
-                    {isLastStep ? (
-                      <button
-                        type="button"
-                        onClick={() => closeOnboarding("completed")}
-                        className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                      >
-                        Hotovo
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setActiveStep((stepIndex) => {
-                            const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
-                            setShowScrollCue(false);
-                            return nextStepIndex;
-                          })
-                        }
-                        className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                      >
-                        Ďalej
-                      </button>
-                    )}
+              {showScrollCue ? (
+                <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 sm:hidden">
+                  <div className="flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/92 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.38)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-200">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className="h-3.5 w-3.5 animate-bounce text-[#d95830] dark:text-[#f07850]"
+                    >
+                      <path d="M8 12.28 3.22 7.5a.75.75 0 1 1 1.06-1.06L8 10.16l3.72-3.72a.75.75 0 1 1 1.06 1.06L8 12.28Z" />
+                    </svg>
+                    Posuňte nižšie pre ďalšie kroky
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {showScrollCue ? (
-              <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 sm:hidden">
-                <div className="flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/92 px-3 py-2 text-xs font-medium text-slate-600 shadow-[0_18px_44px_-30px_rgba(15,23,42,0.38)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-200">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                    className="h-3.5 w-3.5 animate-bounce text-[#d95830] dark:text-[#f07850]"
-                  >
-                    <path d="M8 12.28 3.22 7.5a.75.75 0 1 1 1.06-1.06L8 10.16l3.72-3.72a.75.75 0 1 1 1.06 1.06L8 12.28Z" />
-                  </svg>
-                  Posuňte nižšie pre ďalšie kroky
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </div>
+              ) : null}
+            </section>
+          </div>
+        </ViewportPortal>
       ) : null}
 
       {showFeedbackToast ? (
-        <div className="pointer-events-none fixed bottom-20 left-4 z-[55] w-[min(22rem,calc(100vw-2rem))] sm:bottom-24 sm:left-6">
+        <FooterHelperDock slot="toast" className="z-[55] w-[min(22rem,calc(100vw-2rem))]">
           <div
             role="status"
             aria-live="polite"
@@ -635,7 +664,7 @@ export default function HomeOnboarding({
               </button>
             </div>
           </div>
-        </div>
+        </FooterHelperDock>
       ) : null}
     </>
   );

@@ -11,6 +11,7 @@ import { VERDICT_ROWS, VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, FiltersResponse, Verdict } from "@/types";
 
 interface FilterSidebarProps {
+  className?: string;
   filters: FilterState;
   availableFilters: FiltersResponse | null;
   filterLoadError?: boolean;
@@ -78,7 +79,7 @@ function buildPartyOptions(parties: string[]) {
   });
 }
 
-function countActiveFilters(filters: FilterState) {
+export function countActiveFilters(filters: FilterState) {
   return [
     filters.strana && filters.strana.length > 0 ? "strana" : null,
     filters.vyhodnotenie && filters.vyhodnotenie.length > 0
@@ -91,6 +92,7 @@ function countActiveFilters(filters: FilterState) {
 }
 
 export default function FilterSidebar({
+  className,
   filters,
   availableFilters,
   filterLoadError = false,
@@ -192,7 +194,9 @@ export default function FilterSidebar({
   const limitedPeople = filteredPeople.slice(0, personQuery ? 12 : 8);
 
   return (
-    <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+    <aside
+      className={`h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 ${className ?? ""}`}
+    >
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-bold uppercase tracking-[0.22em] text-slate-900 dark:text-slate-100">
