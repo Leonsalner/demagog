@@ -3,12 +3,34 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HomeOnboarding, {
   HOME_ONBOARDING_STORAGE_KEY,
 } from "@/components/home/HomeOnboarding";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
+
+function renderOnboarding() {
+  return render(
+    <FooterHelperVisibilityProvider>
+      <HomeOnboarding />
+    </FooterHelperVisibilityProvider>,
+  );
+}
 
 describe("HomeOnboarding", () => {
   let storage = new Map<string, string>();
 
   beforeEach(() => {
     storage = new Map<string, string>();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {
@@ -28,7 +50,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("opens automatically on first visit", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     expect(
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
@@ -37,7 +59,7 @@ describe("HomeOnboarding", () => {
   }, 20_000);
 
   it("persists dismissal and supports manual reopen", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     fireEvent.click(
       await screen.findByRole("button", {
@@ -61,7 +83,7 @@ describe("HomeOnboarding", () => {
   it("does not reopen automatically after completion", async () => {
     window.localStorage.setItem(HOME_ONBOARDING_STORAGE_KEY, "completed");
 
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -70,7 +92,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("stores completion on the last step", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
     fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
@@ -87,7 +109,7 @@ describe("HomeOnboarding", () => {
   }, 20_000);
 
   it("navigates forward and backward across steps", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     expect(
       await screen.findByRole("heading", {
@@ -119,7 +141,7 @@ describe("HomeOnboarding", () => {
   }, 20_000);
 
   it("navigates directly through progress dots", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Prejsť na krok 3" }));
 
@@ -133,7 +155,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("dismisses from the close button and persists the dismissed status", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
 
@@ -145,7 +167,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("shows and hides the mobile scroll cue on the first step", async () => {
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     const dialog = await screen.findByRole("dialog", {
       name: "Rýchly návod k práci s Demagogom",
@@ -167,7 +189,7 @@ describe("HomeOnboarding", () => {
   it("switches onboarding media to dark assets when the active theme is dark", async () => {
     document.documentElement.dataset.theme = "dark";
 
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
 
@@ -181,7 +203,7 @@ describe("HomeOnboarding", () => {
   it("uses dark assets for all image-backed onboarding steps", async () => {
     document.documentElement.dataset.theme = "dark";
 
-    render(<HomeOnboarding />);
+    renderOnboarding();
 
     const expectedAssets = [
       {

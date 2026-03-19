@@ -77,18 +77,18 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "research",
     eyebrow: "4. Preskúmať",
-    title: "Z výsledku priamo k analýze.",
+    title: "Všetky zistenia na jednom mieste.",
     body: [
-      "Tlačidlo Preskúmať nájdete pri výsledkoch vo Vyhľadávaní aj v Detekcii duplicít.",
-      "Otvorí vám kompletný prehľad o výroku: text analýzy, súvisiace články z Demagogu a konkrétne podklady, o ktoré sa overenie opiera.",
-      "Všetky podstatné informácie máte na jednom mieste a môžete s nimi ihneď pracovať.",
+      "Vo Vyhľadávaní a v Rýchlej detekcii sa do detailu dostanete cez tlačidlo Preskúmať. Pri režime Prieskum sa pracovné rozhranie otvorí automaticky.",
+      "Nájdete tu detailnú analýzu, súvisiace články z Demagogu a konkrétne zdroje, o ktoré sa overenie opiera.",
+      "Pri Prieskume sa navyše zobrazí súhrn viacerých zistení naraz, takže si širší kontext pozriete bez ďalšieho preklikávania.",
     ],
     media: {
       kind: "image",
       lightSrc: "/onboarding/step-04-research-light.png",
       darkSrc: "/onboarding/step-04-research-dark.png",
       alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
-      caption: "Preskúmať spája analýzu, Demagog články a podklady k overeniu na jednom mieste.",
+      caption: "Preskúmať a Prieskum vedú do rovnakého pracovného priestoru, ktorý podľa režimu ukáže detail výroku alebo širší súhrn.",
       aspectRatio: "16 / 9",
     },
   },
