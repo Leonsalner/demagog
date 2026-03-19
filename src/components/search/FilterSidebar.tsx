@@ -19,18 +19,29 @@ interface FilterSidebarProps {
 
 const verdictOptions: Verdict[] = VERDICTS;
 
-const verdictDotClass: Record<Verdict, string> = {
-  Pravda: "bg-green-600",
-  Nepravda: "bg-red-600",
-  "Zavádzajúce": "bg-amber-600",
-  "Neoveriteľné": "bg-slate-500",
-};
-
-const verdictActiveClass: Record<Verdict, string> = {
-  Pravda: "border-transparent bg-green-600 text-white dark:bg-green-500",
-  Nepravda: "border-transparent bg-red-600 text-white dark:bg-red-500",
-  "Zavádzajúce": "border-transparent bg-amber-500 text-slate-950 dark:bg-amber-400",
-  "Neoveriteľné": "border-transparent bg-slate-700 text-white dark:bg-slate-500",
+const verdictStyles: Record<
+  Verdict,
+  {
+    active: string;
+    dot: string;
+  }
+> = {
+  Pravda: {
+    active: "border-transparent bg-green-600 text-white dark:bg-green-500",
+    dot: "bg-green-600 dark:bg-green-500",
+  },
+  Nepravda: {
+    active: "border-transparent bg-red-600 text-white dark:bg-red-500",
+    dot: "bg-red-600 dark:bg-red-500",
+  },
+  "Zavádzajúce": {
+    active: "border-transparent bg-amber-500 text-slate-950 dark:bg-amber-400",
+    dot: "bg-amber-500 dark:bg-amber-400",
+  },
+  "Neoveriteľné": {
+    active: "border-transparent bg-slate-700 text-white dark:bg-slate-500",
+    dot: "bg-slate-700 dark:bg-slate-500",
+  },
 };
 
 const emptyFilters: FilterState = {
@@ -246,13 +257,24 @@ export default function FilterSidebar({
                   onClick={() => toggleVerdict(verdict)}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
                     isActive
-                      ? verdictActiveClass[verdict]
+                      ? verdictStyles[verdict].active
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
                   }`}
                 >
-                  <span
-                    className={`h-2.5 w-2.5 rounded-full ${verdictDotClass[verdict]}`}
-                  />
+                  <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+                    <span
+                      className={`absolute inset-0 rounded-full border transition-all duration-200 ${
+                        isActive
+                          ? "scale-100 border-slate-950/65 opacity-100 dark:border-slate-50/80"
+                          : "scale-75 border-transparent opacity-0"
+                      }`}
+                    />
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full transition-transform duration-200 ${verdictStyles[verdict].dot} ${
+                        isActive ? "scale-90" : "scale-100"
+                      }`}
+                    />
+                  </span>
                   {verdict}
                 </button>
               );
