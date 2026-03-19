@@ -61,21 +61,17 @@ function normalizeListValue(value: string) {
 }
 
 function buildPartyOptions(parties: string[]) {
-  return PARTY_FILTER_OPTIONS.flatMap((option) => {
-    const matchedValue = parties.find((party) =>
+  return PARTY_FILTER_OPTIONS.map((option) => {
+    const matchedValues = parties.filter((party) =>
       option.aliases.some(
         (alias) => normalizeListValue(alias) === normalizeListValue(party),
       ),
     );
 
-    return matchedValue
-      ? [
-          {
-            label: option.label,
-            value: matchedValue,
-          },
-        ]
-      : [];
+    return {
+      label: option.label,
+      values: matchedValues.length > 0 ? matchedValues : [option.label],
+    };
   });
 }
 
@@ -175,10 +171,13 @@ export default function FilterSidebar({
     updateFilter("meno", nextNames.length > 0 ? nextNames : null);
   };
 
-  const toggleParty = (party: string) => {
-    const nextParties = selectedParties.includes(party)
-      ? selectedParties.filter((currentParty) => currentParty !== party)
-      : [...selectedParties, party];
+  const toggleParty = (partyValues: string[]) => {
+    const isActive = partyValues.some((partyValue) =>
+      selectedParties.includes(partyValue),
+    );
+    const nextParties = isActive
+      ? selectedParties.filter((currentParty) => !partyValues.includes(currentParty))
+      : [...selectedParties, ...partyValues.filter((partyValue) => !selectedParties.includes(partyValue))];
 
     updateFilter("strana", nextParties.length > 0 ? nextParties : null);
   };
@@ -270,14 +269,16 @@ export default function FilterSidebar({
         <FilterSection label="Politická strana">
           <div className="flex flex-wrap gap-2">
             {partyOptions.map((party) => {
-              const isActive = selectedParties.includes(party.value);
+              const isActive = party.values.some((partyValue) =>
+                selectedParties.includes(partyValue),
+              );
 
               return (
                 <button
-                  key={party.value}
+                  key={party.label}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => toggleParty(party.value)}
+                  onClick={() => toggleParty(party.values)}
                   className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                     isActive
                       ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"

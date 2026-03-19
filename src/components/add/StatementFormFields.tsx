@@ -3,6 +3,7 @@
 import type React from "react";
 
 import { OBLAST_OPTIONS } from "@/lib/statement-topics";
+import { validateSourceUrl } from "@/lib/source-url";
 import { cn, VERDICTS } from "@/lib/utils";
 import type { Verdict } from "@/types";
 
@@ -69,11 +70,21 @@ export function applySourceDraftChange(
     [field]: value,
   };
 
-  const activeRows = nextSources.filter(
+  const startedRows = nextSources.filter(
     (source) => source.label.trim() || source.url.trim(),
   );
 
-  return [...activeRows, { ...EMPTY_SOURCE_ROW }];
+  if (startedRows.length === 0) {
+    return [{ ...EMPTY_SOURCE_ROW }];
+  }
+
+  const lastStartedRow = startedRows[startedRows.length - 1];
+  const shouldAppendTrailingRow =
+    validateSourceUrl(lastStartedRow.url).status === "valid";
+
+  return shouldAppendTrailingRow
+    ? [...startedRows, { ...EMPTY_SOURCE_ROW }]
+    : startedRows;
 }
 
 function OptionalBadge() {
@@ -161,11 +172,13 @@ type StatementFormFieldsProps = {
   secondaryAction?: React.ReactNode;
   note?: string;
   oblastHint?: React.ReactNode;
+  sourceUrlErrors?: Record<number, string>;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   updateField: <K extends keyof StatementFormState>(
     field: K,
     value: StatementFormState[K],
   ) => void;
+  onSourceUrlBlur?: (index: number) => void;
   updateSourceField: (
     index: number,
     field: keyof StatementSourceDraft,
@@ -182,8 +195,10 @@ export default function StatementFormFields({
   secondaryAction,
   note = "Povinné polia: výrok, meno, strana, vyhodnotenie.",
   oblastHint,
+  sourceUrlErrors = {},
   onSubmit,
   updateField,
+  onSourceUrlBlur,
   updateSourceField,
 }: StatementFormFieldsProps) {
   return (
@@ -344,13 +359,15 @@ export default function StatementFormFields({
         </div>
         <p className="mb-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
           Pridaj články, štúdie alebo iné podklady, z ktorých vychádza
-          odôvodnenie. Keď doplníš posledný riadok, automaticky sa zobrazí ďalší.
+          odôvodnenie. Ďalší riadok sa zobrazí až po doplnení platného odkazu v
+          poslednom zdroji.
         </p>
 
         <div className="space-y-3">
           {form.sources.map((source, index) => {
             const labelId = `${idPrefix}-source-label-${index}`;
             const urlId = `${idPrefix}-source-url-${index}`;
+            const sourceUrlError = sourceUrlErrors[index];
 
             return (
               <div
@@ -382,10 +399,35 @@ export default function StatementFormFields({
                     onChange={(event) =>
                       updateSourceField(index, "url", event.target.value)
                     }
+                    onBlur={() => onSourceUrlBlur?.(index)}
                     inputMode="url"
                     placeholder="https://..."
-                    className={FIELD_BASE_CLASS}
+                    aria-invalid={sourceUrlError ? "true" : "false"}
+                    className={cn(
+                      FIELD_BASE_CLASS,
+                      sourceUrlError &&
+                        "border-red-300 bg-red-50/70 pr-11 text-red-950 placeholder:text-red-400 focus:border-red-500 focus:ring-red-500/15 dark:border-red-900/80 dark:bg-red-950/25 dark:text-red-100 dark:placeholder:text-red-500 dark:focus:border-red-500 dark:focus:ring-red-500/20",
+                    )}
                   />
+                  {sourceUrlError ? (
+                    <p className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-300">
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="h-3.5 w-3.5 shrink-0"
+                      >
+                        <path
+                          d="M10 6.5v4.5M10 14.25h.01M9.12 3.86 3.82 13.3a1.25 1.25 0 0 0 1.09 1.86H15.5a1.25 1.25 0 0 0 1.09-1.86L11.3 3.86a1.25 1.25 0 0 0-2.18 0Z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span>{sourceUrlError}</span>
+                    </p>
+                  ) : null}
                 </div>
               </div>
             );

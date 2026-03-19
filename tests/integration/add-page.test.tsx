@@ -144,4 +144,30 @@ describe("add page oblast auto-detect", () => {
       }),
     );
   });
+
+  it("normalizes valid source URLs and flags malformed ones inline", async () => {
+    render(<AddStatementPage />);
+
+    fireEvent.change(screen.getByLabelText("Štítok zdroja"), {
+      target: { value: "Denník N" },
+    });
+    expect(screen.getAllByLabelText("URL zdroja")).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText("URL zdroja"), {
+      target: { value: "dennikn.sk/clanok" },
+    });
+    expect(screen.getAllByLabelText("URL zdroja")).toHaveLength(2);
+
+    fireEvent.blur(screen.getAllByLabelText("URL zdroja")[0]);
+    expect(screen.getAllByLabelText("URL zdroja")[0]).toHaveValue(
+      "https://dennikn.sk/clanok",
+    );
+
+    fireEvent.change(screen.getAllByLabelText("URL zdroja")[1], {
+      target: { value: "notaurl" },
+    });
+    fireEvent.blur(screen.getAllByLabelText("URL zdroja")[1]);
+
+    expect(screen.getByText("Zadajte platný odkaz.")).toBeInTheDocument();
+  });
 });

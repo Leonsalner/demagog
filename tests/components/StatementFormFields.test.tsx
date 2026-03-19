@@ -43,7 +43,7 @@ function TestHarness() {
 }
 
 describe("StatementFormFields", () => {
-  it("adds a new empty source row when the current last row becomes non-empty", async () => {
+  it("adds a new empty source row only after the current last row has a valid URL", async () => {
     const user = userEvent.setup();
 
     render(<TestHarness />);
@@ -51,6 +51,11 @@ describe("StatementFormFields", () => {
     expect(screen.getAllByLabelText("Štítok zdroja")).toHaveLength(1);
 
     await user.type(screen.getByLabelText("Štítok zdroja"), "Denník N");
+
+    expect(screen.getAllByLabelText("Štítok zdroja")).toHaveLength(1);
+    expect(screen.getAllByLabelText("URL zdroja")).toHaveLength(1);
+
+    await user.type(screen.getByLabelText("URL zdroja"), "dennikn.sk/clanok");
 
     expect(screen.getAllByLabelText("Štítok zdroja")).toHaveLength(2);
     expect(screen.getAllByLabelText("URL zdroja")).toHaveLength(2);

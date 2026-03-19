@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import DetectionResults from "@/components/detect/DetectionResults";
 import HomeOnboarding from "@/components/home/HomeOnboarding";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
@@ -41,6 +48,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     search: 0,
     detect: 0,
   });
+  const [lockedPanelHeight, setLockedPanelHeight] = useState<number | null>(null);
   const {
     results,
     loading,
@@ -82,6 +90,8 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const searchRef = useRef(search);
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
+  const previousActiveTabRef = useRef<HomeTab>(activeTab);
+  const panelHeightReleaseRef = useRef<number | null>(null);
   const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
@@ -164,6 +174,66 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       observers.forEach((observer) => observer.disconnect());
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const previousActiveTab = previousActiveTabRef.current;
+    previousActiveTabRef.current = activeTab;
+
+    if (previousActiveTab === activeTab) {
+      return;
+    }
+
+    const previousPanel =
+      previousActiveTab === "search" ? searchPanelRef.current : detectPanelRef.current;
+    const nextPanel =
+      activeTab === "search" ? searchPanelRef.current : detectPanelRef.current;
+    const previousHeight =
+      panelHeights[previousActiveTab] ||
+      Math.ceil(previousPanel?.getBoundingClientRect().height ?? 0);
+    const nextHeight =
+      panelHeights[activeTab] || Math.ceil(nextPanel?.getBoundingClientRect().height ?? 0);
+
+    if (!previousHeight || !nextHeight) {
+      const resetFrameId = window.requestAnimationFrame(() => {
+        setLockedPanelHeight(null);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(resetFrameId);
+      };
+    }
+
+    if (panelHeightReleaseRef.current !== null) {
+      window.clearTimeout(panelHeightReleaseRef.current);
+    }
+
+    let animateFrameId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      setLockedPanelHeight(previousHeight);
+      animateFrameId = window.requestAnimationFrame(() => {
+        setLockedPanelHeight(nextHeight);
+      });
+    });
+
+    panelHeightReleaseRef.current = window.setTimeout(() => {
+      setLockedPanelHeight(null);
+      panelHeightReleaseRef.current = null;
+    }, 320);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(animateFrameId);
+    };
+  }, [activeTab, panelHeights]);
+
+  useEffect(
+    () => () => {
+      if (panelHeightReleaseRef.current !== null) {
+        window.clearTimeout(panelHeightReleaseRef.current);
+      }
+    },
+    [],
+  );
 
   const handleSearch = () => {
     setPage(1);
@@ -249,13 +319,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     detectLoading ||
     shouldAutoOpenAggregateResearch ||
     (resultMode === "thorough" && isResearchPendingReveal && !isResearchOpen);
-  const activePanelHeight = panelHeights[activeTab];
 
   return (
     <div className="relative min-h-[400px]">
       <div
         className="relative overflow-hidden transition-[height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={activePanelHeight > 0 ? { height: `${activePanelHeight}px` } : undefined}
+        style={
+          lockedPanelHeight !== null ? { height: `${lockedPanelHeight}px` } : undefined
+        }
       >
         <section
           ref={searchPanelRef}

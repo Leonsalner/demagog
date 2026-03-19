@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
+import { validateSourceUrl } from "@/lib/source-url";
 import {
   getSupabaseAdminConfigError,
   supabaseAdmin,
@@ -59,16 +60,12 @@ function coerceAbsoluteHttpUrl(value: unknown): string | null | undefined {
     return null;
   }
 
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return undefined;
-    }
-
-    return parsed.toString();
-  } catch {
+  const validation = validateSourceUrl(trimmed);
+  if (validation.status !== "valid") {
     return undefined;
   }
+
+  return validation.normalized;
 }
 
 function coerceStatementSources(

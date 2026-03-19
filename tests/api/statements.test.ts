@@ -114,14 +114,14 @@ describe("POST /api/statements", () => {
     });
   });
 
-  it("returns 400 for invalid source URLs", async () => {
+  it("returns 400 for malformed source URLs", async () => {
     const response = await POST(
       createRequest({
         vyrok: "Vyrok",
         meno: "Politik",
         strana: "Strana",
         vyhodnotenie: "Pravda",
-        sources: [{ label: "Dennik N", url: "dennikn.sk/clanok" }],
+        sources: [{ label: "Dennik N", url: "notaurl" }],
       }),
     );
 
@@ -129,6 +129,32 @@ describe("POST /api/statements", () => {
     await expect(response.json()).resolves.toEqual({
       error: "sources[0].url must be an absolute http/https URL",
     });
+  });
+
+  it("normalizes source URLs without a scheme before saving", async () => {
+    const supabase = createSupabaseMock();
+    vi.mocked(supabaseAdmin).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        vyrok: "Vyrok",
+        meno: "Politik",
+        strana: "Strana",
+        vyhodnotenie: "Pravda",
+        sources: [{ label: "Dennik N", url: "dennikn.sk/clanok/123" }],
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(supabase.sourceInsert).toHaveBeenCalledWith([
+      {
+        statement_id: 17,
+        position: 0,
+        label: "Dennik N",
+        url: "https://dennikn.sk/clanok/123",
+        title: null,
+      },
+    ]);
   });
 
   it("saves a statement, stamps analysis metadata, and persists sources", async () => {

@@ -6,7 +6,7 @@ import FilterSidebar from "@/components/search/FilterSidebar";
 import type { FilterState, FiltersResponse } from "@/types";
 
 const availableFilters: FiltersResponse = {
-  strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO"],
+  strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO", "Nestraníci", "nestranník"],
   mena: [
     "Denisa Saková",
     "Milan Majerský",
@@ -85,6 +85,27 @@ describe("FilterSidebar", () => {
       "true",
     );
   }, 20_000);
+
+  it("toggles grouped no-party aliases from the Nestranník pill", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <FilterSidebar
+        filters={emptyFilters}
+        availableFilters={availableFilters}
+        filterLoadError={false}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nestranník" }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...emptyFilters,
+      strana: ["Nestraníci", "nestranník"],
+    });
+  });
 
   it("opens the recommended politician panel and toggles a card", async () => {
     const user = userEvent.setup();

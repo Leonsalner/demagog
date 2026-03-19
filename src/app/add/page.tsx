@@ -10,6 +10,7 @@ import StatementFormFields, {
   type StatementFormState,
   type StatementFormStatus,
 } from "@/components/add/StatementFormFields";
+import { normalizeSourceUrl, validateSourceUrl } from "@/lib/source-url";
 
 const OBLAST_AUTO_DETECT_DEBOUNCE_MS = 700;
 const MIN_OBLAST_AUTO_DETECT_LENGTH = 20;
@@ -22,6 +23,7 @@ function AddStatementForm() {
   const [status, setStatus] = useState<StatementFormStatus>("idle");
   const [savedId, setSavedId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sourceUrlErrors, setSourceUrlErrors] = useState<Record<number, string>>({});
   const [isDetectingOblast, setIsDetectingOblast] = useState(false);
   const [oblastDetectCycle, setOblastDetectCycle] = useState(0);
   const oblastWasManualRef = useRef(false);
@@ -181,16 +183,104 @@ function AddStatementForm() {
     field: keyof StatementFormState["sources"][number],
     value: string,
   ) {
-    setForm((current) => ({
-      ...current,
-      sources: applySourceDraftChange(current.sources, index, field, value),
-    }));
+    setForm((current) => {
+      const nextSources = applySourceDraftChange(current.sources, index, field, value);
+
+      return {
+        ...current,
+        sources: nextSources,
+      };
+    });
+
+    if (field === "url") {
+      setSourceUrlErrors((current) => {
+        if (!current[index]) {
+          return current;
+        }
+
+        const nextErrors = { ...current };
+        delete nextErrors[index];
+        return nextErrors;
+      });
+    }
+  }
+
+  function handleSourceUrlBlur(index: number) {
+    const currentUrl = form.sources[index]?.url ?? "";
+    const normalizedUrl = normalizeSourceUrl(currentUrl);
+    const validation = validateSourceUrl(normalizedUrl);
+
+    setForm((current) => {
+      const source = current.sources[index];
+
+      if (!source) {
+        return current;
+      }
+
+      if (normalizedUrl === source.url) {
+        return current;
+      }
+
+      const nextSources = current.sources.map((currentSource, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...currentSource,
+              url: normalizedUrl,
+            }
+          : currentSource,
+      );
+
+      return {
+        ...current,
+        sources: applySourceDraftChange(nextSources, index, "url", normalizedUrl),
+      };
+    });
+
+    setSourceUrlErrors((current) => {
+      const nextErrors = { ...current };
+
+      if (validation.status === "invalid") {
+        nextErrors[index] = "Zadajte platný odkaz.";
+      } else {
+        delete nextErrors[index];
+      }
+
+      return nextErrors;
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const invalidSourceIndexes = form.sources.flatMap((source, index) => {
+      const hasStartedRow = source.label.trim() || source.url.trim();
+
+      if (!hasStartedRow) {
+        return [];
+      }
+
+      return validateSourceUrl(source.url).status === "valid" ? [] : [index];
+    });
+
+    if (invalidSourceIndexes.length > 0) {
+      setSourceUrlErrors(
+        Object.fromEntries(
+          invalidSourceIndexes.map((index) => [index, "Zadajte platný odkaz."]),
+        ),
+      );
+      setStatus("error");
+      setErrorMessage("Skontrolujte odkazy pri zdrojoch.");
+      return;
+    }
+
     setStatus("saving");
     setErrorMessage(null);
+    setSourceUrlErrors({});
+
+    const normalizedSources = form.sources.map((source) => ({
+      ...source,
+      url: normalizeSourceUrl(source.url),
+    }));
 
     try {
       const response = await fetch("/api/statements", {
@@ -198,7 +288,10 @@ function AddStatementForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          sources: normalizedSources,
+        }),
       });
       const payload = (await response.json()) as {
         id?: number;
@@ -214,6 +307,7 @@ function AddStatementForm() {
       invalidateOblastDetection();
       oblastWasManualRef.current = false;
       lastAutoDetectedOblastRef.current = null;
+      setSourceUrlErrors({});
       setForm(createInitialStatementFormState());
     } catch (error) {
       setStatus("error");
@@ -298,8 +392,10 @@ function AddStatementForm() {
                   ? "Rozpoznávam oblasť z výroku…"
                   : "Oblasť doplníme automaticky z textu výroku, môžeš ju kedykoľvek upraviť."
               }
+              sourceUrlErrors={sourceUrlErrors}
               onSubmit={handleSubmit}
               updateField={updateField}
+              onSourceUrlBlur={handleSourceUrlBlur}
               updateSourceField={updateSourceField}
             />
           </section>

@@ -64,7 +64,7 @@ const emptyFilters: FilterState = {
 };
 
 const availableFilters: FiltersResponse = {
-  strany: ["Hlas", "KDH"],
+  strany: ["Hlas", "KDH", "Nestraníci", "nestranník"],
   mena: ["Milan Majerský", "Tomáš Drucker"],
   verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
   date_range: {
@@ -203,6 +203,18 @@ describe("search page flow", () => {
       strana: ["Hlas"],
     });
   }, 20_000);
+
+  it("expands grouped no-party values when the Nestranník filter is selected", async () => {
+    const { setFilters } = mockUseSearchReturn();
+
+    await renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Nestranník" }));
+
+    expect(setFilters).toHaveBeenCalledWith({
+      ...emptyFilters,
+      strana: ["Nestraníci", "nestranník"],
+    });
+  });
 
   it("opens and closes the mobile filter drawer from the trigger", async () => {
     mockUseSearchReturn();
