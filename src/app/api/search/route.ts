@@ -591,10 +591,19 @@ function validateExtractedFilters(
     datum_od: filters.datum_od,
     datum_do: filters.datum_do,
   });
+  const resolvedNames = resolveAvailableValues(filters.meno, availableNames);
+  const resolvedParties = resolveAvailableValues(filters.strana, availableParties);
+  const normalizedQuery = normalizeForMatching(query);
+  const referencesPersonAsPartyProxy =
+    /(?:^|\s)(?:jeho|jej|ich)\s+stran/.test(normalizedQuery) ||
+    /(?:^|\s)(?:jeho|jej|ich)\s+hnut/.test(normalizedQuery);
 
   return {
-    meno: resolveAvailableValues(filters.meno, availableNames),
-    strana: resolveAvailableValues(filters.strana, availableParties),
+    meno:
+      referencesPersonAsPartyProxy && resolvedParties && resolvedParties.length > 0
+        ? null
+        : resolvedNames,
+    strana: resolvedParties,
     vyhodnotenie:
       filters.vyhodnotenie && filters.vyhodnotenie.length > 0
         ? dedupeStrings(filters.vyhodnotenie).slice(0, 3) as Verdict[]

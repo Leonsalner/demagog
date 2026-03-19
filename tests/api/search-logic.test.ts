@@ -911,6 +911,67 @@ describe("POST /api/search logic", () => {
     });
   });
 
+  it("drops politician filters when the query frames the person as a proxy for their party", async () => {
+    const supabase = createSupabaseMock({
+      names: ["Robert Fico", "Peter Pellegrini"],
+      parties: ["Smer-SD", "Hlas-SD"],
+      rpc: async (fn, args) => {
+        if (fn !== "search_statements") {
+          throw new Error(`Unexpected RPC ${fn}`);
+        }
+
+        return {
+          data: [
+            buildRow(1, {
+              meno: "Robert Fico",
+              strana: Array.isArray(args.filter_strana)
+                ? String(args.filter_strana[0] ?? "Smer-SD")
+                : "Smer-SD",
+            }),
+          ],
+          error: null,
+        };
+      },
+    });
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(understandQuery).mockResolvedValue(
+      buildUnderstanding({
+        semantic_query: "vojna na ukrajine",
+        filters: {
+          meno: "Robert Fico",
+          strana: "Smer-SD",
+          vyhodnotenie: null,
+          datum_od: null,
+          datum_do: null,
+        },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({
+        query: "Co povedal Fico a jeho strana o vojne na Ukrajine?",
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "search_statements",
+      expect.objectContaining({
+        filter_meno: null,
+        filter_strana: ["Smer-SD"],
+      }),
+    );
+    expect(data.query_understanding.extracted_filters).toEqual({
+      meno: null,
+      strana: ["Smer-SD"],
+      vyhodnotenie: null,
+      datum_od: null,
+      datum_do: null,
+    });
+  });
+
   it("prefers user-provided date filters over extracted ones", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn) => {
