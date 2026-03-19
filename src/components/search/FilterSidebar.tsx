@@ -261,20 +261,9 @@ export default function FilterSidebar({
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
                   }`}
                 >
-                  <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full">
-                    <span
-                      className={`absolute inset-0 rounded-full border transition-all duration-200 ${
-                        isActive
-                          ? "scale-100 border-slate-950/65 opacity-100 dark:border-slate-50/80"
-                          : "scale-75 border-transparent opacity-0"
-                      }`}
-                    />
-                    <span
-                      className={`h-full w-full rounded-full transition-transform duration-200 ${verdictStyles[verdict].dot} ${
-                        isActive ? "scale-[0.58]" : "scale-100"
-                      }`}
-                    />
-                  </span>
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${verdictStyles[verdict].dot}`}
+                  />
                   {verdict}
                 </button>
               );
