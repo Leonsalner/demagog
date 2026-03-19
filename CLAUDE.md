@@ -147,13 +147,16 @@ Feedback integration:
 
 - `LINEAR_API_KEY`
 - `LINEAR_FEEDBACK_ISSUE_ID`: Linear issue UUID that incoming feedback should be attached to as a customer request
-- `LINEAR_ANONYMOUS_CUSTOMER_ID`: existing Linear customer UUID for anonymous feedback aggregation
-- `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`: existing external id on that customer; can be used instead of `LINEAR_ANONYMOUS_CUSTOMER_ID`
+- `LINEAR_ANONYMOUS_CUSTOMER_ID`: optional existing Linear customer UUID; skips auto-creation when set
+- `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`: optional stable external id to use when auto-creating / upserting the anonymous feedback customer
+- `LINEAR_ANONYMOUS_CUSTOMER_NAME`: optional display name for the auto-created anonymous feedback customer
 
-Feedback does not use a Linear workspace id. The API route currently creates a `customerNeed` against one specific issue, so it needs an API key plus both sides of that attachment:
+Feedback does not use a Linear workspace id. The API route creates a `customerNeed` against one specific issue and, when no customer id is configured, auto-upserts a stable anonymous customer before attaching the request:
 
-- a target issue via `LINEAR_FEEDBACK_ISSUE_ID`
-- a pre-existing customer via `LINEAR_ANONYMOUS_CUSTOMER_ID` or `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`
+- required: `LINEAR_API_KEY`
+- required: `LINEAR_FEEDBACK_ISSUE_ID`
+- optional override: `LINEAR_ANONYMOUS_CUSTOMER_ID`
+- optional auto-created customer customization: `LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID`, `LINEAR_ANONYMOUS_CUSTOMER_NAME`
 
 ## Working Notes
 

@@ -41,7 +41,7 @@ describe("POST /api/feedback", () => {
     vi.mocked(getLinearFeedbackConfigError).mockReturnValue(null);
   });
 
-  it("returns 503 when Linear feedback config is missing", async () => {
+  it("returns 503 when the required Linear feedback config is missing", async () => {
     vi.mocked(getLinearFeedbackConfigError).mockReturnValue("Missing LINEAR_API_KEY");
 
     const response = await POST(createRequest("{}"));
