@@ -10,6 +10,8 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useFeedbackPageContext } from "@/components/feedback/FeedbackContext";
+import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
+import { useFooterHelperVisibility } from "@/components/shared/FooterHelperVisibility";
 import {
   FEEDBACK_CATEGORY_LABELS,
   inferFeedbackPageType,
@@ -49,6 +51,7 @@ export default function FeedbackWidget() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const pageContext = useFeedbackPageContext();
+  const { shouldForceExpand } = useFooterHelperVisibility();
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY);
   const [message, setMessage] = useState("");
@@ -326,9 +329,8 @@ export default function FeedbackWidget() {
         </div>
       ) : null}
 
-      <button
+      <FooterHelperTrigger
         ref={triggerRef}
-        type="button"
         aria-expanded={isOpen}
         aria-controls={panelId}
         disabled={isOpen && isSubmitting}
@@ -344,15 +346,16 @@ export default function FeedbackWidget() {
             setErrorMessage(null);
           }
         }}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/96 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
-      >
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]">
+        isExpandedByDefault={shouldForceExpand("feedback")}
+        isExpandedWhenActive={isOpen}
+        label="Máte pripomienku?"
+        iconClassName="bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]"
+        icon={
           <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
             <path d="M2.5 3.75A2.25 2.25 0 0 1 4.75 1.5h6.5A2.25 2.25 0 0 1 13.5 3.75v4.5a2.25 2.25 0 0 1-2.25 2.25H8.9l-2.55 2.12a.75.75 0 0 1-1.23-.58V10.5H4.75A2.25 2.25 0 0 1 2.5 8.25v-4.5Z" />
           </svg>
-        </span>
-        Máte pripomienku?
-      </button>
+        }
+      />
     </div>
   );
 }

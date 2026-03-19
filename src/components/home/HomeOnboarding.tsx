@@ -2,6 +2,11 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
+import {
+  useFooterHelperExpansionHold,
+  useFooterHelperVisibility,
+} from "@/components/shared/FooterHelperVisibility";
 import { readActiveTheme, type ThemeMode } from "@/lib/theme";
 
 import { HOME_ONBOARDING_STEPS, type HomeOnboardingStep } from "./homeOnboardingSteps";
@@ -325,6 +330,8 @@ export default function HomeOnboarding({
     readActiveTheme,
     () => "light",
   );
+  const { isFirstVisit, isMobile, requestExpansionWindow, shouldForceExpand } =
+    useFooterHelperVisibility();
   const dialogRef = useRef<HTMLElement | null>(null);
   const mediaPaneRef = useRef<HTMLDivElement | null>(null);
   const contentPaneRef = useRef<HTMLDivElement | null>(null);
@@ -333,6 +340,7 @@ export default function HomeOnboarding({
   const [showFeedbackToast, setShowFeedbackToast] = useState(false);
   const [showScrollCue, setShowScrollCue] = useState(true);
   const currentStep = steps[activeStep] ?? steps[0];
+  useFooterHelperExpansionHold("feedback", showFeedbackToast);
   const isOpen =
     manualOpenState === "open"
       ? true
@@ -388,10 +396,10 @@ export default function HomeOnboarding({
 
     const timeout = window.setTimeout(() => {
       setShowFeedbackToast(false);
-    }, 6000);
+    }, isFirstVisit ? 30_000 : 6_000);
 
     return () => window.clearTimeout(timeout);
-  }, [showFeedbackToast]);
+  }, [isFirstVisit, showFeedbackToast]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -409,28 +417,30 @@ export default function HomeOnboarding({
     persistStatus(status);
     setManualOpenState("closed");
     setShowScrollCue(false);
+    if (isFirstVisit) {
+      const firstVisitExpansionDuration = isMobile ? 15_000 : 30_000;
+      requestExpansionWindow("guide", firstVisitExpansionDuration);
+      requestExpansionWindow("feedback", firstVisitExpansionDuration);
+    }
     maybeShowFeedbackToast();
   }
 
   return (
     <>
       <div className="pointer-events-none fixed bottom-4 right-4 z-30 sm:bottom-6 sm:right-6">
-        <button
-          type="button"
+        <FooterHelperTrigger
           onClick={() => {
             setActiveStep(0);
             setManualOpenState("open");
             setShowFeedbackToast(false);
             setShowScrollCue(true);
           }}
-          className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/96 px-4 py-2 text-sm font-semibold text-slate-700 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)] backdrop-blur transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:text-white"
           aria-label="Otvoriť návod"
-        >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-200">
-            ?
-          </span>
-          Návod
-        </button>
+          isExpandedByDefault={shouldForceExpand("guide")}
+          label="Návod"
+          iconClassName="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"
+          icon="?"
+        />
       </div>
 
       {isOpen ? (
