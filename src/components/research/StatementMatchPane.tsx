@@ -28,23 +28,25 @@ const classificationLabels = {
 function InlineSourcesList({ sources }: { sources: StatementSource[] }) {
   const [titles, setTitles] = useState<Record<number, string>>({});
   const [enriching, setEnriching] = useState(false);
-  const enrichedRef = useRef(false);
+  const pendingIdsRef = useRef<Set<number>>(new Set());
+  const activeRequestCountRef = useRef(0);
   const hasAllTitles = sources.every((source) => source.title || titles[source.id]);
 
   const enrichTitles = useCallback(async () => {
-    if (enrichedRef.current || hasAllTitles) {
+    if (hasAllTitles) {
       return;
     }
 
-    enrichedRef.current = true;
     const missingIds = sources
-      .filter((source) => !source.title && !titles[source.id])
+      .filter((source) => !source.title && !titles[source.id] && !pendingIdsRef.current.has(source.id))
       .map((source) => source.id);
 
     if (missingIds.length === 0) {
       return;
     }
 
+    missingIds.forEach((id) => pendingIdsRef.current.add(id));
+    activeRequestCountRef.current += 1;
     setEnriching(true);
     try {
       const response = await fetch("/api/sources/enrich", {
@@ -63,8 +65,12 @@ function InlineSourcesList({ sources }: { sources: StatementSource[] }) {
       }
     } catch {
       // Best-effort source-title enrichment.
+      missingIds.forEach((id) => pendingIdsRef.current.delete(id));
     } finally {
-      setEnriching(false);
+      activeRequestCountRef.current = Math.max(0, activeRequestCountRef.current - 1);
+      if (activeRequestCountRef.current === 0) {
+        setEnriching(false);
+      }
     }
   }, [hasAllTitles, sources, titles]);
 

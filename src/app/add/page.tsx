@@ -23,6 +23,7 @@ function AddStatementForm() {
   const [savedId, setSavedId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDetectingOblast, setIsDetectingOblast] = useState(false);
+  const [oblastDetectCycle, setOblastDetectCycle] = useState(0);
   const oblastWasManualRef = useRef(false);
   const oblastValueRef = useRef(form.oblast);
   const lastAutoDetectedOblastRef = useRef<string | null>(null);
@@ -140,7 +141,7 @@ function AddStatementForm() {
         detectAbortRef.current = null;
       }
     };
-  }, [form.vyrok]);
+  }, [form.vyrok, oblastDetectCycle]);
 
   useEffect(
     () => () => {
@@ -155,12 +156,17 @@ function AddStatementForm() {
   ) {
     if (field === "oblast") {
       const nextOblast = String(value).trim();
+      const hadManualOverride = oblastWasManualRef.current;
       oblastWasManualRef.current =
         nextOblast.length > 0 && nextOblast !== lastAutoDetectedOblastRef.current;
 
       if (!nextOblast) {
         oblastWasManualRef.current = false;
         lastAutoDetectedOblastRef.current = null;
+
+        if (hadManualOverride) {
+          setOblastDetectCycle((current) => current + 1);
+        }
       }
     }
 

@@ -34,6 +34,34 @@ type WorkspaceSelection =
   | { type: "statement-match"; statementId: number }
   | null;
 
+function getVisibleArticleItems(
+  workspaceMode: ResearchWorkspaceMode,
+  items: ResearchItem[],
+  matches: DetectionMatch[],
+) {
+  const showAggregateTabs = workspaceMode === "aggregate" && matches.length > 0;
+
+  if (!showAggregateTabs) {
+    return items;
+  }
+
+  return items.filter((item) => item.kind !== "analysis");
+}
+
+function getDefaultSelectionForTab(
+  tab: SidebarTab,
+  workspaceMode: ResearchWorkspaceMode,
+  items: ResearchItem[],
+  matches: DetectionMatch[],
+): WorkspaceSelection {
+  if (tab === "statements") {
+    return matches[0] ? { type: "statement-match", statementId: matches[0].statement.id } : null;
+  }
+
+  const articleItems = getVisibleArticleItems(workspaceMode, items, matches);
+  return articleItems[0] ? { type: "research-item", id: articleItems[0].id } : null;
+}
+
 function isSelectionValid(
   selection: WorkspaceSelection,
   items: ResearchItem[],
@@ -73,23 +101,27 @@ export default function ResearchWorkspace({
         : [],
     [detectResult, workspaceMode],
   );
+  const visibleArticleItems = useMemo(
+    () => getVisibleArticleItems(workspaceMode, data?.items ?? [], detectMatches),
+    [data, detectMatches, workspaceMode],
+  );
   const resolvedSelection = useMemo<WorkspaceSelection>(() => {
     const items = data?.items ?? [];
 
-    if (isSelectionValid(selection, items, detectMatches)) {
-      return selection;
+    if (selection?.type === "statement-match") {
+      if (sidebarTab === "statements" && isSelectionValid(selection, items, detectMatches)) {
+        return selection;
+      }
+    } else if (selection?.type === "research-item") {
+      const isVisibleItem = visibleArticleItems.some((item) => item.id === selection.id);
+
+      if (sidebarTab === "articles" && isSelectionValid(selection, items, detectMatches) && isVisibleItem) {
+        return selection;
+      }
     }
 
-    if (items[0]) {
-      return { type: "research-item", id: items[0].id };
-    }
-
-    if (detectMatches[0]) {
-      return { type: "statement-match", statementId: detectMatches[0].statement.id };
-    }
-
-    return null;
-  }, [data, detectMatches, selection]);
+    return getDefaultSelectionForTab(sidebarTab, workspaceMode, items, detectMatches);
+  }, [data, detectMatches, selection, sidebarTab, visibleArticleItems, workspaceMode]);
   const selectedItem = useMemo(() => {
     if (!resolvedSelection) {
       return null;
@@ -101,6 +133,32 @@ export default function ResearchWorkspace({
 
     return data?.items.find((item) => item.id === resolvedSelection.id) ?? null;
   }, [data, detectMatches, resolvedSelection]);
+  const handleTabChange = useCallback(
+    (nextTab: SidebarTab) => {
+      setSidebarTab(nextTab);
+      setSelection((currentSelection) => {
+        const items = data?.items ?? [];
+
+        if (nextTab === "statements") {
+          if (
+            currentSelection?.type === "statement-match" &&
+            isSelectionValid(currentSelection, items, detectMatches)
+          ) {
+            return currentSelection;
+          }
+        } else if (currentSelection?.type === "research-item") {
+          const isVisibleItem = visibleArticleItems.some((item) => item.id === currentSelection.id);
+
+          if (isSelectionValid(currentSelection, items, detectMatches) && isVisibleItem) {
+            return currentSelection;
+          }
+        }
+
+        return getDefaultSelectionForTab(nextTab, workspaceMode, items, detectMatches);
+      });
+    },
+    [data, detectMatches, visibleArticleItems, workspaceMode],
+  );
   const handleClose = useCallback(() => {
     setSidebarTab("articles");
     onClose();
@@ -224,7 +282,7 @@ export default function ResearchWorkspace({
               mode={data?.mode ?? "statement"}
               items={data?.items ?? []}
               activeTab={sidebarTab}
-              onTabChange={setSidebarTab}
+              onTabChange={handleTabChange}
               selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
               onSelect={(itemId) => {
                 setSidebarTab("articles");

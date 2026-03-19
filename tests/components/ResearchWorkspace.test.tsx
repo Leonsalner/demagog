@@ -95,4 +95,84 @@ describe("ResearchWorkspace", () => {
 
     windowOpenSpy.mockRestore();
   });
+
+  it("keeps the main pane aligned with the active aggregate tab", () => {
+    render(
+      <ResearchWorkspace
+        isOpen
+        activeMode="aggregate"
+        data={{
+          mode: "aggregate",
+          items: [
+            {
+              id: "analysis:42",
+              kind: "analysis",
+              title: "Skrytá analýza",
+              body: "Analýza obsahu výroku.",
+              url: null,
+              domain: null,
+              author: null,
+              date: null,
+              statement_refs: [],
+              verdict: "Pravda",
+            },
+            {
+              id: "source:9",
+              kind: "external_source",
+              title: "Ministerstvo zdravotníctva",
+              body: null,
+              url: "https://health.gov.example/report",
+              domain: "health.gov.example",
+              author: null,
+              date: null,
+              statement_refs: [],
+            },
+          ],
+        }}
+        loading={false}
+        error={null}
+        detectResult={{
+          input_statement: "Na severe Slovenska chýbajú pediatri.",
+          overall_status: "RELATED_ONLY",
+          query_time_ms: 120,
+          matches: [
+            {
+              classification: "RELATED",
+              similarity: 0.86,
+              statement: {
+                id: 42,
+                vyrok: "Pediatrov na severe ubúda.",
+                vyhodnotenie: "Pravda",
+                odovodnenie: "Podrobná analýza.",
+                datum: "2024-01-20",
+                meno: "Testovací politik",
+                strana: "Test",
+              },
+            },
+          ],
+        }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 2, name: "Skrytá analýza" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Výroky" }));
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Články" }));
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -11,6 +11,11 @@ function createDeferredResponse() {
   return { promise, resolve };
 }
 
+async function flushAsyncUpdates() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe("AddStatementModal", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -63,5 +68,59 @@ describe("AddStatementModal", () => {
     });
 
     expect(screen.getByLabelText("Oblasť")).toHaveValue("");
+  });
+
+  it("restarts oblast auto-detect after clearing a manual override", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ oblast: "Zdravotníctvo" }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <AddStatementModal
+        isOpen
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+      await flushAsyncUpdates();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("Oblasť")).toHaveValue("Zdravotníctvo");
+
+    fireEvent.change(screen.getByLabelText("Oblasť"), {
+      target: { value: "Školstvo" },
+    });
+    fireEvent.change(screen.getByLabelText("Oblasť"), {
+      target: { value: "" },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+      await flushAsyncUpdates();
+    });
+    await act(async () => {
+      await flushAsyncUpdates();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText("Oblasť")).toHaveValue("Zdravotníctvo");
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/statements/oblast",
+      expect.objectContaining({
+        body: JSON.stringify({
+          query: "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+        }),
+      }),
+    );
   });
 });
