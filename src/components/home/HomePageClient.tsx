@@ -10,6 +10,7 @@ import FilterSidebar, { countActiveFilters } from "@/components/search/FilterSid
 import SearchBar from "@/components/search/SearchBar";
 import SearchResults from "@/components/search/SearchResults";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
+import ViewportPortal from "@/components/shared/ViewportPortal";
 import { useDetect } from "@/hooks/useDetect";
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
@@ -382,43 +383,45 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
             </section>
 
             {isMobileFilterOpen ? (
-              <div
-                className="fixed inset-0 z-40 flex items-end bg-slate-950/45 backdrop-blur-sm lg:hidden"
-                onClick={() => setIsMobileFilterOpen(false)}
-              >
-                <section
-                  id="mobile-search-filters"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Filtre vyhľadávania"
-                  className="relative max-h-[85dvh] w-full overflow-y-auto p-3 pt-10"
-                  onClick={(event) => event.stopPropagation()}
-                  style={{
-                    paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
-                    paddingLeft: "calc(env(safe-area-inset-left, 0px) + 0.75rem)",
-                    paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
-                  }}
+              <ViewportPortal>
+                <div
+                  className="fixed inset-0 z-40 flex items-end bg-slate-950/45 backdrop-blur-sm lg:hidden"
+                  onClick={() => setIsMobileFilterOpen(false)}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileFilterOpen(false)}
-                    className="absolute right-6 top-0 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
-                    aria-label="Zavrieť filtre"
+                  <section
+                    id="mobile-search-filters"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Filtre vyhľadávania"
+                    className="relative max-h-[85dvh] w-full overflow-y-auto p-3 pt-10"
+                    onClick={(event) => event.stopPropagation()}
+                    style={{
+                      paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
+                      paddingLeft: "calc(env(safe-area-inset-left, 0px) + 0.75rem)",
+                      paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
+                    }}
                   >
-                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                      <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileFilterOpen(false)}
+                      className="absolute right-6 top-0 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+                      aria-label="Zavrieť filtre"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                        <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                      </svg>
+                    </button>
 
-                  <FilterSidebar
-                    className="rounded-[2rem] shadow-[0_32px_80px_-44px_rgba(15,23,42,0.45)]"
-                    filters={filters}
-                    availableFilters={availableFilters}
-                    filterLoadError={filterLoadError}
-                    onChange={setFilters}
-                  />
-                </section>
-              </div>
+                    <FilterSidebar
+                      className="rounded-[2rem] shadow-[0_32px_80px_-44px_rgba(15,23,42,0.45)]"
+                      filters={filters}
+                      availableFilters={availableFilters}
+                      filterLoadError={filterLoadError}
+                      onChange={setFilters}
+                    />
+                  </section>
+                </div>
+              </ViewportPortal>
             ) : null}
           </div>
         </section>
