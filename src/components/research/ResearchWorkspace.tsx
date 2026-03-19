@@ -9,12 +9,14 @@ import type {
   ResearchWorkspaceMode,
   ResearchWorkspaceResponse,
 } from "@/types";
+import { APP_NAVBAR_ID } from "@/lib/layout";
 
 import AddStatementModal from "./AddStatementModal";
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
 import LoadingSpinner from "../shared/LoadingSpinner";
+import ViewportPortal from "../shared/ViewportPortal";
 
 type SidebarTab = "articles" | "statements";
 
@@ -93,6 +95,7 @@ export default function ResearchWorkspace({
   const [isVisible, setIsVisible] = useState(isOpen);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
+  const [navbarOffset, setNavbarOffset] = useState(0);
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
     () =>
@@ -198,6 +201,37 @@ export default function ResearchWorkspace({
       return;
     }
 
+    const updateNavbarOffset = () => {
+      const navbar = document.getElementById(APP_NAVBAR_ID);
+      const nextOffset = Math.max(0, Math.round(navbar?.getBoundingClientRect().bottom ?? 0));
+      setNavbarOffset((currentOffset) => (currentOffset === nextOffset ? currentOffset : nextOffset));
+    };
+
+    updateNavbarOffset();
+
+    const navbar = document.getElementById(APP_NAVBAR_ID);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" && navbar
+        ? new ResizeObserver(() => {
+            updateNavbarOffset();
+          })
+        : null;
+    if (resizeObserver && navbar) {
+      resizeObserver.observe(navbar);
+    }
+    window.addEventListener("resize", updateNavbarOffset);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateNavbarOffset);
+    };
+  }, [isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) {
+      return;
+    }
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -231,118 +265,127 @@ export default function ResearchWorkspace({
   }
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center px-3 py-3 transition-opacity duration-300 sm:px-6 ${
-        isVisible ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
-      }`}
-    >
+    <ViewportPortal>
       <div
-        className="absolute inset-0"
-        aria-hidden="true"
-        onClick={handleClose}
-      />
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label="Research workspace"
-        className={`relative z-10 flex h-full max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-out dark:border-slate-800 dark:bg-slate-950 ${
-          isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-[0.98] opacity-0"
+        data-testid="research-workspace-overlay"
+        className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-opacity duration-300 sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
+          isVisible ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
         }`}
+        style={{
+          top: `${navbarOffset}px`,
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
+          paddingLeft: "calc(env(safe-area-inset-left, 0px) + 0.75rem)",
+          paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
+        }}
       >
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
-            <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
-            </h1>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
-            aria-label="Zavrieť prieskum"
-          >
-            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-              <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-            </svg>
+        <div
+          className="absolute inset-0"
+          aria-hidden="true"
+          onClick={handleClose}
+        />
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label="Research workspace"
+          className={`relative z-10 flex h-full max-h-full w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-out dark:border-slate-800 dark:bg-slate-950 ${
+            isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-[0.98] opacity-0"
+          }`}
+        >
+          <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
+              <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
+              </h1>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+              aria-label="Zavrieť prieskum"
+            >
+              <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+              </svg>
             </button>
-        </header>
+          </header>
 
-        {workspaceMode === "aggregate" && detectResult ? (
-          <DetectStatusBar
-            inputStatement={detectResult.input_statement}
-            overallStatus={detectResult.overall_status}
-            onAddStatement={() => setIsAddModalOpen(true)}
-          />
-        ) : null}
-
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
-          <div className="min-h-[180px] lg:min-h-0">
-            <ResearchSidebar
-              mode={data?.mode ?? "statement"}
-              items={data?.items ?? []}
-              activeTab={sidebarTab}
-              onTabChange={handleTabChange}
-              selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
-              onSelect={(itemId) => {
-                setSidebarTab("articles");
-                setSelection({ type: "research-item", id: itemId });
-              }}
-              detectMatches={detectMatches}
-              selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
-              onSelectMatch={(statementId) => {
-                setSidebarTab("statements");
-                setSelection({ type: "statement-match", statementId });
-              }}
+          {workspaceMode === "aggregate" && detectResult ? (
+            <DetectStatusBar
+              inputStatement={detectResult.input_statement}
+              overallStatus={detectResult.overall_status}
+              onAddStatement={() => setIsAddModalOpen(true)}
             />
-          </div>
+          ) : null}
 
-          <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-            {loading ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
-                <LoadingSpinner size="lg" />
-                <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  Načítavam prieskum…
-                </p>
-              </div>
-            ) : null}
-
-            {!loading && error ? (
-              <div className="rounded-3xl bg-white p-8 dark:bg-slate-950/70">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Prieskum sa nepodarilo načítať
-                </h2>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{error}</p>
-                {onRetry ? (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)]"
-                  >
-                    Skúsiť znova
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-
-            {!loading && !error ? (
-              <ResearchPane
-                item={selectedItem}
-                onNavigateToStatement={(statementId) => {
+          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
+            <div className="min-h-[180px] lg:min-h-0">
+              <ResearchSidebar
+                mode={data?.mode ?? "statement"}
+                items={data?.items ?? []}
+                activeTab={sidebarTab}
+                onTabChange={handleTabChange}
+                selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
+                onSelect={(itemId) => {
+                  setSidebarTab("articles");
+                  setSelection({ type: "research-item", id: itemId });
+                }}
+                detectMatches={detectMatches}
+                selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
+                onSelectMatch={(statementId) => {
                   setSidebarTab("statements");
                   setSelection({ type: "statement-match", statementId });
                 }}
               />
-            ) : null}
-          </main>
-        </div>
+            </div>
 
-        <AddStatementModal
-          isOpen={workspaceMode === "aggregate" && isAddModalOpen}
-          initialStatement={workspaceMode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
-          onClose={() => setIsAddModalOpen(false)}
-        />
-      </section>
-    </div>
+            <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+              {loading ? (
+                <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
+                  <LoadingSpinner size="lg" />
+                  <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Načítavam prieskum…
+                  </p>
+                </div>
+              ) : null}
+
+              {!loading && error ? (
+                <div className="rounded-3xl bg-white p-8 dark:bg-slate-950/70">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Prieskum sa nepodarilo načítať
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{error}</p>
+                  {onRetry ? (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)]"
+                    >
+                      Skúsiť znova
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!loading && !error ? (
+                <ResearchPane
+                  item={selectedItem}
+                  onNavigateToStatement={(statementId) => {
+                    setSidebarTab("statements");
+                    setSelection({ type: "statement-match", statementId });
+                  }}
+                />
+              ) : null}
+            </main>
+          </div>
+
+          <AddStatementModal
+            isOpen={workspaceMode === "aggregate" && isAddModalOpen}
+            initialStatement={workspaceMode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
+            onClose={() => setIsAddModalOpen(false)}
+          />
+        </section>
+      </div>
+    </ViewportPortal>
   );
 }

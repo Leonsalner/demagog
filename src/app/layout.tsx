@@ -10,6 +10,7 @@ import {
   FooterHelperVisibilityProvider,
 } from "@/components/shared/FooterHelperVisibility";
 import Navbar from "@/components/shared/Navbar";
+import { APP_NAVBAR_ID } from "@/lib/layout";
 import { DARK_THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
@@ -50,7 +51,10 @@ export const metadata: Metadata = {
 
 function NavbarFallback() {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/90">
+    <header
+      id={APP_NAVBAR_ID}
+      className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/90"
+    >
       <div className="mx-auto flex w-full max-w-[86rem] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="h-14 w-16 rounded-md border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/80 sm:h-16 sm:w-20" />
         <div className="hidden h-11 w-full max-w-md rounded-full border border-slate-200 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-800/70 lg:block" />

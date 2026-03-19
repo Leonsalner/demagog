@@ -1,87 +1,137 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
+import { APP_NAVBAR_ID } from "@/lib/layout";
 
 describe("ResearchWorkspace", () => {
-  it("shows a spinner-based loading shell for manual aggregate opens", () => {
+  beforeEach(() => {
+    class ResizeObserverMock {
+      observe() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows a spinner-based loading shell for manual aggregate opens in a viewport portal", async () => {
     render(
-      <ResearchWorkspace
-        isOpen
-        activeMode="aggregate"
-        data={null}
-        loading
-        error={null}
-        detectResult={null}
-        onClose={vi.fn()}
-      />,
+      <div
+        data-testid="transformed-wrapper"
+        style={{ transform: "translateY(12px)" }}
+      >
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 104 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          isOpen
+          activeMode="aggregate"
+          data={null}
+          loading
+          error={null}
+          detectResult={null}
+          onClose={vi.fn()}
+        />
+      </div>,
     );
 
-    expect(screen.getByRole("dialog", { name: /research workspace/i })).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: /research workspace/i });
+    const overlay = screen.getByTestId("research-workspace-overlay");
+    const transformedWrapper = screen.getByTestId("transformed-wrapper");
+
+    expect(dialog).toBeInTheDocument();
     expect(screen.getByText("Súhrnný prieskum")).toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByText("Načítavam prieskum…")).toBeInTheDocument();
+    expect(overlay).toHaveStyle({ top: "104px" });
+    expect(within(transformedWrapper).queryByTestId("research-workspace-overlay")).not.toBeInTheDocument();
+    expect(document.body.contains(overlay)).toBe(true);
   });
 
-  it("selects external sources in the workspace instead of opening a new window", () => {
-    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-
+  it("selects external sources in the workspace instead of opening a new window", async () => {
     render(
-      <ResearchWorkspace
-        isOpen
-        activeMode="statement"
-        data={{
-          mode: "statement",
-          items: [
-            {
-              id: "analysis:42",
-              kind: "analysis",
-              title: "Analýza výroku",
-              body: "Analýza obsahu výroku.",
-              url: null,
-              domain: null,
-              author: null,
-              date: null,
-              statement_refs: [
-                {
-                  statement_id: 42,
-                  vyrok: "Testovací výrok",
-                  meno: "Testovací politik",
-                  strana: "Test",
-                  verdict: "Pravda",
-                  url: null,
-                },
-              ],
-              verdict: "Pravda",
-            },
-            {
-              id: "source:9",
-              kind: "external_source",
-              title: "Ministerstvo zdravotníctva",
-              body: null,
-              url: "https://health.gov.example/report",
-              domain: "health.gov.example",
-              author: null,
-              date: null,
-              statement_refs: [
-                {
-                  statement_id: 42,
-                  vyrok: "Testovací výrok",
-                  meno: "Testovací politik",
-                  strana: "Test",
-                  verdict: "Pravda",
-                  url: null,
-                },
-              ],
-            },
-          ],
-        }}
-        loading={false}
-        error={null}
-        detectResult={null}
-        onClose={vi.fn()}
-      />,
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 88 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          isOpen
+          activeMode="statement"
+          data={{
+            mode: "statement",
+            items: [
+              {
+                id: "analysis:42",
+                kind: "analysis",
+                title: "Analýza výroku",
+                body: "Analýza obsahu výroku.",
+                url: null,
+                domain: null,
+                author: null,
+                date: null,
+                statement_refs: [
+                  {
+                    statement_id: 42,
+                    vyrok: "Testovací výrok",
+                    meno: "Testovací politik",
+                    strana: "Test",
+                    verdict: "Pravda",
+                    url: null,
+                  },
+                ],
+                verdict: "Pravda",
+              },
+              {
+                id: "source:9",
+                kind: "external_source",
+                title: "Ministerstvo zdravotníctva",
+                body: null,
+                url: "https://health.gov.example/report",
+                domain: "health.gov.example",
+                author: null,
+                date: null,
+                statement_refs: [
+                  {
+                    statement_id: 42,
+                    vyrok: "Testovací výrok",
+                    meno: "Testovací politik",
+                    strana: "Test",
+                    verdict: "Pravda",
+                    url: null,
+                  },
+                ],
+              },
+            ],
+          }}
+          loading={false}
+          error={null}
+          detectResult={null}
+          onClose={vi.fn()}
+        />
+      </>,
     );
 
+    const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    await screen.findByRole("dialog", { name: /research workspace/i });
     fireEvent.click(screen.getByRole("button", { name: /Ministerstvo zdravotníctva/i }));
 
     expect(windowOpenSpy).not.toHaveBeenCalled();
@@ -96,78 +146,96 @@ describe("ResearchWorkspace", () => {
     windowOpenSpy.mockRestore();
   });
 
-  it("keeps the main pane aligned with the active aggregate tab", () => {
+  it("keeps the main pane aligned with the active aggregate tab", async () => {
     render(
-      <ResearchWorkspace
-        isOpen
-        activeMode="aggregate"
-        data={{
-          mode: "aggregate",
-          items: [
-            {
-              id: "analysis:42",
-              kind: "analysis",
-              title: "Skrytá analýza",
-              body: "Analýza obsahu výroku.",
-              url: null,
-              domain: null,
-              author: null,
-              date: null,
-              statement_refs: [],
-              verdict: "Pravda",
-            },
-            {
-              id: "source:9",
-              kind: "external_source",
-              title: "Ministerstvo zdravotníctva",
-              body: null,
-              url: "https://health.gov.example/report",
-              domain: "health.gov.example",
-              author: null,
-              date: null,
-              statement_refs: [],
-            },
-          ],
-        }}
-        loading={false}
-        error={null}
-        detectResult={{
-          input_statement: "Na severe Slovenska chýbajú pediatri.",
-          overall_status: "RELATED_ONLY",
-          query_time_ms: 120,
-          matches: [
-            {
-              classification: "RELATED",
-              similarity: 0.86,
-              statement: {
-                id: 42,
-                vyrok: "Pediatrov na severe ubúda.",
-                vyhodnotenie: "Pravda",
-                odovodnenie: "Podrobná analýza.",
-                datum: "2024-01-20",
-                meno: "Testovací politik",
-                strana: "Test",
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 96 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          isOpen
+          activeMode="aggregate"
+          data={{
+            mode: "aggregate",
+            items: [
+              {
+                id: "analysis:42",
+                kind: "analysis",
+                title: "Skrytá analýza",
+                body: "Analýza obsahu výroku.",
+                url: null,
+                domain: null,
+                author: null,
+                date: null,
+                statement_refs: [],
+                verdict: "Pravda",
               },
-            },
-          ],
-        }}
-        onClose={vi.fn()}
-      />,
+              {
+                id: "source:9",
+                kind: "external_source",
+                title: "Ministerstvo zdravotníctva",
+                body: null,
+                url: "https://health.gov.example/report",
+                domain: "health.gov.example",
+                author: null,
+                date: null,
+                statement_refs: [],
+              },
+            ],
+          }}
+          loading={false}
+          error={null}
+          detectResult={{
+            input_statement: "Na severe Slovenska chýbajú pediatri.",
+            overall_status: "RELATED_ONLY",
+            query_time_ms: 120,
+            matches: [
+              {
+                classification: "RELATED",
+                similarity: 0.86,
+                statement: {
+                  id: 42,
+                  vyrok: "Pediatrov na severe ubúda.",
+                  vyhodnotenie: "Pravda",
+                  odovodnenie: "Podrobná analýza.",
+                  datum: "2024-01-20",
+                  meno: "Testovací politik",
+                  strana: "Test",
+                },
+              },
+            ],
+          }}
+          onClose={vi.fn()}
+        />
+      </>,
     );
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+      await screen.findByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: "Skrytá analýza" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Výroky" }));
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
+      await screen.findByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Články" }));
 
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+      ).toBeInTheDocument();
+    });
     expect(
       screen.getByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
     ).toBeInTheDocument();

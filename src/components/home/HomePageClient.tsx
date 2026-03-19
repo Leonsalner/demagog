@@ -314,10 +314,24 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     void detect(statement, "thorough");
   };
 
+  const isStatementResearchPending =
+    researchMode === "statement" && isResearchPendingReveal && !isResearchOpen;
+  const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
   const isDetectPanelLoading =
     detectLoading ||
     shouldAutoOpenAggregateResearch ||
-    (resultMode === "thorough" && isResearchPendingReveal && !isResearchOpen);
+    (activeTab === "detect" && isResearchPendingReveal && !isResearchOpen);
+  const researchLoadingMessage = "Pripravujem prieskum výroku a súvisiace zdroje...";
+  const searchLoadingMessage = isStatementResearchPending
+    ? researchLoadingMessage
+    : "Načítavam výsledky vyhľadávania...";
+  const detectLoadingMessage =
+    isStatementResearchPending ||
+    resultMode === "thorough" ||
+    detectMode === "thorough" ||
+    shouldAutoOpenAggregateResearch
+      ? researchLoadingMessage
+      : "Porovnávam výrok s databázou overených tvrdení...";
 
   return (
     <div className="relative min-h-[400px]">
@@ -402,13 +416,16 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   </div>
                 ) : null}
 
-                {loading ? (
-                  <div className="flex min-h-[300px] items-center justify-center">
+                {isSearchPanelLoading ? (
+                  <div className="flex min-h-[300px] flex-col items-center justify-center">
                     <LoadingSpinner size="lg" />
+                    <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {searchLoadingMessage}
+                    </p>
                   </div>
                 ) : null}
 
-                {!loading && error ? (
+                {!isSearchPanelLoading && error ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 rounded-2xl border border-red-200 bg-red-50 px-6 text-center dark:border-red-800/60 dark:bg-red-950/40">
                     <div>
                       <h2 className="text-lg font-semibold text-red-900 dark:text-red-200">
@@ -426,7 +443,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   </div>
                 ) : null}
 
-                {!loading && !error && hasSearched && results?.results.length === 0 ? (
+                {!isSearchPanelLoading && !error && hasSearched && results?.results.length === 0 ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Žiadne výsledky pre zadané kritériá.
@@ -437,7 +454,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   </div>
                 ) : null}
 
-                {!loading && !error && results?.results.length ? (
+                {!isSearchPanelLoading && !error && results?.results.length ? (
                   <SearchResults
                     results={results}
                     relatedResults={results.related_results}
@@ -445,7 +462,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     query={query}
                     onPageChange={handlePageChange}
                     onOpenResearch={(statementId) => {
-                      void openStatementResearch(statementId);
+                      void openStatementResearch(statementId, { revealWhenReady: false });
                     }}
                   />
                 ) : null}
@@ -531,9 +548,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   <div className="flex min-h-[160px] flex-col items-center justify-center">
                     <LoadingSpinner size="lg" />
                     <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
-                      {resultMode === "thorough" || detectMode === "thorough"
-                        ? "Pripravujem prieskum výroku a súvisiace zdroje..."
-                        : "Porovnávam výrok s databázou overených tvrdení..."}
+                      {detectLoadingMessage}
                     </p>
                   </div>
                 </div>
@@ -558,7 +573,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   result={detectResult}
                   resultMode={resultMode}
                   onOpenStatementResearch={(statementId) => {
-                    void openStatementResearch(statementId);
+                    void openStatementResearch(statementId, { revealWhenReady: false });
                   }}
                   onOpenAggregateResearch={(statementIds) => {
                     void openAggregateResearch(statementIds);
