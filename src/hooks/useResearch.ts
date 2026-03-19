@@ -2,14 +2,16 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import type { ResearchWorkspaceResponse } from "@/types";
+import type { ResearchWorkspaceMode, ResearchWorkspaceResponse } from "@/types";
 
 type ResearchRequest =
   | {
+      mode: "statement";
       endpoint: "/api/research/statement";
       body: { statement_id: number };
     }
   | {
+      mode: "aggregate";
       endpoint: "/api/research/detect";
       body: { statement_ids: number[] };
     };
@@ -41,6 +43,7 @@ export function useResearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<ResearchWorkspaceMode | null>(null);
   const [lastRequest, setLastRequest] = useState<ResearchRequest | null>(null);
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -54,6 +57,7 @@ export function useResearch() {
     const revealWhenReady = options?.revealWhenReady ?? true;
 
     setLastRequest(request);
+    setActiveMode(request.mode);
     setIsOpen(revealWhenReady);
     setLoading(true);
     setError(null);
@@ -89,6 +93,7 @@ export function useResearch() {
   const openStatementResearch = useCallback(
     async (statementId: number, options?: OpenResearchOptions) => {
       await open({
+        mode: "statement",
         endpoint: "/api/research/statement",
         body: { statement_id: statementId },
       }, options);
@@ -99,6 +104,7 @@ export function useResearch() {
   const openAggregateResearch = useCallback(
     async (statementIds: number[], options?: OpenResearchOptions) => {
       await open({
+        mode: "aggregate",
         endpoint: "/api/research/detect",
         body: { statement_ids: statementIds },
       }, options);
@@ -122,11 +128,14 @@ export function useResearch() {
     setData(null);
     setError(null);
     setLoading(false);
+    setActiveMode(null);
   }, []);
 
   return {
+    activeMode,
     data,
     isOpen,
+    isPendingReveal: loading && !isOpen,
     loading,
     error,
     openStatementResearch,

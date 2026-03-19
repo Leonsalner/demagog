@@ -32,6 +32,8 @@ describe("useResearch", () => {
     });
 
     expect(result.current.isOpen).toBe(true);
+    expect(result.current.activeMode).toBe("statement");
+    expect(result.current.isPendingReveal).toBe(false);
     expect(result.current.loading).toBe(true);
 
     act(() => {
@@ -39,6 +41,8 @@ describe("useResearch", () => {
     });
 
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.isPendingReveal).toBe(false);
     expect(result.current.loading).toBe(false);
 
     await act(async () => {
@@ -72,7 +76,72 @@ describe("useResearch", () => {
     });
 
     expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.isPendingReveal).toBe(false);
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBeNull();
+  });
+
+  it("tracks a hidden pre-reveal load for deferred aggregate opens", async () => {
+    const pending = deferredResponse();
+    vi.mocked(fetch).mockReturnValue(pending.promise);
+
+    const { result } = renderHook(() => useResearch());
+
+    act(() => {
+      void result.current.openAggregateResearch([11, 12], { revealWhenReady: false });
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.isPendingReveal).toBe(true);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        json: async () => ({
+          mode: "aggregate",
+          items: [],
+        }),
+      } as Response);
+      await pending.promise;
+    });
+
+    expect(result.current.isOpen).toBe(true);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.isPendingReveal).toBe(false);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("opens immediately for manual aggregate research while keeping the spinner active", async () => {
+    const pending = deferredResponse();
+    vi.mocked(fetch).mockReturnValue(pending.promise);
+
+    const { result } = renderHook(() => useResearch());
+
+    act(() => {
+      void result.current.openAggregateResearch([21]);
+    });
+
+    expect(result.current.isOpen).toBe(true);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.isPendingReveal).toBe(false);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        json: async () => ({
+          mode: "aggregate",
+          items: [],
+        }),
+      } as Response);
+      await pending.promise;
+    });
+
+    expect(result.current.isOpen).toBe(true);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.loading).toBe(false);
   });
 });

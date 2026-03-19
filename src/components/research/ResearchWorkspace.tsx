@@ -2,17 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { DetectResponse, DetectionMatch, ResearchItem, ResearchWorkspaceResponse } from "@/types";
+import type {
+  DetectResponse,
+  DetectionMatch,
+  ResearchItem,
+  ResearchWorkspaceMode,
+  ResearchWorkspaceResponse,
+} from "@/types";
 
 import AddStatementModal from "./AddStatementModal";
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
+import LoadingSpinner from "../shared/LoadingSpinner";
 
 type SidebarTab = "articles" | "statements";
 
 interface ResearchWorkspaceProps {
   isOpen: boolean;
+  activeMode: ResearchWorkspaceMode | null;
   data: ResearchWorkspaceResponse | null;
   loading: boolean;
   error: string | null;
@@ -44,6 +52,7 @@ function isSelectionValid(
 
 export default function ResearchWorkspace({
   isOpen,
+  activeMode,
   data,
   loading,
   error,
@@ -56,12 +65,13 @@ export default function ResearchWorkspace({
   const [isVisible, setIsVisible] = useState(isOpen);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
+  const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
     () =>
-      data?.mode === "aggregate"
+      workspaceMode === "aggregate"
         ? detectResult?.matches.filter((match) => match.classification !== "UNRELATED") ?? []
         : [],
-    [data?.mode, detectResult],
+    [detectResult, workspaceMode],
   );
   const resolvedSelection = useMemo<WorkspaceSelection>(() => {
     const items = data?.items ?? [];
@@ -185,7 +195,7 @@ export default function ResearchWorkspace({
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
             <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {data?.mode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
+              {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
             </h1>
           </div>
           <button
@@ -200,7 +210,7 @@ export default function ResearchWorkspace({
             </button>
         </header>
 
-        {data?.mode === "aggregate" && detectResult ? (
+        {workspaceMode === "aggregate" && detectResult ? (
           <DetectStatusBar
             inputStatement={detectResult.input_statement}
             overallStatus={detectResult.overall_status}
@@ -231,8 +241,11 @@ export default function ResearchWorkspace({
 
           <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             {loading ? (
-              <div className="flex min-h-[280px] items-center justify-center rounded-3xl bg-white p-8 text-sm text-slate-500 dark:bg-slate-950/70 dark:text-slate-400">
-                Načítavam prieskum…
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
+                <LoadingSpinner size="lg" />
+                <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Načítavam prieskum…
+                </p>
               </div>
             ) : null}
 
@@ -267,8 +280,8 @@ export default function ResearchWorkspace({
         </div>
 
         <AddStatementModal
-          isOpen={data?.mode === "aggregate" && isAddModalOpen}
-          initialStatement={data?.mode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
+          isOpen={workspaceMode === "aggregate" && isAddModalOpen}
+          initialStatement={workspaceMode === "aggregate" ? detectResult?.input_statement ?? "" : ""}
           onClose={() => setIsAddModalOpen(false)}
         />
       </section>
