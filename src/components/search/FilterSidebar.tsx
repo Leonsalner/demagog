@@ -265,7 +265,7 @@ export default function FilterSidebar({
                     <span
                       className={`absolute inset-0 rounded-full border transition-all duration-200 ${
                         isActive
-                          ? "scale-100 border-white/90 opacity-100 dark:border-slate-950/90"
+                          ? "scale-100 border-slate-950/65 opacity-100 dark:border-slate-50/80"
                           : "scale-75 border-transparent opacity-0"
                       }`}
                     />
