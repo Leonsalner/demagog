@@ -255,29 +255,25 @@ export default function FilterSidebar({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => toggleVerdict(verdict)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors duration-200 ease-out ${
+                  className={`inline-flex items-center rounded-full border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,gap] duration-200 ease-in-out ${
                     isActive
                       ? verdictStyles[verdict].active
                       : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                  } ${
+                    isActive ? "gap-0" : "gap-2"
                   }`}
                 >
                   <span
                     aria-hidden="true"
-                    className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center"
-                  >
-                    <span
-                      className={`absolute inset-0 rounded-full transition-all duration-200 ease-out ${verdictStyles[verdict].dot} ${
-                        isActive ? "scale-75 opacity-0" : "scale-100 opacity-100"
-                      }`}
-                    />
-                  </span>
-                  <span
-                    className={`transition-transform duration-200 ease-out ${
-                      isActive ? "-translate-x-[0.5625rem]" : "translate-x-0"
+                    className={`flex h-2.5 shrink-0 items-center justify-center overflow-hidden transition-[width,opacity,transform] duration-200 ease-in-out ${
+                      isActive ? "w-0 scale-75 opacity-0" : "w-2.5 scale-100 opacity-100"
                     }`}
                   >
-                    {verdict}
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${verdictStyles[verdict].dot}`}
+                    />
                   </span>
+                  <span>{verdict}</span>
                 </button>
               );
             })}
