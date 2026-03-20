@@ -16,6 +16,7 @@ interface FakeProgressState {
 }
 
 const DEFAULT_START_PROGRESS = 6;
+const MAX_PENDING_PROGRESS = 85;
 
 function easeOutCubic(value: number) {
   return 1 - (1 - value) ** 3;
@@ -31,28 +32,15 @@ function interpolate(start: number, end: number, rawProgress: number, easing = e
 }
 
 function getPhaseProgress(phase: FakeProgressPhase, elapsedMs: number) {
-  const cappedElapsed = Math.max(0, elapsedMs);
-  const profile =
-    phase === "aggregate"
-      ? {
-          rampOne: 450,
-          rampTwo: 900,
-          rampThree: 1500,
-          rampFour: 2100,
-        }
-      : phase === "statement-research"
-        ? {
-            rampOne: 520,
-            rampTwo: 1050,
-            rampThree: 1800,
-            rampFour: 2500,
-          }
-        : {
-            rampOne: 600,
-            rampTwo: 1200,
-            rampThree: 2200,
-            rampFour: 3000,
-          };
+  const cappedElapsed = Math.max(0, elapsedMs) * (phase === "statement-research" ? 1.08 : 1);
+
+  const profile = {
+    rampOne: 600,
+    rampTwo: 1500,
+    rampThree: 2600,
+    rampFour: 4000,
+    rampFive: 5600,
+  };
 
   if (cappedElapsed <= profile.rampOne) {
     return interpolate(DEFAULT_START_PROGRESS, 35, cappedElapsed / profile.rampOne);
@@ -63,15 +51,19 @@ function getPhaseProgress(phase: FakeProgressPhase, elapsedMs: number) {
   }
 
   if (cappedElapsed <= profile.rampThree) {
-    return interpolate(60, 75, (cappedElapsed - profile.rampTwo) / (profile.rampThree - profile.rampTwo));
+    return interpolate(60, 70, (cappedElapsed - profile.rampTwo) / (profile.rampThree - profile.rampTwo));
   }
 
   if (cappedElapsed <= profile.rampFour) {
-    return interpolate(75, 84, (cappedElapsed - profile.rampThree) / (profile.rampFour - profile.rampThree));
+    return interpolate(70, 79, (cappedElapsed - profile.rampThree) / (profile.rampFour - profile.rampThree));
   }
 
-  const tailElapsed = cappedElapsed - profile.rampFour;
-  return Math.min(85, 84 + (1 - Math.exp(-tailElapsed / 1600)));
+  if (cappedElapsed <= profile.rampFive) {
+    return interpolate(79, 84.2, (cappedElapsed - profile.rampFour) / (profile.rampFive - profile.rampFour));
+  }
+
+  const tailElapsed = cappedElapsed - profile.rampFive;
+  return Math.min(MAX_PENDING_PROGRESS, 84.2 + (1 - Math.exp(-tailElapsed / 2200)) * 0.8);
 }
 
 export default function useFakeProgress({
@@ -86,6 +78,11 @@ export default function useFakeProgress({
   const previousActiveRef = useRef(active);
   const completingFromRef = useRef(0);
   const completionStartedAtRef = useRef<number | null>(null);
+  const progressRef = useRef(0);
+
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
 
   useEffect(() => {
     const wasActive = previousActiveRef.current;
@@ -103,9 +100,9 @@ export default function useFakeProgress({
 
     if (!active && wasActive) {
       completionStartedAtRef.current = null;
-      completingFromRef.current = progress;
+      completingFromRef.current = progressRef.current;
     }
-  }, [active, progress]);
+  }, [active]);
 
   useEffect(() => {
     if (!isVisible && !active) {
@@ -121,16 +118,18 @@ export default function useFakeProgress({
         const elapsed = timestamp - phaseStartedAtRef.current;
         const nextProgress = getPhaseProgress(phase, elapsed);
         setProgress((currentProgress) => {
-          if (currentProgress >= 85) {
+          if (currentProgress >= MAX_PENDING_PROGRESS) {
             return currentProgress;
           }
 
-          return Math.max(currentProgress, nextProgress);
+          const nextValue = Math.max(currentProgress, nextProgress);
+          progressRef.current = nextValue;
+          return nextValue;
         });
       } else {
         if (completionStartedAtRef.current === null) {
           completionStartedAtRef.current = timestamp;
-          completingFromRef.current = Math.max(completingFromRef.current, progress);
+          completingFromRef.current = Math.max(completingFromRef.current, progressRef.current);
         }
 
         const completionElapsed = timestamp - completionStartedAtRef.current;
@@ -143,10 +142,12 @@ export default function useFakeProgress({
         );
 
         setProgress(nextProgress);
+        progressRef.current = nextProgress;
 
         if (completionProgress >= 1) {
           setIsVisible(false);
           setProgress(0);
+          progressRef.current = 0;
           phaseStartedAtRef.current = null;
           completionStartedAtRef.current = null;
           completingFromRef.current = 0;
@@ -166,7 +167,7 @@ export default function useFakeProgress({
         animationFrameRef.current = null;
       }
     };
-  }, [active, completionDurationMs, isVisible, phase, progress]);
+  }, [active, completionDurationMs, isVisible, phase]);
 
   return {
     isVisible,

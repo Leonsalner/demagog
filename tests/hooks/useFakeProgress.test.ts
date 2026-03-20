@@ -85,8 +85,15 @@ describe("useFakeProgress", () => {
       vi.advanceTimersByTime(1200);
     });
 
-    expect(result.current.progress).toBeGreaterThan(55);
-    expect(result.current.progress).toBeLessThan(70);
+    expect(result.current.progress).toBeGreaterThan(45);
+    expect(result.current.progress).toBeLessThan(60);
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+
+    expect(result.current.progress).toBeGreaterThanOrEqual(68);
+    expect(result.current.progress).toBeLessThan(76);
 
     act(() => {
       vi.advanceTimersByTime(6000);
@@ -114,7 +121,7 @@ describe("useFakeProgress", () => {
     });
 
     act(() => {
-      vi.advanceTimersByTime(1800);
+      vi.advanceTimersByTime(3200);
     });
 
     const progressBeforeCompletion = result.current.progress;
@@ -131,5 +138,39 @@ describe("useFakeProgress", () => {
 
     expect(result.current.progress).toBe(0);
     expect(result.current.isVisible).toBe(false);
+  });
+
+  it("does not jump forward when detect transitions into aggregate preparation", () => {
+    const { result, rerender } = renderHook(
+      ({ active, phase }: { active: boolean; phase: "detect" | "aggregate" }) =>
+        useFakeProgress({
+          active,
+          phase,
+        }),
+      {
+        initialProps: { active: false, phase: "detect" as const },
+      },
+    );
+
+    act(() => {
+      rerender({ active: true, phase: "detect" });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2400);
+    });
+
+    const progressBeforePhaseChange = result.current.progress;
+    expect(progressBeforePhaseChange).toBeGreaterThanOrEqual(64);
+    expect(progressBeforePhaseChange).toBeLessThan(74);
+
+    act(() => {
+      rerender({ active: true, phase: "aggregate" });
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(result.current.progress - progressBeforePhaseChange).toBeLessThan(4);
+    expect(result.current.progress).toBeLessThan(78);
   });
 });
