@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface ViewportPortalProps {
@@ -8,7 +8,13 @@ interface ViewportPortalProps {
 }
 
 export default function ViewportPortal({ children }: ViewportPortalProps) {
-  if (typeof document === "undefined") {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
     return null;
   }
 

@@ -77,6 +77,17 @@ describe("FeedbackWidget", () => {
     });
   }, 20_000);
 
+  it("renders the trigger after mount and still opens the dialog", async () => {
+    renderWidget();
+
+    const trigger = await screen.findByRole("button", { name: "Máte pripomienku?" });
+    expect(trigger).toBeInTheDocument();
+
+    fireEvent.click(trigger);
+
+    expect(await screen.findByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+  });
+
   it("disables the form while submitting and sends the expected payload", async () => {
     fetchMock.mockReturnValue(new Promise<Response>(() => {}));
 
