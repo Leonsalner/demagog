@@ -301,10 +301,21 @@ describe("research workspace overlay", () => {
       result: buildFastDetectResult(),
     });
     const pending = deferredResponse();
-    vi.mocked(fetch).mockReturnValue(pending.promise);
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (typeof input === "string" && input === "/api/research/detect") {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ error: "prep failed" }),
+          text: async () => "prep failed",
+        } as Response);
+      }
+
+      return pending.promise;
+    });
 
     renderHome("detect", 136);
 
+    await screen.findByText(/Nájdené súvisiace výroky/i);
     fireEvent.click(screen.getByRole("button", { name: "Preskúmať" }));
 
     await waitFor(() => {
@@ -357,7 +368,7 @@ describe("research workspace overlay", () => {
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "136px" });
   });
 
-  it("keeps background aggregate preparation hidden until it is manually opened", async () => {
+  it("blocks detect until aggregate research is ready, auto-opens it, and reuses the prepared payload", async () => {
     setViewport(1280, 900);
     mockUseSearchReturn();
     mockUseDetectReturn({
@@ -378,7 +389,10 @@ describe("research workspace overlay", () => {
       );
     });
 
-    expect(screen.getByText("Pripravujem súhrnný prieskum")).toBeInTheDocument();
+    expect(
+      screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
 
     await act(async () => {
@@ -404,11 +418,20 @@ describe("research workspace overlay", () => {
       await pending.promise;
     });
 
-    expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Otvoriť prieskum" })[0]);
-
     await screen.findByRole("dialog", { name: "Research workspace" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť prieskum" }));
+
+    await screen.findByRole("dialog", { name: "Research workspace" });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -43,23 +43,6 @@ describe("DetectionResults", () => {
     expect(onOpenStatementResearch).toHaveBeenCalledWith(1);
   });
 
-  it("offers manual research preparation for weak matches", () => {
-    const onPrepareAggregateResearch = vi.fn();
-
-    render(
-      <DetectionResults
-        result={buildResult()}
-        showManualResearchPreparation
-        onPrepareAggregateResearch={onPrepareAggregateResearch}
-        onOpenAddStatement={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Pripraviť prieskum" }));
-
-    expect(onPrepareAggregateResearch).toHaveBeenCalled();
-  });
-
   it("shows the prepared aggregate research action", () => {
     const onOpenPreparedResearch = vi.fn();
 
@@ -108,5 +91,14 @@ describe("DetectionResults", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
 
     expect(onOpenAddStatement).toHaveBeenCalled();
+  });
+
+  it("does not offer manual preparation for related matches in the default state", () => {
+    render(<DetectionResults result={buildResult()} onOpenAddStatement={vi.fn()} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Pripraviť prieskum" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pridať výrok" })).toBeInTheDocument();
   });
 });

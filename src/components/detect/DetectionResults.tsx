@@ -9,8 +9,6 @@ interface DetectionResultsProps {
   result: DetectResponse;
   onOpenStatementResearch?: (statementId: number) => void;
   researchPreparationStatus?: PreparedAggregateResearchStatus;
-  showManualResearchPreparation?: boolean;
-  onPrepareAggregateResearch?: () => void;
   onPrepareResearchRetry?: () => void;
   onOpenPreparedResearch?: () => void;
   onOpenAddStatement?: () => void;
@@ -67,8 +65,6 @@ export default function DetectionResults({
   result,
   onOpenStatementResearch,
   researchPreparationStatus = "idle",
-  showManualResearchPreparation = false,
-  onPrepareAggregateResearch,
   onPrepareResearchRetry,
   onOpenPreparedResearch,
   onOpenAddStatement,
@@ -92,12 +88,8 @@ export default function DetectionResults({
       return status.detail;
     }
 
-    if (showManualResearchPreparation) {
-      return "Najlepšia zhoda je slabá, preto prieskum pripravíme až na vaše potvrdenie.";
-    }
-
     if (researchPreparationStatus === "preparing") {
-      return "Zhody už máte k dispozícii nižšie. Súhrnný prieskum sa pripravuje na pozadí.";
+      return "Súhrnný prieskum sa pripravuje spolu s článkami a externými zdrojmi.";
     }
 
     if (researchPreparationStatus === "ready") {
@@ -125,28 +117,6 @@ export default function DetectionResults({
             </svg>
             Pridať výrok
           </button>
-        </div>
-      );
-    }
-
-    if (showManualResearchPreparation && onPrepareAggregateResearch) {
-      return (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={onPrepareAggregateResearch}
-            className={`${primaryResearchButtonClassName} ${status.primaryButton}`}
-          >
-            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-              <path d="M8 1.5a4.75 4.75 0 0 0-2.98 8.45c.28.23.48.55.54.91l.06.39h4.76l.06-.39c.06-.36.25-.68.54-.91A4.75 4.75 0 0 0 8 1.5Zm-1.08 11.75.1.5c.1.48.52.83 1 .83h.96a1.02 1.02 0 0 0 1-.83l.1-.5H6.92Z" />
-            </svg>
-            Pripraviť prieskum
-          </button>
-          {showSecondaryAddButton ? (
-            <button type="button" onClick={onOpenAddStatement} className={secondaryAddButtonClassName}>
-              Pridať výrok
-            </button>
-          ) : null}
         </div>
       );
     }

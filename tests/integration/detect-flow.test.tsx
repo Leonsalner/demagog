@@ -277,16 +277,16 @@ describe("detect page flow", () => {
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeEnabled();
   });
 
-  it("starts background aggregate preparation for strong matches", async () => {
+  it("starts blocking aggregate preparation for any non-new claim with visible matches", async () => {
     const { prepare } = mockUsePreparedAggregateResearchReturn();
     mockUseDetectReturn({
-      result: mockDetectDuplicate,
+      result: buildWeakDetectResult(),
     });
 
     await renderHome("detect");
 
     await waitFor(() => {
-      expect(prepare).toHaveBeenCalledWith([109, 111]);
+      expect(prepare).toHaveBeenCalledWith([201]);
     });
   });
 
@@ -301,32 +301,80 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("keeps weak matches on a manual preparation path", async () => {
-    const { prepare } = mockUsePreparedAggregateResearchReturn();
+  it("keeps the detect surface blocked while aggregate preparation is running", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
+    });
+    mockUsePreparedAggregateResearchReturn({
+      status: "preparing",
+      statementIds: [201],
     });
 
     await renderHome("detect");
 
-    expect(prepare).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Pripraviť prieskum" }));
-    expect(prepare).toHaveBeenCalledWith([201]);
+    expect(
+      screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
-  it("opens the in-app add modal from the preparation state", async () => {
+  it("auto-opens prepared aggregate research when the data is ready", async () => {
+    const preparedData = {
+      mode: "aggregate" as const,
+      items: [],
+    };
     mockUseDetectReturn({
       result: mockDetectDuplicate,
     });
     mockUsePreparedAggregateResearchReturn({
-      status: "preparing",
+      status: "ready",
+      data: preparedData,
+      statementIds: [109, 111],
+    });
+    const { openPreparedResearch } = mockUseResearchReturn();
+
+    await renderHome("detect");
+
+    await waitFor(() => {
+      expect(openPreparedResearch).toHaveBeenCalledWith(
+        {
+          mode: "aggregate",
+          endpoint: "/api/research/detect",
+          body: { statement_ids: [109, 111] },
+        },
+        preparedData,
+      );
+    });
+  });
+
+  it("falls back to results with retry when aggregate preparation fails", async () => {
+    const { retry } = mockUsePreparedAggregateResearchReturn({
+      status: "error",
+      statementIds: [109, 111],
+    });
+    mockUseDetectReturn({
+      result: mockDetectDuplicate,
+    });
+
+    await renderHome("detect");
+
+    expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Skúsiť pripraviť prieskum znova" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the in-app add modal from the fallback result state", async () => {
+    mockUseDetectReturn({
+      result: mockDetectDuplicate,
+    });
+    mockUsePreparedAggregateResearchReturn({
+      status: "error",
       statementIds: [109, 111],
     });
 
     await renderHome("detect");
 
     fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
-
     expect(
       screen.getByRole("dialog", { name: "Pridať nový výrok" }),
     ).toBeInTheDocument();

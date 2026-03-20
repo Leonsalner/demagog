@@ -10,7 +10,6 @@ import {
 } from "react";
 
 import DetectionResults from "@/components/detect/DetectionResults";
-import ResearchReadyToast from "@/components/detect/ResearchReadyToast";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import AddStatementModal from "@/components/research/AddStatementModal";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
@@ -21,10 +20,7 @@ import SearchResults from "@/components/search/SearchResults";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 import { useDetect } from "@/hooks/useDetect";
-import {
-  usePreparedAggregateResearch,
-  type PreparedAggregateResearchStatus,
-} from "@/hooks/usePreparedAggregateResearch";
+import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResearch";
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
@@ -49,14 +45,13 @@ function hasActiveFilters(filters: FilterState) {
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const [detectStatement, setDetectStatement] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isReadyToastVisible, setIsReadyToastVisible] = useState(false);
-  const [hasQueuedReadyToast, setHasQueuedReadyToast] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [panelHeights, setPanelHeights] = useState<Record<HomeTab, number>>({
     search: 0,
     detect: 0,
   });
   const [lockedPanelHeight, setLockedPanelHeight] = useState<number | null>(null);
+  const [autoOpenedPreparedResearchKey, setAutoOpenedPreparedResearchKey] = useState<string | null>(null);
   const {
     results,
     loading,
@@ -106,7 +101,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
-  const previousPreparedStatusRef = useRef<PreparedAggregateResearchStatus>("idle");
   const panelHeightReleaseRef = useRef<number | null>(null);
   const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
@@ -290,27 +284,25 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         .map((match) => match.statement.id) ?? [],
     [detectResult],
   );
-  const bestVisibleMatchSimilarity = useMemo(
-    () =>
-      detectResult?.matches
-        .filter((match) => match.classification !== "UNRELATED")
-        .reduce((currentBest, match) => Math.max(currentBest, match.similarity), 0) ?? 0,
-    [detectResult],
-  );
-  const shouldAutoPrepareAggregateResearch =
+  const preparedAggregateResearchKey = preparedAggregateStatementIds.join(",");
+  const shouldPrepareAggregateResearch =
     !!detectResult &&
     detectResult.overall_status !== "NEW_CLAIM" &&
-    matchedStatementIds.length > 0 &&
-    bestVisibleMatchSimilarity >= 0.25;
-  const shouldOfferManualAggregateResearchPreparation =
+    matchedStatementIds.length > 0;
+  const shouldAutoOpenPreparedResearch =
+    preparedAggregateResearchStatus === "ready" &&
+    preparedAggregateResearchData !== null &&
+    preparedAggregateStatementIds.length > 0 &&
+    autoOpenedPreparedResearchKey !== preparedAggregateResearchKey;
+  const isAggregatePreparationBlocking =
+    activeTab === "detect" &&
     !!detectResult &&
-    detectResult.overall_status !== "NEW_CLAIM" &&
-    matchedStatementIds.length > 0 &&
-    bestVisibleMatchSimilarity < 0.25 &&
-    preparedAggregateResearchStatus === "idle";
+    shouldPrepareAggregateResearch &&
+    !isResearchOpen &&
+    (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
 
   useEffect(() => {
-    if (!shouldAutoPrepareAggregateResearch || preparedAggregateResearchStatus !== "idle") {
+    if (!shouldPrepareAggregateResearch || preparedAggregateResearchStatus !== "idle") {
       return;
     }
 
@@ -319,79 +311,36 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     matchedStatementIds,
     prepareAggregateResearch,
     preparedAggregateResearchStatus,
-    shouldAutoPrepareAggregateResearch,
+    shouldPrepareAggregateResearch,
   ]);
 
   useEffect(() => {
-    const previousPreparedStatus = previousPreparedStatusRef.current;
-    previousPreparedStatusRef.current = preparedAggregateResearchStatus;
-
-    if (preparedAggregateResearchStatus !== "ready") {
-      if (preparedAggregateResearchStatus === "idle") {
-        const timeout = window.setTimeout(() => {
-          setIsReadyToastVisible(false);
-          setHasQueuedReadyToast(false);
-        }, 0);
-
-        return () => {
-          window.clearTimeout(timeout);
-        };
-      }
+    if (!shouldAutoOpenPreparedResearch) {
       return;
     }
 
-    if (previousPreparedStatus === "ready") {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      if (isAddModalOpen) {
-        setHasQueuedReadyToast(true);
-        return;
-      }
-
-      setIsReadyToastVisible(true);
-    }, 0);
+    const frameId = window.requestAnimationFrame(() => {
+      setAutoOpenedPreparedResearchKey(preparedAggregateResearchKey);
+    });
+    openPreparedResearch(
+      createAggregateResearchRequest(preparedAggregateStatementIds),
+      preparedAggregateResearchData,
+    );
 
     return () => {
-      window.clearTimeout(timeout);
+      window.cancelAnimationFrame(frameId);
     };
-  }, [isAddModalOpen, preparedAggregateResearchStatus]);
-
-  useEffect(() => {
-    if (!isAddModalOpen || !isReadyToastVisible) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setIsReadyToastVisible(false);
-      setHasQueuedReadyToast(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [isAddModalOpen, isReadyToastVisible]);
-
-  useEffect(() => {
-    if (isAddModalOpen || !hasQueuedReadyToast || preparedAggregateResearchStatus !== "ready") {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setHasQueuedReadyToast(false);
-      setIsReadyToastVisible(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [hasQueuedReadyToast, isAddModalOpen, preparedAggregateResearchStatus]);
+  }, [
+    openPreparedResearch,
+    preparedAggregateResearchData,
+    preparedAggregateResearchKey,
+    preparedAggregateStatementIds,
+    shouldAutoOpenPreparedResearch,
+  ]);
 
   const handleDetectReset = () => {
     setIsAddModalOpen(false);
-    setIsReadyToastVisible(false);
-    setHasQueuedReadyToast(false);
+    setAutoOpenedPreparedResearchKey(null);
     resetDetect();
     resetPreparedAggregateResearch();
     closeResearch();
@@ -400,8 +349,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const handleDetect = (statement: string) => {
     setDetectStatement(statement);
     setIsAddModalOpen(false);
-    setIsReadyToastVisible(false);
-    setHasQueuedReadyToast(false);
+    setAutoOpenedPreparedResearchKey(null);
     resetPreparedAggregateResearch();
     closeResearch();
     void detect(statement, "fast");
@@ -411,14 +359,16 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     researchMode === "statement" && isResearchPendingReveal && !isResearchOpen;
   const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
   const isDetectPanelLoading =
-    detectLoading || (activeTab === "detect" && isStatementResearchPending);
+    detectLoading || isAggregatePreparationBlocking || (activeTab === "detect" && isStatementResearchPending);
   const researchLoadingMessage = "Pripravujem prieskum výroku a súvisiace zdroje...";
   const searchLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
     : "Načítavam výsledky vyhľadávania...";
   const detectLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
-    : "Porovnávam výrok s databázou overených tvrdení...";
+    : isAggregatePreparationBlocking
+      ? "Pripravujem súhrnný prieskum a súvisiace zdroje..."
+      : "Porovnávam výrok s databázou overených tvrdení...";
   const addModalInitialStatement = detectResult?.input_statement ?? detectStatement;
 
   const handleOpenPreparedResearch = () => {
@@ -426,8 +376,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       return;
     }
 
-    setIsReadyToastVisible(false);
-    setHasQueuedReadyToast(false);
     openPreparedResearch(
       createAggregateResearchRequest(preparedAggregateStatementIds),
       preparedAggregateResearchData,
@@ -643,7 +591,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               {isDetectPanelLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                   <div className="flex min-h-[160px] flex-col items-center justify-center">
-                    <LoadingSpinner size="lg" />
+                    <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/70">
+                      <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--brand-accent)] dark:bg-[var(--brand-accent-dark)]" />
+                    </div>
                     <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
                       {detectLoadingMessage}
                     </p>
@@ -658,8 +608,8 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                       Výsledky detekcie sa zobrazia tu
                     </h3>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Po odoslaní uvidíte najbližšie zhody. Keď sa pripraví širší prieskum,
-                      otvoríte si ho ručne bez straty rýchlych výsledkov.
+                      Po odoslaní sa zobrazia najbližšie zhody alebo sa otvorí pripravený
+                      súhrnný prieskum podľa výsledku analýzy.
                     </p>
                   </div>
                 </div>
@@ -672,10 +622,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     void openStatementResearch(statementId, { revealWhenReady: false });
                   }}
                   researchPreparationStatus={preparedAggregateResearchStatus}
-                  showManualResearchPreparation={shouldOfferManualAggregateResearchPreparation}
-                  onPrepareAggregateResearch={() => {
-                    void prepareAggregateResearch(matchedStatementIds);
-                  }}
                   onPrepareResearchRetry={() => {
                     void retryPreparedAggregateResearch();
                   }}
@@ -707,12 +653,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         isOpen={isAddModalOpen}
         initialStatement={addModalInitialStatement}
         onClose={() => setIsAddModalOpen(false)}
-      />
-
-      <ResearchReadyToast
-        isOpen={isReadyToastVisible}
-        onDismiss={() => setIsReadyToastVisible(false)}
-        onOpenResearch={handleOpenPreparedResearch}
       />
     </div>
   );
