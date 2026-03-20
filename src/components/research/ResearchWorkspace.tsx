@@ -21,10 +21,11 @@ import ViewportPortal from "../shared/ViewportPortal";
 type SidebarTab = "articles" | "statements";
 
 const PANEL_ENTER_DELAY_MS = 60;
-const PANEL_ENTER_DURATION_MS = 420;
+const PANEL_ENTER_DURATION_MS = 500;
 const PANEL_ENTER_FALLBACK_MS = PANEL_ENTER_DELAY_MS + PANEL_ENTER_DURATION_MS + 20;
-const OVERLAY_EXIT_DELAY_MS = 40;
-const PANEL_EXIT_FALLBACK_MS = 300;
+const OVERLAY_EXIT_DELAY_MS = 60;
+const PANEL_EXIT_DURATION_MS = 320;
+const PANEL_EXIT_FALLBACK_MS = PANEL_EXIT_DURATION_MS + 40;
 
 interface ResearchWorkspaceProps {
   displayState: WorkspaceDisplayState;
@@ -366,14 +367,14 @@ export default function ResearchWorkspace({
   const isEntering = displayState === "entering";
   const isClosing = displayState === "closing";
   const panelTimingClass = isClosing
-    ? "duration-[260ms] ease-[cubic-bezier(0.4,0,1,1)]"
-    : "duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
+    ? "duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+    : "duration-[500ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 
   return (
     <ViewportPortal>
       <div
         data-testid="research-workspace-overlay"
-        className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-[opacity,backdrop-filter] duration-300 ease-out sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
+        className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-[opacity,backdrop-filter] duration-[360ms] ease-out sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
           isOverlayShown ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
         }`}
         style={{
@@ -394,7 +395,7 @@ export default function ResearchWorkspace({
               ? "translate-y-0 scale-100 opacity-100"
               : isEntering
                 ? "translate-y-[48px] scale-[0.92] opacity-0"
-                : "translate-y-[24px] scale-[0.96] opacity-0"
+                : "translate-y-[18px] scale-[0.975] opacity-0"
           }`}
         >
           {workspaceMode === "statement" || !detectResult ? (

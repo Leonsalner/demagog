@@ -330,7 +330,7 @@ describe("ResearchWorkspace", () => {
     expect(dialog.className).toContain("opacity-100");
 
     await act(async () => {
-      vi.advanceTimersByTime(440);
+      vi.advanceTimersByTime(520);
     });
 
     expect(onEntered).toHaveBeenCalledTimes(1);
@@ -400,17 +400,17 @@ describe("ResearchWorkspace", () => {
     const overlay = screen.getByTestId("research-workspace-overlay");
     const dialog = screen.getByRole("dialog", { name: /research workspace/i });
 
-    expect(dialog.className).toContain("translate-y-[24px]");
+    expect(dialog.className).toContain("translate-y-[18px]");
     expect(overlay.className).toContain("opacity-100");
 
     await act(async () => {
-      vi.advanceTimersByTime(40);
+      vi.advanceTimersByTime(60);
     });
 
     expect(overlay.className).toContain("opacity-0");
 
     await act(async () => {
-      vi.advanceTimersByTime(300);
+      vi.advanceTimersByTime(360);
     });
 
     expect(onExited).toHaveBeenCalledTimes(1);
