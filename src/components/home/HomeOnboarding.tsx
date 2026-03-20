@@ -144,14 +144,14 @@ function IntroStage() {
           </div>
           <div className="mt-6 min-h-[3.5rem]">
             <p className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-              Vložte celé tvrdenie a porovnajte ho s archívom.
+              Vložte celé tvrdenie a odošlite ho len raz.
             </p>
           </div>
           <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-700 shadow-inner dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[inset_0_1px_0_rgba(148,163,184,0.08)]">
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Rýchla kontrola", "Prieskum", "Nový výrok"].map((hint) => (
+            {["Jedno odoslanie", "Automatický prieskum", "Nový výrok"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -168,15 +168,15 @@ function IntroStage() {
           {[
             {
               label: "1",
-              title: "Začnite prirodzenou otázkou alebo témou.",
+              title: "Začnite otázkou alebo vložte konkrétne tvrdenie.",
             },
             {
               label: "2",
-              title: "Sledujte filtre, zhody a relevantné výsledky.",
+              title: "Po odoslaní systém sám pripraví ďalší krok.",
             },
             {
               label: "3",
-              title: "Pokračujte cez Preskúmať alebo Pridať nový výrok.",
+              title: "Pokračujte v prieskume alebo otvorte Pridať výrok.",
             },
           ].map((item) => (
             <div
@@ -207,16 +207,16 @@ function ReadyStage() {
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           {
-            label: "Vyhľadať",
-            text: "Začnite otázkou, témou alebo menom.",
+            label: "Odoslať",
+            text: "Vložte tvrdenie raz a aplikácia sa postará o ďalší krok.",
           },
           {
-            label: "Porovnať",
-            text: "Skontrolujte, či výrok už nemá použiteľnú zhodu.",
+            label: "Preskúmať",
+            text: "Pri zhodách sa širší kontext otvorí automaticky na jednej obrazovke.",
           },
           {
             label: "Pridať",
-            text: "Keď nič nesedí, založte nový záznam.",
+            text: "Ak nič nesedí, nový záznam otvoríte priamo z prieskumu.",
           },
         ].map((item) => (
           <article

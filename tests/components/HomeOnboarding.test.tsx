@@ -65,7 +65,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Dva režimy. Jeden jednoduchý začiatok.")).toBeInTheDocument();
+    expect(screen.getByText("Začať môžete otázkou aj hotovým tvrdením.")).toBeInTheDocument();
   }, 20_000);
 
   it("persists dismissal and supports manual reopen", async () => {
@@ -135,7 +135,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Dva režimy. Jeden jednoduchý začiatok.",
+        name: "Začať môžete otázkou aj hotovým tvrdením.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("1. Základ")).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Dva režimy. Jeden jednoduchý začiatok.",
+        name: "Začať môžete otázkou aj hotovým tvrdením.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("1. Základ")).toBeInTheDocument();
@@ -169,7 +169,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Najprv zistite, či už výrok nebol overený.",
+        name: "Po odoslaní aplikácia pripraví ďalší krok sama.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("3. Detekcia duplicít")).toBeInTheDocument();
@@ -232,15 +232,15 @@ describe("HomeOnboarding", () => {
         file: "step-02-search-dark.png",
       },
       {
-        alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a výsledkom s akciou Pridať výrok.",
+        alt: "Detekcia duplicít po odoslaní výroku zostáva v stave prípravy súhrnného prieskumu.",
         file: "step-03-detect-dark.png",
       },
       {
-        alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
+        alt: "Súhrnný prieskum s podobnými výrokmi, článkami a zdrojmi otvorený priamo po detekcii.",
         file: "step-04-research-dark.png",
       },
       {
-        alt: "Formulár na pridanie nového výroku s predvyplneným textom a pripravenými poliami.",
+        alt: "Formulár na pridanie nového výroku otvorený priamo nad súhrnným prieskumom.",
         file: "step-05-add-dark.png",
       },
     ];
