@@ -113,15 +113,20 @@ describe("feedback context integration", () => {
     vi.mocked(useResearch).mockReturnValue({
       activeMode: null,
       data: null,
+      displayState: "closed" as const,
+      isOpen: false,
+      isEntering: false,
+      isClosing: false,
       loading: false,
       error: null,
-      isOpen: false,
       isPendingReveal: false,
       openStatementResearch: vi.fn().mockResolvedValue(undefined),
       openAggregateResearch: vi.fn().mockResolvedValue(undefined),
       openPreparedResearch: vi.fn(),
       retry: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn(),
+      finishEnter: vi.fn(),
+      startClose: vi.fn(),
+      finishClose: vi.fn(),
     });
   });
 

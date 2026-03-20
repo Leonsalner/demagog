@@ -11,15 +11,21 @@ import {
 } from "@/lib/research-client";
 import type { ResearchWorkspaceMode, ResearchWorkspaceResponse } from "@/types";
 
+export type WorkspaceDisplayState = "closed" | "entering" | "open" | "closing";
+
 export function useResearch() {
   const [data, setData] = useState<ResearchWorkspaceResponse | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [displayState, setDisplayState] = useState<WorkspaceDisplayState>("closed");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<ResearchWorkspaceMode | null>(null);
   const [lastRequest, setLastRequest] = useState<ResearchRequest | null>(null);
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const isOpen = displayState !== "closed";
+  const isEntering = displayState === "entering";
+  const isClosing = displayState === "closing";
 
   const open = useCallback(async (request: ResearchRequest, options?: OpenResearchOptions) => {
     const requestId = requestIdRef.current + 1;
@@ -31,7 +37,7 @@ export function useResearch() {
 
     setLastRequest(request);
     setActiveMode(request.mode);
-    setIsOpen(revealWhenReady);
+    setDisplayState(revealWhenReady ? "entering" : "closed");
     setLoading(true);
     setError(null);
     setData(null);
@@ -45,7 +51,7 @@ export function useResearch() {
 
       setData(nextData);
       if (!revealWhenReady) {
-        setIsOpen(true);
+        setDisplayState("entering");
       }
     } catch (nextError) {
       if (controller.signal.aborted || requestIdRef.current !== requestId) {
@@ -54,7 +60,7 @@ export function useResearch() {
 
       setError(nextError instanceof Error ? nextError.message : "Nepodarilo sa načítať prieskum.");
       if (!revealWhenReady) {
-        setIsOpen(true);
+        setDisplayState("entering");
       }
     } finally {
       if (requestIdRef.current === requestId) {
@@ -87,7 +93,7 @@ export function useResearch() {
       setData(preparedData);
       setError(null);
       setLoading(false);
-      setIsOpen(true);
+      setDisplayState("entering");
     },
     [],
   );
@@ -100,11 +106,19 @@ export function useResearch() {
     await open(lastRequest);
   }, [lastRequest, open]);
 
-  const close = useCallback(() => {
+  const finishEnter = useCallback(() => {
+    setDisplayState((currentState) => (currentState === "entering" ? "open" : currentState));
+  }, []);
+
+  const startClose = useCallback(() => {
+    setDisplayState("closing");
+  }, []);
+
+  const finishClose = useCallback(() => {
     requestIdRef.current += 1;
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
-    setIsOpen(false);
+    setDisplayState("closed");
     setError(null);
     setLoading(false);
     setActiveMode(null);
@@ -113,7 +127,10 @@ export function useResearch() {
   return {
     activeMode,
     data,
+    displayState,
     isOpen,
+    isEntering,
+    isClosing,
     isPendingReveal: loading && !isOpen,
     loading,
     error,
@@ -121,6 +138,8 @@ export function useResearch() {
     openAggregateResearch,
     openPreparedResearch,
     retry,
-    close,
+    finishEnter,
+    startClose,
+    finishClose,
   };
 }

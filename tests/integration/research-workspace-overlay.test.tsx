@@ -220,6 +220,7 @@ describe("research workspace overlay", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -374,8 +375,17 @@ describe("research workspace overlay", () => {
     mockUseDetectReturn({
       result: buildThoroughDetectResult(),
     });
-    const pending = deferredResponse();
-    vi.mocked(fetch).mockReturnValue(pending.promise);
+
+    let resolveResearch: (value: Response) => void;
+    const researchPromise = new Promise<Response>((resolve) => {
+      resolveResearch = resolve;
+    });
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (typeof input === "string" && input === "/api/research/detect") {
+        return researchPromise;
+      }
+      return Promise.resolve({ ok: false } as Response);
+    });
 
     renderHome("detect", 104);
 
@@ -396,7 +406,7 @@ describe("research workspace overlay", () => {
     expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
 
     await act(async () => {
-      pending.resolve({
+      resolveResearch!({
         ok: true,
         json: async () => ({
           mode: "aggregate",
@@ -415,14 +425,15 @@ describe("research workspace overlay", () => {
           ],
         }),
       } as Response);
-      await pending.promise;
     });
 
     await screen.findByRole("dialog", { name: "Research workspace" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
     expect(fetch).toHaveBeenCalledTimes(1);
 
+    const dialog = screen.getByRole("dialog", { name: "Research workspace" });
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
+    fireEvent.transitionEnd(dialog);
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();

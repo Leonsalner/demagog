@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 type FakeProgressPhase = "detect" | "aggregate" | "statement-research";
 
 interface UseFakeProgressOptions {
-  active: boolean;
+  pending: boolean;
+  completing?: boolean;
   phase: FakeProgressPhase;
   completionDurationMs?: number;
 }
@@ -51,16 +52,19 @@ function getPhaseProgress(phase: FakeProgressPhase, elapsedMs: number) {
   );
 }
 
+const DEFAULT_COMPLETION_DURATION_MS = 280;
+
 export default function useFakeProgress({
-  active,
+  pending,
+  completing = false,
   phase,
-  completionDurationMs = 220,
+  completionDurationMs = DEFAULT_COMPLETION_DURATION_MS,
 }: UseFakeProgressOptions): FakeProgressState {
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
   const phaseStartedAtRef = useRef<number | null>(null);
-  const previousActiveRef = useRef(active);
+  const previousPendingRef = useRef(pending);
   const completingFromRef = useRef(0);
   const completionStartedAtRef = useRef<number | null>(null);
   const progressRef = useRef(0);
@@ -71,10 +75,10 @@ export default function useFakeProgress({
   }, [progress]);
 
   useEffect(() => {
-    const wasActive = previousActiveRef.current;
-    previousActiveRef.current = active;
+    const wasPending = previousPendingRef.current;
+    previousPendingRef.current = pending;
 
-    if (active && !wasActive) {
+    if (pending && !wasPending) {
       setIsVisible(true);
       setProgress((currentProgress) => {
         const resumedProgress = Math.max(currentProgress, pausedProgressRef.current);
@@ -91,20 +95,20 @@ export default function useFakeProgress({
       completingFromRef.current = 0;
     }
 
-    if (!active && wasActive) {
+    if (!pending && wasPending && !completing) {
       completionStartedAtRef.current = null;
       completingFromRef.current = progressRef.current;
       pausedProgressRef.current = progressRef.current;
     }
-  }, [active]);
+  }, [pending, completing]);
 
   useEffect(() => {
-    if (!isVisible && !active) {
+    if (!isVisible && !pending) {
       return;
     }
 
     function step(timestamp: number) {
-      if (active) {
+      if (pending) {
         if (phaseStartedAtRef.current === null) {
           phaseStartedAtRef.current = timestamp;
         }
@@ -120,7 +124,7 @@ export default function useFakeProgress({
           progressRef.current = nextValue;
           return nextValue;
         });
-      } else {
+      } else if (completing) {
         if (completionStartedAtRef.current === null) {
           completionStartedAtRef.current = timestamp;
           completingFromRef.current = Math.max(completingFromRef.current, progressRef.current);
@@ -164,7 +168,7 @@ export default function useFakeProgress({
     };
     // `phase` is intentionally omitted because every phase uses the same progress curve.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, completionDurationMs, isVisible]);
+  }, [pending, completing, completionDurationMs, isVisible]);
 
   return {
     isVisible,

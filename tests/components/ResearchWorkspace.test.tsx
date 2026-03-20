@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import { APP_NAVBAR_ID } from "@/lib/layout";
 
 describe("ResearchWorkspace", () => {
+  let originalRequestAnimationFrame: typeof window.requestAnimationFrame | undefined;
+  let originalCancelAnimationFrame: typeof window.cancelAnimationFrame | undefined;
+
   beforeEach(() => {
     class ResizeObserverMock {
       observe() {}
@@ -11,11 +14,31 @@ describe("ResearchWorkspace", () => {
     }
 
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    originalRequestAnimationFrame = window.requestAnimationFrame;
+    originalCancelAnimationFrame = window.cancelAnimationFrame;
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
+
+    if (originalRequestAnimationFrame) {
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+    }
+    if (originalCancelAnimationFrame) {
+      window.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
   });
+
+  function installRafTimers() {
+    const requestAnimationFrameMock = ((callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now()), 16)) as unknown as typeof window.requestAnimationFrame;
+    const cancelAnimationFrameMock = ((handle: number) =>
+      window.clearTimeout(handle)) as typeof window.cancelAnimationFrame;
+
+    window.requestAnimationFrame = requestAnimationFrameMock;
+    window.cancelAnimationFrame = cancelAnimationFrameMock;
+  }
 
   it("shows a spinner-based loading shell for manual aggregate opens in a viewport portal", async () => {
     render(
@@ -35,7 +58,7 @@ describe("ResearchWorkspace", () => {
           }}
         />
         <ResearchWorkspace
-          isOpen
+          displayState="open"
           activeMode="aggregate"
           data={null}
           loading
@@ -74,7 +97,7 @@ describe("ResearchWorkspace", () => {
           }}
         />
         <ResearchWorkspace
-          isOpen
+          displayState="open"
           activeMode="statement"
           data={{
             mode: "statement",
@@ -164,7 +187,7 @@ describe("ResearchWorkspace", () => {
           }}
         />
         <ResearchWorkspace
-          isOpen
+          displayState="open"
           activeMode="aggregate"
           data={{
             mode: "aggregate",
@@ -253,5 +276,143 @@ describe("ResearchWorkspace", () => {
     expect(
       screen.queryByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
     ).not.toBeInTheDocument();
+  });
+
+  it("stages the overlay before the panel rises in and completes the enter callback", async () => {
+    vi.useFakeTimers();
+    installRafTimers();
+    const onEntered = vi.fn();
+
+    render(
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 104 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          displayState="entering"
+          activeMode="statement"
+          data={{ mode: "statement", items: [] }}
+          loading={false}
+          error={null}
+          detectResult={null}
+          onEntered={onEntered}
+          onClose={vi.fn()}
+        />
+      </>,
+    );
+
+    const overlay = screen.getByTestId("research-workspace-overlay");
+    const dialog = screen.getByRole("dialog", { name: /research workspace/i });
+
+    expect(overlay.className).toContain("opacity-0");
+    expect(dialog.className).toContain("translate-y-[48px]");
+
+    await act(async () => {
+      vi.advanceTimersByTime(16);
+    });
+
+    expect(overlay.className).toContain("opacity-100");
+    expect(dialog.className).toContain("translate-y-[48px]");
+
+    await act(async () => {
+      vi.advanceTimersByTime(60);
+    });
+
+    expect(dialog.className).toContain("translate-y-0");
+    expect(dialog.className).toContain("opacity-100");
+
+    await act(async () => {
+      vi.advanceTimersByTime(440);
+    });
+
+    expect(onEntered).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts the panel exit before fading the overlay and falls back to onExited", async () => {
+    vi.useFakeTimers();
+    installRafTimers();
+    const onExited = vi.fn();
+
+    const { rerender } = render(
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 104 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          displayState="open"
+          activeMode="statement"
+          data={{ mode: "statement", items: [] }}
+          loading={false}
+          error={null}
+          detectResult={null}
+          onExited={onExited}
+          onClose={vi.fn()}
+        />
+      </>,
+    );
+
+    expect(screen.getByRole("dialog", { name: /research workspace/i })).toBeInTheDocument();
+
+    act(() => {
+      rerender(
+        <>
+          <header
+            id={APP_NAVBAR_ID}
+            ref={(element) => {
+              if (element) {
+                Object.defineProperty(element, "getBoundingClientRect", {
+                  configurable: true,
+                  value: () => ({ bottom: 104 }),
+                });
+              }
+            }}
+          />
+          <ResearchWorkspace
+            displayState="closing"
+            activeMode="statement"
+            data={{ mode: "statement", items: [] }}
+            loading={false}
+            error={null}
+            detectResult={null}
+            onExited={onExited}
+            onClose={vi.fn()}
+          />
+        </>,
+      );
+    });
+
+    const overlay = screen.getByTestId("research-workspace-overlay");
+    const dialog = screen.getByRole("dialog", { name: /research workspace/i });
+
+    expect(dialog.className).toContain("translate-y-[24px]");
+    expect(overlay.className).toContain("opacity-100");
+
+    await act(async () => {
+      vi.advanceTimersByTime(40);
+    });
+
+    expect(overlay.className).toContain("opacity-0");
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(onExited).toHaveBeenCalledTimes(1);
   });
 });

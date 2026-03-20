@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type {
   DetectResponse,
@@ -10,6 +10,7 @@ import type {
   ResearchWorkspaceResponse,
 } from "@/types";
 import { APP_NAVBAR_ID } from "@/lib/layout";
+import type { WorkspaceDisplayState } from "@/hooks/useResearch";
 
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
@@ -19,8 +20,14 @@ import ViewportPortal from "../shared/ViewportPortal";
 
 type SidebarTab = "articles" | "statements";
 
+const PANEL_ENTER_DELAY_MS = 60;
+const PANEL_ENTER_DURATION_MS = 420;
+const PANEL_ENTER_FALLBACK_MS = PANEL_ENTER_DELAY_MS + PANEL_ENTER_DURATION_MS + 20;
+const OVERLAY_EXIT_DELAY_MS = 40;
+const PANEL_EXIT_FALLBACK_MS = 300;
+
 interface ResearchWorkspaceProps {
-  isOpen: boolean;
+  displayState: WorkspaceDisplayState;
   activeMode: ResearchWorkspaceMode | null;
   data: ResearchWorkspaceResponse | null;
   loading: boolean;
@@ -28,6 +35,8 @@ interface ResearchWorkspaceProps {
   detectResult?: DetectResponse | null;
   isAddModalOpen?: boolean;
   onAddStatement?: () => void;
+  onEntered?: () => void;
+  onExited?: () => void;
   onClose: () => void;
   onRetry?: () => void;
 }
@@ -82,7 +91,7 @@ function isSelectionValid(
 }
 
 export default function ResearchWorkspace({
-  isOpen,
+  displayState,
   activeMode,
   data,
   loading,
@@ -90,14 +99,20 @@ export default function ResearchWorkspace({
   detectResult,
   isAddModalOpen = false,
   onAddStatement,
+  onEntered,
+  onExited,
   onClose,
   onRetry,
 }: ResearchWorkspaceProps) {
   const [selection, setSelection] = useState<WorkspaceSelection>(null);
-  const [isMounted, setIsMounted] = useState(isOpen);
-  const [isVisible, setIsVisible] = useState(isOpen);
+  const [isRendered, setIsRendered] = useState(false);
+  const [isOverlayShown, setIsOverlayShown] = useState(false);
+  const [isPanelShown, setIsPanelShown] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
   const [navbarOffset, setNavbarOffset] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousDisplayStateRef = useRef<WorkspaceDisplayState>(displayState);
+
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
     () =>
@@ -174,35 +189,113 @@ export default function ResearchWorkspace({
   }, [onClose]);
 
   useEffect(() => {
-    if (isOpen) {
-      const mountFrame = window.requestAnimationFrame(() => {
-        setIsMounted(true);
-      });
-      const visibleFrame = window.requestAnimationFrame(() => {
-        setIsVisible(true);
-      });
+    const prev = previousDisplayStateRef.current;
+    previousDisplayStateRef.current = displayState;
+    let frameId: number | null = null;
+    let panelDelayTimeoutId: number | null = null;
+    let overlayDelayTimeoutId: number | null = null;
+    let fallbackTimeoutId: number | null = null;
+    let transitionTarget: HTMLDivElement | null = null;
+    let didFinish = false;
 
-      return () => {
-        window.cancelAnimationFrame(mountFrame);
-        window.cancelAnimationFrame(visibleFrame);
-      };
+    const clearTransitionListener = () => {
+      if (transitionTarget) {
+        transitionTarget.removeEventListener("transitionend", handleTransitionEnd);
+        transitionTarget = null;
+      }
+    };
+
+    const finishTransition = (callback?: () => void) => {
+      if (didFinish) {
+        return;
+      }
+
+      didFinish = true;
+      if (fallbackTimeoutId !== null) {
+        window.clearTimeout(fallbackTimeoutId);
+        fallbackTimeoutId = null;
+      }
+      clearTransitionListener();
+      callback?.();
+    };
+
+    function handleTransitionEnd(event: TransitionEvent) {
+      if (!transitionTarget || event.target !== transitionTarget) {
+        return;
+      }
+
+      finishTransition(displayState === "entering" ? onEntered : onExited);
     }
 
-    const hideFrame = window.requestAnimationFrame(() => {
-      setIsVisible(false);
-    });
-    const timeout = window.setTimeout(() => {
-      setIsMounted(false);
-    }, 300);
+    if (displayState === "entering") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync reset for the next animation frame
+      setIsRendered(true);
+      setIsOverlayShown(false);
+      setIsPanelShown(false);
+
+      frameId = window.requestAnimationFrame(() => {
+        transitionTarget = dialogRef.current;
+        if (transitionTarget) {
+          transitionTarget.addEventListener("transitionend", handleTransitionEnd);
+        }
+        fallbackTimeoutId = window.setTimeout(() => {
+          finishTransition(onEntered);
+        }, PANEL_ENTER_FALLBACK_MS);
+        setIsOverlayShown(true);
+        panelDelayTimeoutId = window.setTimeout(() => {
+          setIsPanelShown(true);
+        }, PANEL_ENTER_DELAY_MS);
+      });
+    }
+
+    if (displayState === "open") {
+      setIsRendered(true);
+      setIsOverlayShown(true);
+      setIsPanelShown(true);
+    }
+
+    if (displayState === "closing" && prev !== "closing") {
+      setIsPanelShown(false);
+      overlayDelayTimeoutId = window.setTimeout(() => {
+        setIsOverlayShown(false);
+      }, OVERLAY_EXIT_DELAY_MS);
+
+      transitionTarget = dialogRef.current;
+      if (transitionTarget) {
+        transitionTarget.addEventListener("transitionend", handleTransitionEnd);
+      }
+      fallbackTimeoutId = window.setTimeout(() => {
+        finishTransition(onExited);
+      }, PANEL_EXIT_FALLBACK_MS);
+    }
+
+    if (displayState === "closed") {
+      setIsOverlayShown(false);
+      setIsPanelShown(false);
+      frameId = window.requestAnimationFrame(() => {
+        setIsRendered(false);
+      });
+    }
 
     return () => {
-      window.cancelAnimationFrame(hideFrame);
-      window.clearTimeout(timeout);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      if (panelDelayTimeoutId !== null) {
+        window.clearTimeout(panelDelayTimeoutId);
+      }
+      if (overlayDelayTimeoutId !== null) {
+        window.clearTimeout(overlayDelayTimeoutId);
+      }
+      if (fallbackTimeoutId !== null) {
+        window.clearTimeout(fallbackTimeoutId);
+      }
+      clearTransitionListener();
     };
-  }, [isOpen]);
+  }, [displayState, onEntered, onExited]);
 
   useLayoutEffect(() => {
-    if (!isMounted) {
+    if (!isRendered) {
       return;
     }
 
@@ -230,10 +323,10 @@ export default function ResearchWorkspace({
       resizeObserver?.disconnect();
       window.removeEventListener("resize", updateNavbarOffset);
     };
-  }, [isMounted]);
+  }, [isRendered]);
 
   useEffect(() => {
-    if (!isMounted) {
+    if (!isRendered) {
       return;
     }
 
@@ -243,10 +336,10 @@ export default function ResearchWorkspace({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isMounted]);
+  }, [isRendered]);
 
   useEffect(() => {
-    if (!isMounted) {
+    if (!isRendered) {
       return;
     }
 
@@ -264,18 +357,24 @@ export default function ResearchWorkspace({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleClose, isAddModalOpen, isMounted]);
+  }, [handleClose, isAddModalOpen, isRendered]);
 
-  if (!isMounted) {
+  if (!isRendered) {
     return null;
   }
+
+  const isEntering = displayState === "entering";
+  const isClosing = displayState === "closing";
+  const panelTimingClass = isClosing
+    ? "duration-[260ms] ease-[cubic-bezier(0.4,0,1,1)]"
+    : "duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
 
   return (
     <ViewportPortal>
       <div
         data-testid="research-workspace-overlay"
-        className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-opacity duration-300 sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
-          isVisible ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
+        className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-[opacity,backdrop-filter] duration-300 ease-out sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
+          isOverlayShown ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
         }`}
         style={{
           top: `${navbarOffset}px`,
@@ -286,11 +385,16 @@ export default function ResearchWorkspace({
       >
         <div className="absolute inset-0" aria-hidden="true" onClick={handleClose} />
         <section
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label="Research workspace"
-          className={`relative z-10 flex h-full max-h-full w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-out dark:border-slate-800 dark:bg-slate-950 ${
-            isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-6 scale-[0.98] opacity-0"
+          className={`relative z-10 flex h-full max-h-full w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-[transform,opacity] ${panelTimingClass} dark:border-slate-800 dark:bg-slate-950 ${
+            isPanelShown
+              ? "translate-y-0 scale-100 opacity-100"
+              : isEntering
+                ? "translate-y-[48px] scale-[0.92] opacity-0"
+                : "translate-y-[24px] scale-[0.96] opacity-0"
           }`}
         >
           {workspaceMode === "statement" || !detectResult ? (

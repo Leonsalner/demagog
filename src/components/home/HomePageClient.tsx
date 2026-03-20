@@ -90,12 +90,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     data: researchData,
     loading: researchLoading,
     error: researchError,
-    isOpen: isResearchOpen,
+    displayState: researchDisplayState,
     isPendingReveal: isResearchPendingReveal,
     openStatementResearch,
     openPreparedResearch,
     retry: retryResearch,
-    close: closeResearch,
+    finishEnter: finishEnterResearch,
+    startClose: startCloseResearch,
+    finishClose: finishCloseResearch,
   } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
@@ -299,7 +301,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     activeTab === "detect" &&
     !!detectResult &&
     shouldPrepareAggregateResearch &&
-    !isResearchOpen &&
+    researchDisplayState === "closed" &&
     (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
 
   useEffect(() => {
@@ -320,17 +322,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       return;
     }
 
-    const frameId = window.requestAnimationFrame(() => {
-      setAutoOpenedPreparedResearchKey(preparedAggregateResearchKey);
-    });
+    setAutoOpenedPreparedResearchKey(preparedAggregateResearchKey);
     openPreparedResearch(
       createAggregateResearchRequest(preparedAggregateStatementIds),
       preparedAggregateResearchData,
     );
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
   }, [
     openPreparedResearch,
     preparedAggregateResearchData,
@@ -344,7 +340,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setAutoOpenedPreparedResearchKey(null);
     resetDetect();
     resetPreparedAggregateResearch();
-    closeResearch();
+    if (researchDisplayState !== "closed") {
+      startCloseResearch();
+    }
   };
 
   const handleDetect = (statement: string) => {
@@ -352,12 +350,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setIsAddModalOpen(false);
     setAutoOpenedPreparedResearchKey(null);
     resetPreparedAggregateResearch();
-    closeResearch();
+    if (researchDisplayState !== "closed") {
+      startCloseResearch();
+    }
     void detect(statement, "fast");
   };
 
   const isStatementResearchPending =
-    researchMode === "statement" && isResearchPendingReveal && !isResearchOpen;
+    researchMode === "statement" && isResearchPendingReveal && researchDisplayState === "closed";
   const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
   const hasDetectPanelLoading =
     detectLoading ||
@@ -369,13 +369,19 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     : isAggregatePreparationBlocking
       ? "aggregate"
       : "detect";
+  const isPreparedResearchHandoff =
+    preparedAggregateResearchStatus === "ready" &&
+    researchDisplayState === "entering" &&
+    researchMode === "aggregate" &&
+    researchData === preparedAggregateResearchData;
   const {
     isVisible: isDetectProgressVisible,
     progress: detectProgress,
   } = useFakeProgress({
-    active: hasDetectPanelLoading,
+    pending: hasDetectPanelLoading,
+    completing: isPreparedResearchHandoff,
     phase: detectLoadingPhase,
-    completionDurationMs: 300,
+    completionDurationMs: 280,
   });
   const roundedDetectProgress = Math.round(detectProgress);
   const isDetectPanelLoading = hasDetectPanelLoading || isDetectProgressVisible;
@@ -664,7 +670,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       </div>
 
       <ResearchWorkspace
-        isOpen={isResearchOpen}
+        displayState={researchDisplayState}
         activeMode={researchMode}
         data={researchData}
         loading={researchLoading}
@@ -672,7 +678,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         detectResult={detectResult}
         isAddModalOpen={isAddModalOpen}
         onAddStatement={() => setIsAddModalOpen(true)}
-        onClose={closeResearch}
+        onEntered={finishEnterResearch}
+        onExited={finishCloseResearch}
+        onClose={startCloseResearch}
         onRetry={() => {
           void retryResearch();
         }}

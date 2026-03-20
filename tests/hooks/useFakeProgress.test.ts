@@ -17,9 +17,9 @@ describe("useFakeProgress", () => {
     originalGlobalCancelAnimationFrame = globalThis.cancelAnimationFrame;
 
     const requestAnimationFrameMock = ((callback: FrameRequestCallback) =>
-      window.setTimeout(() => callback(performance.now()), 16)) as typeof window.requestAnimationFrame;
+      globalThis.setTimeout(() => callback(performance.now()), 16)) as unknown as typeof window.requestAnimationFrame;
     const cancelAnimationFrameMock = ((handle: number) =>
-      window.clearTimeout(handle)) as typeof window.cancelAnimationFrame;
+      globalThis.clearTimeout(handle)) as typeof window.cancelAnimationFrame;
 
     window.requestAnimationFrame = requestAnimationFrameMock;
     window.cancelAnimationFrame = cancelAnimationFrameMock;
@@ -63,18 +63,18 @@ describe("useFakeProgress", () => {
 
   it("moves linearly to 70 percent before easing into the final cap", () => {
     const { result, rerender } = renderHook(
-      ({ active }: { active: boolean }) =>
+      ({ pending }: { pending: boolean }) =>
         useFakeProgress({
-          active,
+          pending,
           phase: "detect",
         }),
       {
-        initialProps: { active: false },
+        initialProps: { pending: false },
       },
     );
 
     act(() => {
-      rerender({ active: true });
+      rerender({ pending: true });
       vi.advanceTimersByTime(16);
     });
 
@@ -110,20 +110,21 @@ describe("useFakeProgress", () => {
     expect(result.current.progress).toBeLessThanOrEqual(85);
   });
 
-  it("surges to completion after the active phase ends", () => {
+  it("surges to completion after pending ends with completing true", () => {
     const { result, rerender } = renderHook(
-      ({ active }: { active: boolean }) =>
+      ({ pending, completing }: { pending: boolean; completing: boolean }) =>
         useFakeProgress({
-          active,
+          pending,
+          completing,
           phase: "aggregate",
         }),
       {
-        initialProps: { active: false },
+        initialProps: { pending: false, completing: false },
       },
     );
 
     act(() => {
-      rerender({ active: true });
+      rerender({ pending: true, completing: false });
       vi.advanceTimersByTime(16);
     });
 
@@ -136,7 +137,7 @@ describe("useFakeProgress", () => {
     expect(progressBeforeCompletion).toBeLessThanOrEqual(85);
 
     act(() => {
-      rerender({ active: false });
+      rerender({ pending: false, completing: true });
     });
 
     act(() => {
@@ -149,19 +150,20 @@ describe("useFakeProgress", () => {
 
   it("advances visibly through the first half of a 300ms completion animation", () => {
     const { result, rerender } = renderHook(
-      ({ active }: { active: boolean }) =>
+      ({ pending, completing }: { pending: boolean; completing: boolean }) =>
         useFakeProgress({
-          active,
+          pending,
+          completing,
           phase: "aggregate",
           completionDurationMs: 300,
         }),
       {
-        initialProps: { active: false },
+        initialProps: { pending: false, completing: false },
       },
     );
 
     act(() => {
-      rerender({ active: true });
+      rerender({ pending: true, completing: false });
       vi.advanceTimersByTime(16);
     });
 
@@ -173,7 +175,7 @@ describe("useFakeProgress", () => {
     expect(result.current.progress).toBeLessThanOrEqual(85);
 
     act(() => {
-      rerender({ active: false });
+      rerender({ pending: false, completing: true });
     });
 
     act(() => {
@@ -186,19 +188,20 @@ describe("useFakeProgress", () => {
 
   it("does not finish a 300ms completion animation at 220ms", () => {
     const { result, rerender } = renderHook(
-      ({ active }: { active: boolean }) =>
+      ({ pending, completing }: { pending: boolean; completing: boolean }) =>
         useFakeProgress({
-          active,
+          pending,
+          completing,
           phase: "aggregate",
           completionDurationMs: 300,
         }),
       {
-        initialProps: { active: false },
+        initialProps: { pending: false, completing: false },
       },
     );
 
     act(() => {
-      rerender({ active: true });
+      rerender({ pending: true, completing: false });
       vi.advanceTimersByTime(16);
     });
 
@@ -207,7 +210,7 @@ describe("useFakeProgress", () => {
     });
 
     act(() => {
-      rerender({ active: false });
+      rerender({ pending: false, completing: true });
     });
 
     act(() => {
@@ -221,18 +224,18 @@ describe("useFakeProgress", () => {
 
   it("does not jump forward when detect transitions into aggregate preparation", () => {
     const { result, rerender } = renderHook(
-      ({ active, phase }: { active: boolean; phase: "detect" | "aggregate" }) =>
+      ({ pending, phase }: { pending: boolean; phase: "detect" | "aggregate" }) =>
         useFakeProgress({
-          active,
+          pending,
           phase,
         }),
       {
-        initialProps: { active: false, phase: "detect" as const },
+        initialProps: { pending: false, phase: "detect" as "detect" | "aggregate" },
       },
     );
 
     act(() => {
-      rerender({ active: true, phase: "detect" });
+      rerender({ pending: true, phase: "detect" });
       vi.advanceTimersByTime(16);
     });
 
@@ -245,7 +248,7 @@ describe("useFakeProgress", () => {
     expect(progressBeforePhaseChange).toBeLessThanOrEqual(70.5);
 
     act(() => {
-      rerender({ active: true, phase: "aggregate" });
+      rerender({ pending: true, phase: "aggregate" });
       vi.advanceTimersByTime(200);
     });
 
@@ -253,20 +256,20 @@ describe("useFakeProgress", () => {
     expect(result.current.progress).toBeLessThan(74);
   });
 
-  it("does not reset when active briefly toggles off and on mid-curve", () => {
+  it("does not reset when pending briefly toggles off and on mid-curve", () => {
     const { result, rerender } = renderHook(
-      ({ active }: { active: boolean }) =>
+      ({ pending }: { pending: boolean }) =>
         useFakeProgress({
-          active,
+          pending,
           phase: "detect",
         }),
       {
-        initialProps: { active: false },
+        initialProps: { pending: false },
       },
     );
 
     act(() => {
-      rerender({ active: true });
+      rerender({ pending: true });
       vi.advanceTimersByTime(16);
     });
 
@@ -279,8 +282,8 @@ describe("useFakeProgress", () => {
     expect(progressBeforeBlip).toBeLessThan(39);
 
     act(() => {
-      rerender({ active: false });
-      rerender({ active: true });
+      rerender({ pending: false });
+      rerender({ pending: true });
     });
 
     act(() => {
@@ -289,5 +292,77 @@ describe("useFakeProgress", () => {
 
     expect(result.current.progress).toBeGreaterThan(progressBeforeBlip + 9);
     expect(result.current.progress).toBeLessThan(progressBeforeBlip + 13);
+  });
+
+  it("completes from 85 to 100 percent when completing is true", () => {
+    const { result, rerender } = renderHook(
+      ({ pending, completing }: { pending: boolean; completing: boolean }) =>
+        useFakeProgress({
+          pending,
+          completing,
+          phase: "aggregate",
+          completionDurationMs: 280,
+        }),
+      {
+        initialProps: { pending: false, completing: false },
+      },
+    );
+
+    act(() => {
+      rerender({ pending: true, completing: false });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(result.current.progress).toBeGreaterThanOrEqual(84);
+    expect(result.current.progress).toBeLessThanOrEqual(85);
+
+    const progressAtCompletionStart = result.current.progress;
+
+    act(() => {
+      rerender({ pending: false, completing: true });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(32);
+    });
+
+    expect(result.current.progress).toBeGreaterThan(progressAtCompletionStart);
+  });
+
+  it("hides and resets only after completion has finished", () => {
+    const { result, rerender } = renderHook(
+      ({ pending, completing }: { pending: boolean; completing: boolean }) =>
+        useFakeProgress({
+          pending,
+          completing,
+          phase: "detect",
+        }),
+      {
+        initialProps: { pending: false, completing: false },
+      },
+    );
+
+    act(() => {
+      rerender({ pending: true, completing: false });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2400);
+    });
+
+    expect(result.current.progress).toBeGreaterThanOrEqual(69.5);
+    expect(result.current.progress).toBeLessThanOrEqual(70.5);
+
+    act(() => {
+      rerender({ pending: false, completing: false });
+    });
+
+    expect(result.current.isVisible).toBe(true);
+    expect(result.current.progress).toBeLessThanOrEqual(70.5);
   });
 });

@@ -42,7 +42,7 @@ describe("useResearch", () => {
     expect(result.current.loading).toBe(true);
 
     act(() => {
-      result.current.close();
+      result.current.finishClose();
     });
 
     expect(result.current.isOpen).toBe(false);
@@ -135,7 +135,7 @@ describe("useResearch", () => {
     });
 
     act(() => {
-      result.current.close();
+      result.current.finishClose();
     });
 
     expect(result.current.isOpen).toBe(false);

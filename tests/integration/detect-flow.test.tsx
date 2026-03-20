@@ -143,12 +143,17 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
   const openAggregateResearch = vi.fn().mockResolvedValue(undefined);
   const openPreparedResearch = vi.fn();
   const retry = vi.fn().mockResolvedValue(undefined);
-  const close = vi.fn();
+  const finishEnter = vi.fn();
+  const startClose = vi.fn();
+  const finishClose = vi.fn();
 
   vi.mocked(useResearch).mockReturnValue({
     activeMode: null,
     data: null,
+    displayState: "closed" as const,
     isOpen: false,
+    isEntering: false,
+    isClosing: false,
     isPendingReveal: false,
     loading: false,
     error: null,
@@ -156,11 +161,21 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     openAggregateResearch,
     openPreparedResearch,
     retry,
-    close,
+    finishEnter,
+    startClose,
+    finishClose,
     ...overrides,
   });
 
-  return { openStatementResearch, openAggregateResearch, openPreparedResearch, retry, close };
+  return {
+    openStatementResearch,
+    openAggregateResearch,
+    openPreparedResearch,
+    retry,
+    finishEnter,
+    startClose,
+    finishClose,
+  };
 }
 
 function buildWeakDetectResult(): DetectResponse {
@@ -276,7 +291,7 @@ describe("detect page flow", () => {
       status: "error",
       statementIds: [109, 111],
     });
-    const { close } = mockUseResearchReturn();
+    const { startClose } = mockUseResearchReturn({ displayState: "open" as const });
 
     await renderHome("detect");
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
@@ -285,7 +300,7 @@ describe("detect page flow", () => {
 
     expect(reset).toHaveBeenCalledTimes(1);
     expect(resetPreparedAggregateResearch).toHaveBeenCalledTimes(1);
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(startClose).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeEnabled();
   });
 
