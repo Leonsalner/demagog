@@ -239,6 +239,7 @@ describe("detect page flow", () => {
     expect(
       screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
     ).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
   });
 
   it("renders duplicate and related result states", async () => {
@@ -315,7 +316,7 @@ describe("detect page flow", () => {
     expect(
       screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {

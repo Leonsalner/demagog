@@ -173,6 +173,9 @@ describe("HomeOnboarding", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("3. Detekcia duplicít")).toBeInTheDocument();
+    expect(
+      screen.getByText("Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky."),
+    ).toBeInTheDocument();
   });
 
   it("dismisses from the close button and persists the dismissed status", async () => {

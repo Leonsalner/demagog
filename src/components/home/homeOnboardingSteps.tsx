@@ -63,7 +63,7 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     body: [
       "Detekcia vždy najprv spraví rýchlu kontrolu proti archívu.",
       "Pri novom tvrdení uvidíte výsledok hneď. Pri nájdených zhodách zostanete v jednom spoločnom stave prípravy.",
-      "Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky. Ak príprava zlyhá, vrátia sa karty zhôd s možnosťou skúsiť to znova.",
+      "Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky.",
     ],
     media: {
       kind: "image",

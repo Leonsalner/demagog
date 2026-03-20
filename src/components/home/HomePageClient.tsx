@@ -20,6 +20,7 @@ import SearchResults from "@/components/search/SearchResults";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 import { useDetect } from "@/hooks/useDetect";
+import useFakeProgress from "@/hooks/useFakeProgress";
 import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResearch";
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
@@ -358,8 +359,22 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const isStatementResearchPending =
     researchMode === "statement" && isResearchPendingReveal && !isResearchOpen;
   const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
-  const isDetectPanelLoading =
+  const hasDetectPanelLoading =
     detectLoading || isAggregatePreparationBlocking || (activeTab === "detect" && isStatementResearchPending);
+  const detectLoadingPhase = isStatementResearchPending
+    ? "statement-research"
+    : isAggregatePreparationBlocking
+      ? "aggregate"
+      : "detect";
+  const {
+    isVisible: isDetectProgressVisible,
+    progress: detectProgress,
+  } = useFakeProgress({
+    active: hasDetectPanelLoading,
+    phase: detectLoadingPhase,
+  });
+  const roundedDetectProgress = Math.round(detectProgress);
+  const isDetectPanelLoading = hasDetectPanelLoading || isDetectProgressVisible;
   const researchLoadingMessage = "Pripravujem prieskum výroku a súvisiace zdroje...";
   const searchLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
@@ -591,8 +606,18 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               {isDetectPanelLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                   <div className="flex min-h-[160px] flex-col items-center justify-center">
-                    <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/70">
-                      <div className="h-full w-1/2 animate-pulse rounded-full bg-[var(--brand-accent)] dark:bg-[var(--brand-accent-dark)]" />
+                    <div
+                      className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/70"
+                      role="progressbar"
+                      aria-label="Priebeh detekcie"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={roundedDetectProgress}
+                    >
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,var(--brand-accent),var(--brand-accent-hover))] shadow-[0_0_18px_rgba(217,88,48,0.35)] transition-[width,filter] duration-150 ease-out dark:bg-[linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))] dark:shadow-[0_0_18px_rgba(240,120,80,0.35)]"
+                        style={{ width: `${detectProgress}%` }}
+                      />
                     </div>
                     <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
                       {detectLoadingMessage}
