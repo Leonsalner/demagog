@@ -118,4 +118,47 @@ describe("useResearch", () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual(preparedData);
   });
+
+  it("keeps prepared research data available after close until the next open", async () => {
+    const pending = deferredResponse();
+    vi.mocked(fetch).mockReturnValue(pending.promise);
+
+    const { result } = renderHook(() => useResearch());
+    const request: ResearchRequest = createAggregateResearchRequest([21]);
+    const preparedData: ResearchWorkspaceResponse = {
+      mode: "aggregate",
+      items: [],
+    };
+
+    act(() => {
+      result.current.openPreparedResearch(request, preparedData);
+    });
+
+    act(() => {
+      result.current.close();
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.data).toEqual(preparedData);
+
+    act(() => {
+      void result.current.openAggregateResearch([31], { revealWhenReady: false });
+    });
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.isPendingReveal).toBe(true);
+
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        json: async () => ({
+          mode: "aggregate",
+          items: [],
+        }),
+      } as Response);
+      await pending.promise;
+    });
+  });
 });

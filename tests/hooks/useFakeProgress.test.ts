@@ -147,6 +147,78 @@ describe("useFakeProgress", () => {
     expect(result.current.isVisible).toBe(false);
   });
 
+  it("advances visibly through the first half of a 300ms completion animation", () => {
+    const { result, rerender } = renderHook(
+      ({ active }: { active: boolean }) =>
+        useFakeProgress({
+          active,
+          phase: "aggregate",
+          completionDurationMs: 300,
+        }),
+      {
+        initialProps: { active: false },
+      },
+    );
+
+    act(() => {
+      rerender({ active: true });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(result.current.progress).toBeGreaterThanOrEqual(84);
+    expect(result.current.progress).toBeLessThanOrEqual(85);
+
+    act(() => {
+      rerender({ active: false });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(166);
+    });
+
+    expect(result.current.progress).toBeGreaterThan(96);
+    expect(result.current.progress).toBeLessThan(100);
+  });
+
+  it("does not finish a 300ms completion animation at 220ms", () => {
+    const { result, rerender } = renderHook(
+      ({ active }: { active: boolean }) =>
+        useFakeProgress({
+          active,
+          phase: "aggregate",
+          completionDurationMs: 300,
+        }),
+      {
+        initialProps: { active: false },
+      },
+    );
+
+    act(() => {
+      rerender({ active: true });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+
+    act(() => {
+      rerender({ active: false });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(236);
+    });
+
+    expect(result.current.isVisible).toBe(true);
+    expect(result.current.progress).toBeGreaterThan(97);
+    expect(result.current.progress).toBeLessThan(100);
+  });
+
   it("does not jump forward when detect transitions into aggregate preparation", () => {
     const { result, rerender } = renderHook(
       ({ active, phase }: { active: boolean; phase: "detect" | "aggregate" }) =>

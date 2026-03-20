@@ -105,7 +105,6 @@ export function useResearch() {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsOpen(false);
-    setData(null);
     setError(null);
     setLoading(false);
     setActiveMode(null);

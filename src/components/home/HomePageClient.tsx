@@ -375,6 +375,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   } = useFakeProgress({
     active: hasDetectPanelLoading,
     phase: detectLoadingPhase,
+    completionDurationMs: 300,
   });
   const roundedDetectProgress = Math.round(detectProgress);
   const isDetectPanelLoading = hasDetectPanelLoading || isDetectProgressVisible;

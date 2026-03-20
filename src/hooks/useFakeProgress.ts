@@ -25,10 +25,6 @@ function easeOutCubic(value: number) {
   return 1 - (1 - value) ** 3;
 }
 
-function easeInCubic(value: number) {
-  return value ** 3;
-}
-
 function interpolate(start: number, end: number, rawProgress: number, easing = easeOutCubic) {
   const clamped = Math.min(1, Math.max(0, rawProgress));
   return start + (end - start) * easing(clamped);
@@ -136,7 +132,7 @@ export default function useFakeProgress({
           completingFromRef.current,
           100,
           completionProgress,
-          easeInCubic,
+          easeOutCubic,
         );
 
         setProgress(nextProgress);
