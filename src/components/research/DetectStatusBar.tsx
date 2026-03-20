@@ -37,13 +37,13 @@ export default function DetectStatusBar({
   const status = statusConfig[overallStatus];
 
   return (
-    <div className={`sticky top-0 z-20 border-b px-5 py-3 backdrop-blur sm:px-6 ${status.container}`}>
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <div className={`sticky top-0 z-20 border-b px-5 py-4 backdrop-blur sm:px-6 ${status.container}`}>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0 xl:max-w-[68%]">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             Kontrolovaný výrok
           </p>
-          <h1 className="mt-1 line-clamp-2 text-base font-medium leading-snug text-slate-800 dark:text-slate-100">
+          <h1 className="mt-1 line-clamp-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
             {inputStatement}
           </h1>
           <span className="sr-only">Stav: {status.label}</span>

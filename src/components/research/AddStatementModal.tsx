@@ -256,7 +256,7 @@ export default function AddStatementModal({
   return (
     <ViewportPortal>
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-white/55 px-4 py-6 backdrop-blur-sm dark:bg-slate-950/55"
         style={{
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
           paddingLeft: "calc(env(safe-area-inset-left, 0px) + 1rem)",

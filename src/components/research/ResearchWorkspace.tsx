@@ -375,7 +375,9 @@ export default function ResearchWorkspace({
       <div
         data-testid="research-workspace-overlay"
         className={`fixed inset-x-0 bottom-0 z-50 flex items-end justify-center px-3 pb-3 pt-3 transition-[opacity,backdrop-filter] duration-[360ms] ease-out sm:items-center sm:px-6 sm:pb-6 sm:pt-6 ${
-          isOverlayShown ? "bg-slate-950/70 opacity-100 backdrop-blur-sm" : "bg-slate-950/0 opacity-0"
+          isOverlayShown
+            ? "bg-white/55 opacity-100 backdrop-blur-sm dark:bg-slate-950/70"
+            : "bg-white/0 opacity-0 dark:bg-slate-950/0"
         }`}
         style={{
           top: `${navbarOffset}px`,
