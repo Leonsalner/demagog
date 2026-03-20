@@ -243,10 +243,18 @@ describe("detect page flow", () => {
   });
 
   it("renders duplicate and related result states", async () => {
+    mockUsePreparedAggregateResearchReturn({
+      status: "error",
+      statementIds: [109, 111],
+    });
     mockUseDetectReturn({ result: mockDetectDuplicate });
     const { rerender } = await renderHome("detect");
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
 
+    mockUsePreparedAggregateResearchReturn({
+      status: "error",
+      statementIds: [201],
+    });
     mockUseDetectReturn({ result: mockDetectRelated });
     rerender(await renderHomeTree("detect"));
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
@@ -264,7 +272,10 @@ describe("detect page flow", () => {
 
   it("clears stale detect and prepared aggregate state while editing", async () => {
     const { reset } = mockUseDetectReturn({ result: mockDetectDuplicate });
-    const { reset: resetPreparedAggregateResearch } = mockUsePreparedAggregateResearchReturn();
+    const { reset: resetPreparedAggregateResearch } = mockUsePreparedAggregateResearchReturn({
+      status: "error",
+      statementIds: [109, 111],
+    });
     const { close } = mockUseResearchReturn();
 
     await renderHome("detect");
@@ -317,6 +328,24 @@ describe("detect page flow", () => {
       screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
     ).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
+  });
+
+  it("keeps the detect surface blocked during the idle-to-prepare aggregate handoff", async () => {
+    mockUseDetectReturn({
+      result: buildWeakDetectResult(),
+    });
+    mockUsePreparedAggregateResearchReturn({
+      status: "idle",
+      statementIds: [],
+    });
+
+    await renderHome("detect");
+
+    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {

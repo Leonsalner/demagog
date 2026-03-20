@@ -180,4 +180,42 @@ describe("useFakeProgress", () => {
     expect(result.current.progress - progressBeforePhaseChange).toBeLessThan(4);
     expect(result.current.progress).toBeLessThan(74);
   });
+
+  it("does not reset when active briefly toggles off and on mid-curve", () => {
+    const { result, rerender } = renderHook(
+      ({ active }: { active: boolean }) =>
+        useFakeProgress({
+          active,
+          phase: "detect",
+        }),
+      {
+        initialProps: { active: false },
+      },
+    );
+
+    act(() => {
+      rerender({ active: true });
+      vi.advanceTimersByTime(16);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1200);
+    });
+
+    const progressBeforeBlip = result.current.progress;
+    expect(progressBeforeBlip).toBeGreaterThan(37);
+    expect(progressBeforeBlip).toBeLessThan(39);
+
+    act(() => {
+      rerender({ active: false });
+      rerender({ active: true });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(result.current.progress).toBeGreaterThan(progressBeforeBlip + 9);
+    expect(result.current.progress).toBeLessThan(progressBeforeBlip + 13);
+  });
 });

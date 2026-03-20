@@ -68,6 +68,7 @@ export default function useFakeProgress({
   const completingFromRef = useRef(0);
   const completionStartedAtRef = useRef<number | null>(null);
   const progressRef = useRef(0);
+  const pausedProgressRef = useRef(0);
 
   useEffect(() => {
     progressRef.current = progress;
@@ -79,10 +80,17 @@ export default function useFakeProgress({
 
     if (active && !wasActive) {
       setIsVisible(true);
-      setProgress((currentProgress) =>
-        currentProgress > DEFAULT_START_PROGRESS ? currentProgress : DEFAULT_START_PROGRESS,
-      );
-      phaseStartedAtRef.current = null;
+      setProgress((currentProgress) => {
+        const resumedProgress = Math.max(currentProgress, pausedProgressRef.current);
+        if (resumedProgress <= DEFAULT_START_PROGRESS) {
+          phaseStartedAtRef.current = null;
+        }
+
+        const nextProgress =
+          resumedProgress > DEFAULT_START_PROGRESS ? resumedProgress : DEFAULT_START_PROGRESS;
+        progressRef.current = nextProgress;
+        return nextProgress;
+      });
       completionStartedAtRef.current = null;
       completingFromRef.current = 0;
     }
@@ -90,6 +98,7 @@ export default function useFakeProgress({
     if (!active && wasActive) {
       completionStartedAtRef.current = null;
       completingFromRef.current = progressRef.current;
+      pausedProgressRef.current = progressRef.current;
     }
   }, [active]);
 
@@ -140,6 +149,7 @@ export default function useFakeProgress({
           phaseStartedAtRef.current = null;
           completionStartedAtRef.current = null;
           completingFromRef.current = 0;
+          pausedProgressRef.current = 0;
           animationFrameRef.current = null;
           return;
         }
@@ -156,7 +166,9 @@ export default function useFakeProgress({
         animationFrameRef.current = null;
       }
     };
-  }, [active, completionDurationMs, isVisible, phase]);
+    // `phase` is intentionally omitted because every phase uses the same progress curve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, completionDurationMs, isVisible]);
 
   return {
     isVisible,

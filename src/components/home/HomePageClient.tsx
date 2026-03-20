@@ -360,7 +360,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     researchMode === "statement" && isResearchPendingReveal && !isResearchOpen;
   const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
   const hasDetectPanelLoading =
-    detectLoading || isAggregatePreparationBlocking || (activeTab === "detect" && isStatementResearchPending);
+    detectLoading ||
+    isAggregatePreparationBlocking ||
+    (shouldPrepareAggregateResearch && preparedAggregateResearchStatus === "idle") ||
+    (activeTab === "detect" && isStatementResearchPending);
   const detectLoadingPhase = isStatementResearchPending
     ? "statement-research"
     : isAggregatePreparationBlocking
@@ -615,7 +618,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                       aria-valuenow={roundedDetectProgress}
                     >
                       <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,var(--brand-accent),var(--brand-accent-hover))] shadow-[0_0_18px_rgba(217,88,48,0.35)] transition-[width,filter] duration-150 ease-out dark:bg-[linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))] dark:shadow-[0_0_18px_rgba(240,120,80,0.35)]"
+                        className="h-full rounded-full bg-[linear-gradient(90deg,var(--brand-accent),var(--brand-accent-hover))] shadow-[0_0_18px_rgba(217,88,48,0.35)] dark:bg-[linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))] dark:shadow-[0_0_18px_rgba(240,120,80,0.35)]"
                         style={{ width: `${detectProgress}%` }}
                       />
                     </div>
