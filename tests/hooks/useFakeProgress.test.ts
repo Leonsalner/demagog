@@ -61,7 +61,7 @@ describe("useFakeProgress", () => {
     }
   });
 
-  it("moves quickly at first and stays capped while still active", () => {
+  it("moves linearly to 70 percent before easing into the final cap", () => {
     const { result, rerender } = renderHook(
       ({ active }: { active: boolean }) =>
         useFakeProgress({
@@ -85,15 +85,22 @@ describe("useFakeProgress", () => {
       vi.advanceTimersByTime(1200);
     });
 
-    expect(result.current.progress).toBeGreaterThan(45);
-    expect(result.current.progress).toBeLessThan(60);
+    expect(result.current.progress).toBeGreaterThan(37);
+    expect(result.current.progress).toBeLessThan(39);
 
     act(() => {
-      vi.advanceTimersByTime(1800);
+      vi.advanceTimersByTime(1200);
     });
 
-    expect(result.current.progress).toBeGreaterThanOrEqual(68);
-    expect(result.current.progress).toBeLessThan(76);
+    expect(result.current.progress).toBeGreaterThanOrEqual(69.5);
+    expect(result.current.progress).toBeLessThanOrEqual(70.5);
+
+    act(() => {
+      vi.advanceTimersByTime(1600);
+    });
+
+    expect(result.current.progress).toBeGreaterThan(82);
+    expect(result.current.progress).toBeLessThan(84);
 
     act(() => {
       vi.advanceTimersByTime(6000);
@@ -125,7 +132,7 @@ describe("useFakeProgress", () => {
     });
 
     const progressBeforeCompletion = result.current.progress;
-    expect(progressBeforeCompletion).toBeGreaterThan(65);
+    expect(progressBeforeCompletion).toBeGreaterThan(74);
     expect(progressBeforeCompletion).toBeLessThanOrEqual(85);
 
     act(() => {
@@ -162,8 +169,8 @@ describe("useFakeProgress", () => {
     });
 
     const progressBeforePhaseChange = result.current.progress;
-    expect(progressBeforePhaseChange).toBeGreaterThanOrEqual(64);
-    expect(progressBeforePhaseChange).toBeLessThan(74);
+    expect(progressBeforePhaseChange).toBeGreaterThanOrEqual(69.5);
+    expect(progressBeforePhaseChange).toBeLessThanOrEqual(70.5);
 
     act(() => {
       rerender({ active: true, phase: "aggregate" });
@@ -171,6 +178,6 @@ describe("useFakeProgress", () => {
     });
 
     expect(result.current.progress - progressBeforePhaseChange).toBeLessThan(4);
-    expect(result.current.progress).toBeLessThan(78);
+    expect(result.current.progress).toBeLessThan(74);
   });
 });

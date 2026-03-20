@@ -16,7 +16,10 @@ interface FakeProgressState {
 }
 
 const DEFAULT_START_PROGRESS = 6;
+const LINEAR_PROGRESS_TARGET = 70;
 const MAX_PENDING_PROGRESS = 85;
+const LINEAR_DURATION_MS = 2400;
+const SLOWDOWN_TAU_MS = 800;
 
 function easeOutCubic(value: number) {
   return 1 - (1 - value) ** 3;
@@ -32,44 +35,30 @@ function interpolate(start: number, end: number, rawProgress: number, easing = e
 }
 
 function getPhaseProgress(phase: FakeProgressPhase, elapsedMs: number) {
-  const cappedElapsed = Math.max(0, elapsedMs) * (phase === "statement-research" ? 1.08 : 1);
+  void phase;
 
-  const profile = {
-    rampOne: 600,
-    rampTwo: 1500,
-    rampThree: 2600,
-    rampFour: 4000,
-    rampFive: 5600,
-  };
-
-  if (cappedElapsed <= profile.rampOne) {
-    return interpolate(DEFAULT_START_PROGRESS, 35, cappedElapsed / profile.rampOne);
+  const cappedElapsed = Math.max(0, elapsedMs);
+  if (cappedElapsed <= LINEAR_DURATION_MS) {
+    return interpolate(
+      DEFAULT_START_PROGRESS,
+      LINEAR_PROGRESS_TARGET,
+      cappedElapsed / LINEAR_DURATION_MS,
+      (value) => value,
+    );
   }
 
-  if (cappedElapsed <= profile.rampTwo) {
-    return interpolate(35, 60, (cappedElapsed - profile.rampOne) / (profile.rampTwo - profile.rampOne));
-  }
-
-  if (cappedElapsed <= profile.rampThree) {
-    return interpolate(60, 70, (cappedElapsed - profile.rampTwo) / (profile.rampThree - profile.rampTwo));
-  }
-
-  if (cappedElapsed <= profile.rampFour) {
-    return interpolate(70, 79, (cappedElapsed - profile.rampThree) / (profile.rampFour - profile.rampThree));
-  }
-
-  if (cappedElapsed <= profile.rampFive) {
-    return interpolate(79, 84.2, (cappedElapsed - profile.rampFour) / (profile.rampFive - profile.rampFour));
-  }
-
-  const tailElapsed = cappedElapsed - profile.rampFive;
-  return Math.min(MAX_PENDING_PROGRESS, 84.2 + (1 - Math.exp(-tailElapsed / 2200)) * 0.8);
+  const slowdownElapsed = cappedElapsed - LINEAR_DURATION_MS;
+  const remainingRange = MAX_PENDING_PROGRESS - LINEAR_PROGRESS_TARGET;
+  return Math.min(
+    MAX_PENDING_PROGRESS,
+    MAX_PENDING_PROGRESS - remainingRange * Math.exp(-slowdownElapsed / SLOWDOWN_TAU_MS),
+  );
 }
 
 export default function useFakeProgress({
   active,
   phase,
-  completionDurationMs = 260,
+  completionDurationMs = 220,
 }: UseFakeProgressOptions): FakeProgressState {
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
