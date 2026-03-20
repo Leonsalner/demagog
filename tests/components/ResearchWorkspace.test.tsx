@@ -246,7 +246,13 @@ describe("ResearchWorkspace", () => {
     );
 
     expect(screen.queryByText("Research Workspace")).not.toBeInTheDocument();
-    expect(screen.getByText("Širší kontext zhôd")).toBeInTheDocument();
+    expect(screen.getByText("Kontrolovaný výrok")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Na severe Slovenska chýbajú pediatri." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Súhrnný prieskum")).not.toBeInTheDocument();
+    expect(screen.queryByText("Širší kontext zhôd")).not.toBeInTheDocument();
+    expect(screen.queryByText("Súvisiace výroky")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
     expect(onAddStatement).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));

@@ -37,26 +37,16 @@ export default function DetectStatusBar({
   const status = statusConfig[overallStatus];
 
   return (
-    <div className={`sticky top-0 z-20 border-b px-5 py-4 backdrop-blur sm:px-6 ${status.container}`}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="min-w-0 xl:max-w-[60%]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Súhrnný prieskum
+    <div className={`sticky top-0 z-20 border-b px-5 py-3 backdrop-blur sm:px-6 ${status.container}`}>
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0 xl:max-w-[68%]">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            Kontrolovaný výrok
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Širší kontext zhôd
-            </h1>
-            <span className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-950/75 dark:text-slate-200">
-              {status.label}
-            </span>
-          </div>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-            Detegovaný vstup
-          </p>
-          <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-800 dark:text-slate-100">
+          <h1 className="mt-1 line-clamp-2 text-base font-medium leading-snug text-slate-800 dark:text-slate-100">
             {inputStatement}
-          </p>
+          </h1>
+          <span className="sr-only">Stav: {status.label}</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 xl:justify-end">
