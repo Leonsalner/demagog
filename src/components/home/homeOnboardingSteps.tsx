@@ -59,11 +59,10 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "detect",
     eyebrow: "3. Detekcia duplicít",
-    title: "Po odoslaní aplikácia pripraví ďalší krok sama.",
+    title: "Rýchle overenie výroku v archíve.",
     body: [
-      "Detekcia vždy najprv spraví rýchlu kontrolu proti archívu.",
-      "Pri novom tvrdení uvidíte výsledok hneď. Pri nájdených zhodách zostanete v jednom spoločnom stave prípravy.",
-      "Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky.",
+      "Po odoslaní systém rýchlo prehľadá archív.",
+      "Úplne nové tvrdenia spoznáte hneď. Pri tých podobných vám aplikácia na pozadí nachystá podklady a plynule vás presunie do prieskumu.",
     ],
     media: {
       kind: "image",
@@ -77,11 +76,10 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "research",
     eyebrow: "4. Preskúmať",
-    title: "Širší kontext sa otvorí na jednej obrazovke.",
+    title: "Všetko dôležité na jednej obrazovke.",
     body: [
-      "Súhrnný prieskum spojí podobné výroky, články Demagogu a ďalšie zdroje do jedného pracovného priestoru.",
-      "Vľavo prepínate medzi článkami a výrokmi, v hlavnej časti čítate vybraný materiál.",
-      "Nemusíte sa vracať späť do detekcie. Keď je prieskum pripravený, pokračujete rovno tu.",
+      "Prieskum vám na jedno miesto stiahne súvisiace výroky a články.",
+      "Vľavo si prepínate medzi materiálmi a v hlavnej časti ich rovno čítate.",
     ],
     media: {
       kind: "image",
@@ -95,11 +93,10 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "add",
     eyebrow: "5. Pridať nový výrok",
-    title: "Nový záznam pridáte priamo z prieskumu.",
+    title: "Plynulé pridávanie nových výrokov.",
     body: [
-      "Ak medzi pripravenými podkladmi nenájdete použiteľnú zhodu, otvorte tlačidlo Pridať výrok priamo v pracovnom priestore.",
-      "Text tvrdenia sa do formulára prenesie automaticky, takže dopĺňate už len údaje, hodnotenie a zdroje.",
-      "Samostatná stránka Pridať nový výrok stále existuje, no pri bežnej práci väčšinou stačí tento krok priamo tu.",
+      "Pridávanie je priamo prepojené s prieskumom.",
+      "Otvoríte si formulár a popri dopĺňaní údajov môžete naďalej pracovať so všetkými zisteniami bez odchádzania zo stránky.",
     ],
     media: {
       kind: "image",
@@ -113,11 +110,10 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "ready",
     eyebrow: "6. Hotovo",
-    title: "Celý tok zvládnete bez zbytočného vracania.",
+    title: "Všetko pre plynulú prácu.",
     body: [
-      "Od prvého vloženia tvrdenia až po nový záznam vás aplikácia vedie v jednom súvislom pracovnom toku.",
-      "Ak nájde použiteľné staršie podklady, zostanete v prieskume. Ak nie, z toho istého miesta otvoríte pridanie nového výroku.",
-      "K návodu sa kedykoľvek vrátite cez tlačidlo Návod v pravom dolnom rohu. Ak narazíte na chybu alebo máte nápad, napíšte nám cez tlačidlo v hlavičke.",
+      "Celý proces od vloženia tvrdenia až po nový záznam na seba prirodzene nadväzuje. Namiesto preklikávania sa medzi stránkami máte všetko potrebné vždy poruke.",
+      "K tomuto návodu sa kedykoľvek vrátite cez tlačidlo vpravo dole. Pripomienky a nápady nám môžete kedykoľvek napísať cez hlavičku.",
     ],
     media: {
       kind: "text",

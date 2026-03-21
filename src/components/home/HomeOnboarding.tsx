@@ -207,15 +207,15 @@ function ReadyStage() {
         {[
           {
             label: "Odoslať",
-            text: "Vložte tvrdenie raz a aplikácia sa postará o ďalší krok.",
+            text: "Vložte tvrdenie a aplikácia vyhľadá kontext za vás.",
           },
           {
             label: "Preskúmať",
-            text: "Pri zhodách sa širší kontext otvorí automaticky na jednej obrazovke.",
+            text: "Zistenia, zdroje a podobné výroky máte na jednom mieste.",
           },
           {
             label: "Pridať",
-            text: "Ak nič nesedí, nový záznam otvoríte priamo z prieskumu.",
+            text: "Rovno z prieskumu jednoducho vytvoríte nový záznam.",
           },
         ].map((item) => (
           <article

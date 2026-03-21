@@ -169,12 +169,12 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Po odoslaní aplikácia pripraví ďalší krok sama.",
+        name: "Rýchle overenie výroku v archíve.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("3. Detekcia duplicít")).toBeInTheDocument();
     expect(
-      screen.getByText("Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky."),
+      screen.getByText("Po odoslaní systém rýchlo prehľadá archív."),
     ).toBeInTheDocument();
   });
 
