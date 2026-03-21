@@ -721,7 +721,7 @@ async function canUseSearchStatementsRpc(
   }
 
   const probe = await supabase.rpc("search_statements", {
-    query_embedding: [0.01, 0.02, 0.03],
+    query_embedding: new Array(2048).fill(0.01),
     match_count: 1,
     match_offset: 0,
     filter_strana: null,
