@@ -109,6 +109,7 @@ function buildFallbackClassification(row: MatchRow): {
   id: number;
   classification: DetectionMatch["classification"];
 } {
+  // TODO: Tune these thresholds based on 2048-d cosine similarity distributions in production
   if (row.similarity >= 0.85) {
     return {
       id: row.id,
@@ -169,7 +170,7 @@ async function canUseMatchStatementsRpc(
   }
 
   const probe = await supabase.rpc("match_statements", {
-    query_embedding: [0.01, 0.02, 0.03],
+    query_embedding: new Array(2048).fill(0.01),
     match_count: 1,
   });
 
