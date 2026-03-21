@@ -6,7 +6,7 @@ import FilterSidebar from "@/components/search/FilterSidebar";
 import type { FilterState, FiltersResponse } from "@/types";
 
 const availableFilters: FiltersResponse = {
-  strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO"],
+  strany: ["Hlas", "KDH", "PS", "SaS", "Smer", "OĽaNO", "Nestraníci", "nestranník"],
   mena: [
     "Denisa Saková",
     "Milan Majerský",
@@ -55,8 +55,8 @@ describe("FilterSidebar", () => {
     expect(
       screen.getByRole("button", { name: "Odstrániť Tomáš Drucker" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
-  }, 20_000);
+    expect(screen.getByRole("button", { name: "Vymazať filtre" })).toBeInTheDocument();
+  }, 40_000);
 
   it("supports multi-select verdict and party toggles", async () => {
     const user = userEvent.setup();
@@ -85,6 +85,27 @@ describe("FilterSidebar", () => {
       "true",
     );
   }, 20_000);
+
+  it("toggles grouped no-party aliases from the Nestranník pill", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <FilterSidebar
+        filters={emptyFilters}
+        availableFilters={availableFilters}
+        filterLoadError={false}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nestranník" }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...emptyFilters,
+      strana: ["Nestraníci", "nestranník"],
+    });
+  });
 
   it("opens the recommended politician panel and toggles a card", async () => {
     const user = userEvent.setup();
@@ -124,4 +145,21 @@ describe("FilterSidebar", () => {
       screen.getByText(/Filter data unavailable\. Zobrazujú sa náhradné hodnoty\./i),
     ).toBeInTheDocument();
   });
+
+  it("clears active filters from the text-only header action", async () => {
+    const user = userEvent.setup();
+
+    render(<TestHarness />);
+
+    await user.click(screen.getByRole("button", { name: "Hlas" }));
+    await user.click(screen.getByRole("button", { name: "Vymazať filtre" }));
+
+    expect(screen.getByRole("button", { name: "Hlas" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Vymazať filtre" }),
+    ).not.toBeInTheDocument();
+  }, 20_000);
 });

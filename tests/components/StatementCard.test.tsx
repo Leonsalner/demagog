@@ -88,19 +88,6 @@ describe("StatementCard", () => {
     expect(screen.getByText(/Duplicitný výrok/i)).toBeInTheDocument();
   });
 
-  it("shows explanation when provided", () => {
-    render(
-      <StatementCard
-        statement={fullStatement}
-        explanation="Rovnaký nárok o konsolidácii."
-      />,
-    );
-
-    expect(
-      screen.getByText(/Rovnaký nárok o konsolidácii\./i),
-    ).toBeInTheDocument();
-  });
-
   it("renders the research trigger when onOpenResearch is provided", () => {
     const onOpenResearch = vi.fn();
 

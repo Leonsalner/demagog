@@ -29,6 +29,18 @@ describe("supabase client split", () => {
     });
   });
 
+  it("creates the public client with the publishable key", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_PUBLISHABLE_KEY = "publishable-key";
+
+    const { supabasePublic } = await import("@/lib/supabase");
+
+    expect(supabasePublic()).toEqual({
+      url: "https://example.supabase.co",
+      key: "publishable-key",
+    });
+  });
+
   it("creates the admin client with the service key", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_KEY = "service-key";
@@ -48,6 +60,7 @@ describe("supabase client split", () => {
     } = await import("@/lib/supabase");
 
     expect(getSupabasePublicConfigError()).toContain("SUPABASE_ANON_KEY");
+    expect(getSupabasePublicConfigError()).toContain("SUPABASE_PUBLISHABLE_KEY");
     expect(getSupabaseAdminConfigError()).toContain("SUPABASE_SERVICE_KEY");
   });
 });

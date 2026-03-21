@@ -3,6 +3,7 @@
 export type OnboardingMedia =
   | {
       kind: "text";
+      variant: "basics" | "ready";
     }
   | {
       kind: "image";
@@ -26,14 +27,15 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "basics",
     eyebrow: "1. Základ",
-    title: "Dva režimy. Jeden jednoduchý začiatok.",
+    title: "Začať môžete otázkou aj hotovým tvrdením.",
     body: [
-      "Ak neviete, kde začať, zvoľte Vyhľadávanie. Rozumie témam, menám, citátom aj bežným otázkam.",
-      "Detekciu duplicít použite, keď už máte konkrétny výrok a chcete zistiť, či ho Demagog v minulosti overoval.",
-      "Ak nájdete zhodu, tlačidlom Preskúmať si zobrazíte podrobnosti. Ak nie, môžete plynulo prejsť na Pridať nový výrok.",
+      "Vo Vyhľadávaní môžete začať témou, menom, citátom alebo otázkou. Keď už máte konkrétne tvrdenie, otvorte Detekciu duplicít.",
+      "V Detekcii ho odošlete len raz. Ak sa nič podobné nenájde, hneď uvidíte stav Nový výrok.",
+      "Ak sa podobné staršie výroky nájdu, aplikácia zostane chvíľu pracovať a sama otvorí súhrnný prieskum.",
     ],
     media: {
       kind: "text",
+      variant: "basics",
     },
   },
   {
@@ -57,55 +59,69 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "detect",
     eyebrow: "3. Detekcia duplicít",
-    title: "Najprv zistite, či už výrok nebol overený.",
+    title: "Po odoslaní aplikácia pripraví ďalší krok sama.",
     body: [
-      "Vložte text výroku a nástroj vám obratom ukáže, či k nemu v archíve existuje použiteľné staršie overenie.",
-      "Rýchly režim vám hneď ponúkne najbližšie zhody. Ak potrebujete vidieť širší kontext a podobné tvrdenia, prepnite sa do Prieskumu.",
-      "Ak medzi výsledkami nenájdete nič použiteľné, môžete prejsť priamo na Pridať nový výrok, kde už na vás bude čakať predvyplnený formulár.",
+      "Detekcia vždy najprv spraví rýchlu kontrolu proti archívu.",
+      "Pri novom tvrdení uvidíte výsledok hneď. Pri nájdených zhodách zostanete v jednom spoločnom stave prípravy.",
+      "Keď sú podklady hotové, súhrnný prieskum sa otvorí automaticky.",
     ],
     media: {
       kind: "image",
-      lightSrc: "/onboarding/step-03-detect-light-v2.png",
+      lightSrc: "/onboarding/step-03-detect-light.png",
       darkSrc: "/onboarding/step-03-detect-dark.png",
-      alt: "Detekcia duplicít s vloženým výrokom, rýchlym režimom a výsledkom s akciou Pridať výrok.",
-      caption: "Detekcia rýchlo ukáže, či už existuje zhoda, alebo máte pokračovať na pridanie nového výroku.",
+      alt: "Detekcia duplicít po odoslaní výroku zostáva v stave prípravy súhrnného prieskumu.",
+      caption: "Po rýchlej kontrole aplikácia pri nájdených zhodách hneď pripravuje súhrnný prieskum.",
       aspectRatio: "16 / 9",
     },
   },
   {
     id: "research",
     eyebrow: "4. Preskúmať",
-    title: "Z výsledku priamo k analýze.",
+    title: "Širší kontext sa otvorí na jednej obrazovke.",
     body: [
-      "Tlačidlo Preskúmať nájdete pri výsledkoch vo Vyhľadávaní aj v Detekcii duplicít.",
-      "Otvorí vám kompletný prehľad o výroku: text analýzy, súvisiace články z Demagogu a konkrétne podklady, o ktoré sa overenie opiera.",
-      "Všetky podstatné informácie máte na jednom mieste a môžete s nimi ihneď pracovať.",
+      "Súhrnný prieskum spojí podobné výroky, články Demagogu a ďalšie zdroje do jedného pracovného priestoru.",
+      "Vľavo prepínate medzi článkami a výrokmi, v hlavnej časti čítate vybraný materiál.",
+      "Nemusíte sa vracať späť do detekcie. Keď je prieskum pripravený, pokračujete rovno tu.",
     ],
     media: {
       kind: "image",
-      lightSrc: "/onboarding/step-04-research-light-v2.png",
+      lightSrc: "/onboarding/step-04-research-light.png",
       darkSrc: "/onboarding/step-04-research-dark.png",
-      alt: "Preskúmať s analýzou výroku, článkami Demagogu a overovacími podkladmi na jednom mieste.",
-      caption: "Preskúmať spája analýzu, Demagog články a podklady k overeniu na jednom mieste.",
+      alt: "Súhrnný prieskum s podobnými výrokmi, článkami a zdrojmi otvorený priamo po detekcii.",
+      caption: "Keď sú podklady pripravené, pracovný priestor sa otvorí automaticky bez ďalšieho klikania.",
       aspectRatio: "16 / 9",
     },
   },
   {
     id: "add",
     eyebrow: "5. Pridať nový výrok",
-    title: "Keď nič nesedí, pokračujte rovno do databázy.",
+    title: "Nový záznam pridáte priamo z prieskumu.",
     body: [
-      "Ak systém nič vhodné nenašiel, môžete hneď pokračovať na Pridať nový výrok.",
-      "Formulár otvorí predvyplnený text, takže nezačínate od nuly.",
+      "Ak medzi pripravenými podkladmi nenájdete použiteľnú zhodu, otvorte tlačidlo Pridať výrok priamo v pracovnom priestore.",
+      "Text tvrdenia sa do formulára prenesie automaticky, takže dopĺňate už len údaje, hodnotenie a zdroje.",
+      "Samostatná stránka Pridať nový výrok stále existuje, no pri bežnej práci väčšinou stačí tento krok priamo tu.",
     ],
-    optional: true,
     media: {
       kind: "image",
       lightSrc: "/onboarding/step-05-add-light.png",
       darkSrc: "/onboarding/step-05-add-dark.png",
-      alt: "Formulár na pridanie nového výroku s predvyplneným textom a pripravenými poliami.",
-      caption: "Keď výsledok nesedí, prechod do databázy nadviaže bez straty vloženého textu.",
+      alt: "Formulár na pridanie nového výroku otvorený priamo nad súhrnným prieskumom.",
+      caption: "Ak pripravené podklady nestačia, nový záznam otvoríte priamo z prieskumu.",
       aspectRatio: "16 / 9",
+    },
+  },
+  {
+    id: "ready",
+    eyebrow: "6. Hotovo",
+    title: "Celý tok zvládnete bez zbytočného vracania.",
+    body: [
+      "Od prvého vloženia tvrdenia až po nový záznam vás aplikácia vedie v jednom súvislom pracovnom toku.",
+      "Ak nájde použiteľné staršie podklady, zostanete v prieskume. Ak nie, z toho istého miesta otvoríte pridanie nového výroku.",
+      "K návodu sa kedykoľvek vrátite cez tlačidlo Návod a spätnú väzbu pošlete cez Máte pripomienku?.",
+    ],
+    media: {
+      kind: "text",
+      variant: "ready",
     },
   },
 ];

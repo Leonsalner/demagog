@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
 import { rerankResults, understandQuery } from "@/lib/gemini";
+import { normalizePartyFilterValues } from "@/lib/party-filters";
 import {
   buildKeywordTerms,
   normalizeForMatching,
@@ -591,10 +592,19 @@ function validateExtractedFilters(
     datum_od: filters.datum_od,
     datum_do: filters.datum_do,
   });
+  const resolvedNames = resolveAvailableValues(filters.meno, availableNames);
+  const resolvedParties = resolveAvailableValues(filters.strana, availableParties);
+  const normalizedQuery = normalizeForMatching(query);
+  const referencesPersonAsPartyProxy =
+    /(?:^|\s)(?:jeho|jej|ich)\s+stran/.test(normalizedQuery) ||
+    /(?:^|\s)(?:jeho|jej|ich)\s+hnut/.test(normalizedQuery);
 
   return {
-    meno: resolveAvailableValues(filters.meno, availableNames),
-    strana: resolveAvailableValues(filters.strana, availableParties),
+    meno:
+      referencesPersonAsPartyProxy && resolvedParties && resolvedParties.length > 0
+        ? null
+        : resolvedNames,
+    strana: resolvedParties,
     vyhodnotenie:
       filters.vyhodnotenie && filters.vyhodnotenie.length > 0
         ? dedupeStrings(filters.vyhodnotenie).slice(0, 3) as Verdict[]
@@ -966,10 +976,16 @@ export async function POST(request: NextRequest) {
       } = await fetchAvailableQueryValues(supabase);
       recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
 
+      const normalizedStrana = normalizePartyFilterValues(toFilterArray(body.strana), allParties);
+      const normalizedBody: SearchRequest = {
+        ...body,
+        strana: normalizedStrana ?? undefined,
+      };
+
       const understandingStartedAt = performance.now();
       const modelUnderstanding = await understandQuery(body.query, allNames, allParties);
       const fallbackUnderstanding = buildFastQueryUnderstanding(
-        body,
+        normalizedBody,
         body.query,
         allNames,
         allParties
@@ -996,7 +1012,7 @@ export async function POST(request: NextRequest) {
         understanding.related_politicians,
         allNames
       );
-      const mergedBody = mergeQueryFilters(body, validatedFilters);
+      const mergedBody = mergeQueryFilters(normalizedBody, validatedFilters);
       const semanticQuery = understanding.semantic_query.trim() || body.query;
       if (await canUseSearchStatementsRpc(supabase)) {
         let embedding: number[];
@@ -1113,6 +1129,19 @@ export async function POST(request: NextRequest) {
         related_politicians: validatedRelatedPoliticians,
       };
     } else {
+      let filterBody: SearchRequest = body;
+      if (body.strana) {
+        const distinctValuesStartedAt = performance.now();
+        const { strana: allParties } = await fetchAvailableQueryValues(supabase);
+        recordStageTiming(timings, "distinct_values_ms", distinctValuesStartedAt);
+
+        const normalizedStrana = normalizePartyFilterValues(toFilterArray(body.strana), allParties);
+        filterBody = {
+          ...body,
+          strana: normalizedStrana ?? undefined,
+        };
+      }
+
       const query = applyStatementFilters(
         supabase
           .from("vyroky")
@@ -1120,7 +1149,7 @@ export async function POST(request: NextRequest) {
             "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
             { count: "exact" }
           ),
-        body
+        filterBody
       );
 
       const { data, error, count } = await query

@@ -4,10 +4,12 @@ import { useDetect } from "@/hooks/useDetect";
 
 describe("useDetect", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
@@ -28,7 +30,7 @@ describe("useDetect", () => {
     expect(result.current.error).toBe("Detekcia zlyhala.");
   });
 
-  it("forwards the selected detect mode to the API", async () => {
+  it("defaults detect requests to the fast mode", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -42,7 +44,7 @@ describe("useDetect", () => {
     const { result } = renderHook(() => useDetect());
 
     await act(async () => {
-      await result.current.detect("Testovaci vyrok", "fast");
+      await result.current.detect("Testovaci vyrok");
     });
 
     expect(fetch).toHaveBeenCalledWith(
@@ -56,5 +58,125 @@ describe("useDetect", () => {
         }),
       }),
     );
+  });
+
+  it("ignores a stale detect response when a newer request is in flight", async () => {
+    vi.mocked(fetch).mockImplementation(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+      return new Response(
+        JSON.stringify({
+          input_statement: "Second statement",
+          matches: [],
+          overall_status: "NEW_CLAIM",
+          query_time_ms: 12,
+        }),
+        { status: 200 },
+      );
+    });
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      result.current.detect("First statement");
+      await vi.advanceTimersByTimeAsync(50);
+      result.current.detect("Second statement");
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
+    expect(result.current.result?.input_statement).toBe("Second statement");
+  });
+
+  it("reset() suppresses a pending detect resolution", async () => {
+    let resolveFirst: (value: Response) => void;
+    const deferred = new Promise<Response>((resolve) => {
+      resolveFirst = resolve;
+    });
+
+    vi.mocked(fetch).mockReturnValue(deferred as unknown as Promise<Response>);
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Test statement");
+      await Promise.resolve();
+      result.current.reset();
+      resolveFirst(
+        new Response(
+          JSON.stringify({
+            input_statement: "Test statement",
+            matches: [],
+            overall_status: "NEW_CLAIM",
+            query_time_ms: 12,
+          }),
+          { status: 200 },
+        ),
+      );
+      await detectPromise;
+      await Promise.resolve();
+    });
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("aborted detect does not set error", async () => {
+    vi.useRealTimers();
+    let rejectFetch: (error: Error) => void;
+    const fetchPromise = new Promise<Response>((_, reject) => {
+      rejectFetch = reject;
+    });
+
+    vi.mocked(fetch).mockReturnValue(fetchPromise as unknown as Promise<Response>);
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      result.current.detect("Test statement");
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.reset();
+    });
+
+    act(() => {
+      rejectFetch(new DOMException("Aborted", "AbortError"));
+    });
+
+    await act(async () => {});
+
+    expect(result.current.error).toBeNull();
+    vi.useFakeTimers();
+  });
+
+  it("loading returns to false after reset cancels in-flight request", async () => {
+    let resolveFirst: (value: Response) => void;
+    const deferred = new Promise<Response>((resolve) => {
+      resolveFirst = resolve;
+    });
+
+    vi.mocked(fetch).mockReturnValue(deferred as unknown as Promise<Response>);
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      void result.current.detect("First statement");
+      await Promise.resolve();
+      result.current.reset();
+      resolveFirst(
+        new Response(
+          JSON.stringify({
+            input_statement: "First statement",
+            matches: [],
+            overall_status: "NEW_CLAIM",
+            query_time_ms: 12,
+          }),
+          { status: 200 },
+        ),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.loading).toBe(false);
   });
 });

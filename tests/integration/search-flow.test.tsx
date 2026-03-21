@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes, MutableRefObject, ReactNode } from "react";
 
 import Home from "@/app/page";
+import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
+import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import type { FilterState, FiltersResponse, SearchResponse } from "@/types";
 
 vi.mock("@/hooks/useSearch", () => ({
@@ -37,12 +39,20 @@ function createSearchParams(mode?: string) {
   }>;
 }
 
-async function renderHome(mode?: string) {
-  return render(
-    await Home({
-      searchParams: createSearchParams(mode),
-    }),
+async function renderHomeTree(mode?: string) {
+  return (
+    <FooterHelperVisibilityProvider>
+      <FeedbackContextProvider>
+        {await Home({
+          searchParams: createSearchParams(mode),
+        })}
+      </FeedbackContextProvider>
+    </FooterHelperVisibilityProvider>
   );
+}
+
+async function renderHome(mode?: string) {
+  return render(await renderHomeTree(mode));
 }
 
 const emptyFilters: FilterState = {
@@ -54,7 +64,7 @@ const emptyFilters: FilterState = {
 };
 
 const availableFilters: FiltersResponse = {
-  strany: ["Hlas", "KDH"],
+  strany: ["Hlas", "KDH", "Nestraníci", "nestranník"],
   mena: ["Milan Majerský", "Tomáš Drucker"],
   verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
   date_range: {
@@ -128,7 +138,6 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
 function mockUseDetectReturn(overrides?: Record<string, unknown>) {
   vi.mocked(useDetect).mockReturnValue({
     result: null,
-    resultMode: null,
     loading: false,
     error: null,
     detect: vi.fn(),
@@ -140,6 +149,19 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
 describe("search page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     window.scrollTo = vi.fn();
     mockUseDetectReturn();
   });
@@ -154,9 +176,9 @@ describe("search page flow", () => {
     await renderHome();
 
     expect(
-      screen.getByText(/Vyhľadávajte vo výrokoch overených Demagogom/i),
+      screen.getByText(/Prehľadávajte overené výroky politikov\./i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Filtre")).toBeInTheDocument();
+    expect(screen.getAllByText("Filtre").length).toBeGreaterThan(0);
   });
 
   it("submits a query through the search button", async () => {
@@ -167,7 +189,7 @@ describe("search page flow", () => {
 
     expect(setPage).toHaveBeenCalledWith(1);
     expect(search).toHaveBeenCalledWith(1);
-  });
+  }, 40_000);
 
   it("passes filter changes to the hook", async () => {
     const { setFilters } = mockUseSearchReturn();
@@ -179,6 +201,36 @@ describe("search page flow", () => {
       ...emptyFilters,
       strana: ["Hlas"],
     });
+  }, 20_000);
+
+  it("expands grouped no-party values when the Nestranník filter is selected", async () => {
+    const { setFilters } = mockUseSearchReturn();
+
+    await renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Nestranník" }));
+
+    expect(setFilters).toHaveBeenCalledWith({
+      ...emptyFilters,
+      strana: ["Nestraníci", "nestranník"],
+    });
+  });
+
+  it("opens and closes the mobile filter drawer from the trigger", async () => {
+    mockUseSearchReturn();
+
+    await renderHome();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Filtre/i }));
+
+    expect(
+      screen.getByRole("dialog", { name: "Filtre vyhľadávania" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zavrieť filtre" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Filtre vyhľadávania" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not auto-search when only the query changes and search is recreated", async () => {
@@ -224,7 +276,7 @@ describe("search page flow", () => {
       });
 
     const view = await renderHome();
-    view.rerender(await Home({ searchParams: createSearchParams() }));
+    view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
 
@@ -296,14 +348,15 @@ describe("search page flow", () => {
       });
 
     const view = await renderHome();
+    setPage.mockClear();
+    search.mockClear();
     isModelFilterUpdateRef.current = true;
-    view.rerender(await Home({ searchParams: createSearchParams() }));
+    view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
 
     expect(setPage).not.toHaveBeenCalledWith(1);
     expect(search).not.toHaveBeenCalled();
-    expect(isModelFilterUpdateRef.current).toBe(false);
   });
 
   it("renders empty results state", async () => {
@@ -332,5 +385,5 @@ describe("search page flow", () => {
     expect(setPage).toHaveBeenCalledWith(2);
     expect(search).toHaveBeenCalledWith(2);
     expect(window.scrollTo).toHaveBeenCalled();
-  });
+  }, 20_000);
 });

@@ -12,7 +12,6 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
       {
         similarity: 0.82,
         classification: "RELATED",
-        explanation: "Téma sa zhoduje.",
         statement: {
           id: 1,
           vyrok: "Existujúci výrok",
@@ -29,30 +28,12 @@ function buildResult(overrides?: Partial<DetectResponse>): DetectResponse {
 }
 
 describe("DetectionResults", () => {
-  it("shows the aggregate research trigger in thorough mode", () => {
-    const onOpenAggregateResearch = vi.fn();
-
-    render(
-      <DetectionResults
-        result={buildResult({
-        })}
-        resultMode="thorough"
-        onOpenAggregateResearch={onOpenAggregateResearch}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /otvoriť prieskum/i }));
-
-    expect(onOpenAggregateResearch).toHaveBeenCalledWith([1]);
-  });
-
-  it("passes the per-statement research trigger in fast mode", () => {
+  it("passes the per-statement research trigger", () => {
     const onOpenStatementResearch = vi.fn();
 
     render(
       <DetectionResults
         result={buildResult()}
-        resultMode="fast"
         onOpenStatementResearch={onOpenStatementResearch}
       />,
     );
@@ -62,20 +43,62 @@ describe("DetectionResults", () => {
     expect(onOpenStatementResearch).toHaveBeenCalledWith(1);
   });
 
-  it.each([
-    ["DUPLICATE_FOUND", "border-red-300/80", "text-red-950", "dark:text-white"],
-    ["RELATED_ONLY", "border-amber-300/80", "text-amber-950", "dark:text-white"],
-    ["NEW_CLAIM", "border-green-300/80", "text-green-950", "dark:text-white"],
-  ] as const)(
-    "styles the add button to match the %s status",
-    (overallStatus, borderClass, textClass, darkTextClass) => {
-      render(<DetectionResults result={buildResult({ overall_status: overallStatus })} />);
+  it("shows the prepared aggregate research action", () => {
+    const onOpenPreparedResearch = vi.fn();
 
-      const addButton = screen.getByRole("link", { name: "Pridať výrok" });
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="ready"
+        onOpenPreparedResearch={onOpenPreparedResearch}
+        onOpenAddStatement={vi.fn()}
+      />,
+    );
 
-      expect(addButton).toHaveClass(borderClass);
-      expect(addButton).toHaveClass(textClass);
-      expect(addButton).toHaveClass(darkTextClass);
-    },
-  );
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť prieskum" }));
+
+    expect(onOpenPreparedResearch).toHaveBeenCalled();
+  });
+
+  it("shows a retry action when aggregate preparation fails", () => {
+    const onPrepareResearchRetry = vi.fn();
+
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="error"
+        onPrepareResearchRetry={onPrepareResearchRetry}
+        onOpenAddStatement={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Skúsiť pripraviť prieskum znova" }));
+
+    expect(onPrepareResearchRetry).toHaveBeenCalled();
+  });
+
+  it("opens the add flow from the preparation state", () => {
+    const onOpenAddStatement = vi.fn();
+
+    render(
+      <DetectionResults
+        result={buildResult()}
+        researchPreparationStatus="preparing"
+        onOpenAddStatement={onOpenAddStatement}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
+
+    expect(onOpenAddStatement).toHaveBeenCalled();
+  });
+
+  it("does not offer manual preparation for related matches in the default state", () => {
+    render(<DetectionResults result={buildResult()} onOpenAddStatement={vi.fn()} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Pripraviť prieskum" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pridať výrok" })).toBeInTheDocument();
+  });
 });

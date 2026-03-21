@@ -1,23 +1,29 @@
 "use client";
 
-import type { ResearchItem } from "@/types";
+import type { DetectionMatch, ResearchItem } from "@/types";
 
 import AnalysisRenderer from "./AnalysisRenderer";
 import ArticleRenderer from "./ArticleRenderer";
 import ExternalSourceRenderer from "./ExternalSourceRenderer";
 import ProvenanceChips from "./ProvenanceChips";
+import StatementMatchPane from "./StatementMatchPane";
 
 interface ResearchPaneProps {
-  item: ResearchItem | null;
+  item: ResearchItem | DetectionMatch | null;
+  onNavigateToStatement?: (statementId: number) => void;
 }
 
-export default function ResearchPane({ item }: ResearchPaneProps) {
+export default function ResearchPane({ item, onNavigateToStatement }: ResearchPaneProps) {
   if (!item) {
     return (
       <div className="flex min-h-[280px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
         Vyberte položku z ľavého panelu.
       </div>
     );
+  }
+
+  if ("statement" in item) {
+    return <StatementMatchPane match={item} />;
   }
 
   return (
@@ -29,7 +35,10 @@ export default function ResearchPane({ item }: ResearchPaneProps) {
           </h2>
         </div>
         <div className="lg:max-w-sm">
-          <ProvenanceChips refs={item.statement_refs} />
+          <ProvenanceChips
+            refs={item.statement_refs}
+            onNavigateToStatement={onNavigateToStatement}
+          />
         </div>
       </div>
 

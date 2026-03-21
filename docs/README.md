@@ -46,6 +46,27 @@ GEMINI_API_KEY=...
 NEXT_PUBLIC_USE_DETECT_MOCK=false
 ```
 
+If you want the in-app feedback widget to submit into Linear, add these too:
+
+```bash
+LINEAR_API_KEY=...
+LINEAR_FEEDBACK_PROJECT_ID=...
+# optional legacy fallback if you deliberately want requests attached to one issue instead
+LINEAR_FEEDBACK_ISSUE_ID=...
+# optional: use an existing customer directly
+LINEAR_ANONYMOUS_CUSTOMER_ID=...
+# optional: customize the auto-created anonymous customer
+LINEAR_ANONYMOUS_CUSTOMER_EXTERNAL_ID=demagog-anonymous-feedback
+LINEAR_ANONYMOUS_CUSTOMER_NAME="Demagog Anonymous Feedback"
+```
+
+Feedback does not need a Linear workspace id. It creates a customer request on one Linear destination. The recommended setup is a project-backed destination so requests show under that project's `Customers` tab. The app now auto-upserts an anonymous customer when `LINEAR_ANONYMOUS_CUSTOMER_ID` is not set, so the only required feedback variables are:
+
+- an API key
+- the destination project UUID in `LINEAR_FEEDBACK_PROJECT_ID`
+
+Set only one of `LINEAR_FEEDBACK_PROJECT_ID` or `LINEAR_FEEDBACK_ISSUE_ID`.
+
 3. Initialize the database:
 
 ```bash

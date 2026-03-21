@@ -318,12 +318,19 @@ export function useSearch() {
     setFiltersState((currentFilters) => {
       const nextFilters =
         typeof nextState === "function" ? nextState(currentFilters) : nextState;
+      let hasUserEditedFilters = false;
 
       extractedFilterKeys.forEach((key) => {
         if (currentFilters[key] !== nextFilters[key]) {
-          modelSetFields.current.delete(key);
+          hasUserEditedFilters = true;
         }
       });
+
+      if (hasUserEditedFilters) {
+        // Once the user adjusts filters, preserve the current selections as
+        // user-owned so they do not vanish on the next search refresh.
+        modelSetFields.current = new Set<keyof FilterState>();
+      }
 
       return nextFilters;
     });

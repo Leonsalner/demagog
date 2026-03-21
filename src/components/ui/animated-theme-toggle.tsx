@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   applyTheme,
   DARK_THEME_MEDIA_QUERY,
-  readActiveTheme,
   readStoredTheme,
   resolveTheme,
   THEME_STORAGE_KEY,
@@ -16,16 +15,10 @@ import {
 
 export function AnimatedThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<ThemeMode>(() =>
-    typeof document === "undefined" ? "light" : readActiveTheme(),
+    typeof document === "undefined" ? "light" : resolveTheme(),
   );
   const [hasStoredPreference, setHasStoredPreference] = useState(() => readStoredTheme() !== null);
   const isDark = theme === "dark";
-
-  useEffect(() => {
-    const resolvedTheme = resolveTheme();
-    setTheme(resolvedTheme);
-    applyTheme(resolvedTheme);
-  }, []);
 
   useEffect(() => {
     applyTheme(theme);

@@ -3,35 +3,18 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import PoliticianPickerPanel from "@/components/search/PoliticianPickerPanel";
-import {
-  PARTY_FILTER_OPTIONS,
-  PARTY_GROUPS,
-} from "@/lib/politician-data";
-import { VERDICTS } from "@/lib/utils";
+import { PARTY_GROUPS } from "@/lib/politician-data";
+import { buildPartyOptions } from "@/lib/party-filters";
+import { VERDICT_ROWS, VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, FiltersResponse, Verdict } from "@/types";
 
 interface FilterSidebarProps {
+  className?: string;
   filters: FilterState;
   availableFilters: FiltersResponse | null;
   filterLoadError?: boolean;
   onChange: (filters: FilterState) => void;
 }
-
-const verdictOptions: Verdict[] = VERDICTS;
-
-const verdictDotClass: Record<Verdict, string> = {
-  Pravda: "bg-green-600",
-  Nepravda: "bg-red-600",
-  "Zavádzajúce": "bg-amber-600",
-  "Neoveriteľné": "bg-slate-500",
-};
-
-const verdictActiveClass: Record<Verdict, string> = {
-  Pravda: "border-transparent bg-green-600 text-white dark:bg-green-500",
-  Nepravda: "border-transparent bg-red-600 text-white dark:bg-red-500",
-  "Zavádzajúce": "border-transparent bg-amber-500 text-slate-950 dark:bg-amber-400",
-  "Neoveriteľné": "border-transparent bg-slate-700 text-white dark:bg-slate-500",
-};
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -64,33 +47,18 @@ function FilterSection({
 }
 
 function baseControlClassName() {
-  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-[#e03e1a] focus:ring-4 focus:ring-[#e03e1a]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#ff3300] dark:focus:ring-[#ff3300]/20";
+  return "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-[#d95830] focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#f07850] dark:focus:ring-[#f07850]/20";
+}
+
+function dateControlClassName() {
+  return `${baseControlClassName()} demagog-date-input appearance-none pr-12`;
 }
 
 function normalizeListValue(value: string) {
   return value.replace(/\s+/gu, " ").trim().toLocaleLowerCase();
 }
 
-function buildPartyOptions(parties: string[]) {
-  return PARTY_FILTER_OPTIONS.flatMap((option) => {
-    const matchedValue = parties.find((party) =>
-      option.aliases.some(
-        (alias) => normalizeListValue(alias) === normalizeListValue(party),
-      ),
-    );
-
-    return matchedValue
-      ? [
-          {
-            label: option.label,
-            value: matchedValue,
-          },
-        ]
-      : [];
-  });
-}
-
-function countActiveFilters(filters: FilterState) {
+export function countActiveFilters(filters: FilterState) {
   return [
     filters.strana && filters.strana.length > 0 ? "strana" : null,
     filters.vyhodnotenie && filters.vyhodnotenie.length > 0
@@ -103,6 +71,7 @@ function countActiveFilters(filters: FilterState) {
 }
 
 export default function FilterSidebar({
+  className,
   filters,
   availableFilters,
   filterLoadError = false,
@@ -185,10 +154,13 @@ export default function FilterSidebar({
     updateFilter("meno", nextNames.length > 0 ? nextNames : null);
   };
 
-  const toggleParty = (party: string) => {
-    const nextParties = selectedParties.includes(party)
-      ? selectedParties.filter((currentParty) => currentParty !== party)
-      : [...selectedParties, party];
+  const toggleParty = (partyValues: string[]) => {
+    const isActive = partyValues.some((partyValue) =>
+      selectedParties.includes(partyValue),
+    );
+    const nextParties = isActive
+      ? selectedParties.filter((currentParty) => !partyValues.includes(currentParty))
+      : [...selectedParties, ...partyValues.filter((partyValue) => !selectedParties.includes(partyValue))];
 
     updateFilter("strana", nextParties.length > 0 ? nextParties : null);
   };
@@ -204,20 +176,27 @@ export default function FilterSidebar({
   const limitedPeople = filteredPeople.slice(0, personQuery ? 12 : 8);
 
   return (
-    <aside className="h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900">
+    <aside
+      className={`h-fit rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-900 ${className ?? ""}`}
+    >
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-900 dark:text-slate-100">
+          <h2 className="text-base font-bold uppercase tracking-[0.22em] text-slate-900 dark:text-slate-100">
             Filtre
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Spresnenie výsledkov
-          </p>
         </div>
         {activeFilterCount > 0 ? (
-          <span className="inline-flex min-w-7 items-center justify-center rounded-full bg-[#e03e1a]/12 px-2.5 py-1 text-xs font-semibold text-[#b53015] dark:bg-[#e03e1a]/20 dark:text-[#ff8c71]">
-            {activeFilterCount}
-          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setPersonQuery("");
+              setIsPickerOpen(false);
+              onChange(emptyFilters);
+            }}
+            className="text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+          >
+            Vymazať filtre
+          </button>
         ) : null}
       </div>
 
@@ -229,48 +208,67 @@ export default function FilterSidebar({
         ) : null}
 
         <FilterSection label="Hodnotenie">
-          <div className="flex flex-wrap gap-2">
-            {verdictOptions.map((verdict) => {
-              const isActive = selectedVerdicts.includes(verdict);
+          <div className="space-y-2">
+            {VERDICT_ROWS.map((row, rowIndex) => (
+              <div
+                key={rowIndex}
+                className="flex items-center gap-2"
+              >
+                {row.map((verdict) => {
+                  const isActive = selectedVerdicts.includes(verdict);
+                  const theme = VERDICT_THEME[verdict];
 
-              return (
-                <button
-                  key={verdict}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => toggleVerdict(verdict)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? verdictActiveClass[verdict]
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
-                  }`}
-                >
-                  <span
-                    className={`h-2.5 w-2.5 rounded-full ${verdictDotClass[verdict]}`}
-                  />
-                  {verdict}
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={verdict}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => toggleVerdict(verdict)}
+                      className={`inline-flex min-w-0 items-center justify-self-start whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,gap] duration-200 ease-in-out ${
+                        isActive
+                          ? theme.chipActive
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                      } ${isActive ? "gap-0" : "gap-2"}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-2.5 shrink-0 items-center justify-center overflow-hidden transition-[width,opacity,transform] duration-200 ease-in-out ${
+                          isActive ? "w-0 scale-75 opacity-0" : "w-2.5 scale-100 opacity-100"
+                        }`}
+                      >
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${theme.chipDot}`}
+                        />
+                      </span>
+                      <span>{verdict}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </FilterSection>
 
         <FilterSection label="Politická strana">
           <div className="flex flex-wrap gap-2">
             {partyOptions.map((party) => {
-              const isActive = selectedParties.includes(party.value);
+              const isActive = party.values.some((partyValue) =>
+                selectedParties.includes(partyValue),
+              );
+              const isDisabled = party.values.length === 0;
 
               return (
                 <button
-                  key={party.value}
+                  key={party.label}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => toggleParty(party.value)}
+                  aria-disabled={isDisabled}
+                  onClick={() => !isDisabled && toggleParty(party.values)}
                   className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                     isActive
-                      ? "bg-[#e03e1a] text-white shadow-sm dark:bg-[#ff3300]"
-                      : "border border-slate-200 bg-white text-slate-700 hover:border-[#e03e1a]/35 hover:text-[#b53015] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-[#ff3300]/45 dark:hover:text-[#ff8c71]"
-                  }`}
+                      ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
+                      : "border border-slate-200 bg-white text-slate-700 hover:border-[#d95830]/35 hover:text-[#c04a25] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-[#f07850]/45 dark:hover:text-[#f07850]"
+                  } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
                 >
                   {party.label}
                 </button>
@@ -292,7 +290,7 @@ export default function FilterSidebar({
                   ? "Skryť panel odporúčaných politikov"
                   : "Zobraziť panel odporúčaných politikov"
               }
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-[#e03e1a]/35 hover:text-[#b53015] dark:border-slate-700 dark:text-slate-300 dark:hover:border-[#ff3300]/45 dark:hover:text-[#ff8c71]"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-[#d95830]/35 hover:text-[#c04a25] dark:border-slate-700 dark:text-slate-300 dark:hover:border-[#f07850]/45 dark:hover:text-[#f07850]"
             >
               Rýchly výber
               <svg
@@ -330,7 +328,7 @@ export default function FilterSidebar({
                     type="button"
                     onClick={() => togglePolitician(person)}
                     aria-label={`Odstrániť ${person}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#e03e1a]/10 px-3 py-1.5 text-sm font-medium text-[#b53015] transition hover:bg-[#e03e1a]/16 dark:bg-[#e03e1a]/18 dark:text-[#ff8c71]"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#d95830]/10 px-3 py-1.5 text-sm font-medium text-[#c04a25] transition hover:bg-[#d95830]/16 dark:bg-[#d95830]/18 dark:text-[#f07850]"
                   >
                     {person}
                     <span aria-hidden="true">×</span>
@@ -353,7 +351,7 @@ export default function FilterSidebar({
                         aria-pressed={isSelected}
                         className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
                           isSelected
-                            ? "bg-[#e03e1a]/12 text-[#a62d13] dark:bg-[#e03e1a]/20 dark:text-[#ff8c71]"
+                            ? "bg-[#d95830]/12 text-[#c04a25] dark:bg-[#d95830]/20 dark:text-[#f07850]"
                             : "text-slate-700 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                         }`}
                       >
@@ -383,7 +381,7 @@ export default function FilterSidebar({
           </div>
         </FilterSection>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
           <FilterSection label="Dátum od">
             <input
               type="date"
@@ -394,7 +392,7 @@ export default function FilterSidebar({
               onChange={(event) =>
                 updateFilter("datum_od", event.target.value || null)
               }
-              className={baseControlClassName()}
+              className={dateControlClassName()}
             />
           </FilterSection>
 
@@ -408,25 +406,11 @@ export default function FilterSidebar({
               onChange={(event) =>
                 updateFilter("datum_do", event.target.value || null)
               }
-              className={baseControlClassName()}
+              className={dateControlClassName()}
             />
           </FilterSection>
         </div>
       </div>
-
-      {activeFilterCount > 0 ? (
-        <button
-          type="button"
-          onClick={() => {
-            setPersonQuery("");
-            setIsPickerOpen(false);
-            onChange(emptyFilters);
-          }}
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-        >
-          Resetovať filtre
-        </button>
-      ) : null}
     </aside>
   );
 }

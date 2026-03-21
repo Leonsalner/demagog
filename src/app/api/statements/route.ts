@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { embedText } from "@/lib/jina";
+import { validateSourceUrl } from "@/lib/source-url";
 import {
   getSupabaseAdminConfigError,
   supabaseAdmin,
 } from "@/lib/supabase";
-import { isRecord, VERDICTS } from "@/lib/utils";
+import { extractDomain, isRecord, VERDICTS } from "@/lib/utils";
 import type { Verdict } from "@/types";
+
+type StatementSourceInsert = {
+  position: number;
+  label: string;
+  url: string;
+  title: null;
+};
 
 function coerceTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -38,19 +46,136 @@ function coerceOptionalDate(value: unknown): string | null | undefined {
   return /^\d{4}-\d{2}-\d{2}$/u.test(trimmed) ? trimmed : undefined;
 }
 
+function coerceAbsoluteHttpUrl(value: unknown): string | null | undefined {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const validation = validateSourceUrl(trimmed);
+  if (validation.status !== "valid") {
+    return undefined;
+  }
+
+  return validation.normalized;
+}
+
+function coerceStatementSources(
+  value: unknown,
+): { sources: StatementSourceInsert[]; error: string | null } {
+  if (value === undefined || value === null) {
+    return { sources: [], error: null };
+  }
+
+  if (!Array.isArray(value)) {
+    return { sources: [], error: "sources must be an array" };
+  }
+
+  const sources: StatementSourceInsert[] = [];
+
+  for (const [index, rawSource] of value.entries()) {
+    if (!isRecord(rawSource)) {
+      return {
+        sources: [],
+        error: `sources[${index}] must be an object with label and url`,
+      };
+    }
+
+    const rawLabel = rawSource.label;
+    const rawUrl = rawSource.url;
+
+    if (
+      rawLabel !== undefined &&
+      rawLabel !== null &&
+      typeof rawLabel !== "string"
+    ) {
+      return {
+        sources: [],
+        error: `sources[${index}].label must be a string`,
+      };
+    }
+
+    const label = coerceOptionalTrimmedString(rawLabel);
+    const url = coerceAbsoluteHttpUrl(rawUrl);
+
+    if (!label && url === null) {
+      continue;
+    }
+
+    if (url === null) {
+      return {
+        sources: [],
+        error: `sources[${index}].url is required when a source row is started`,
+      };
+    }
+
+    if (url === undefined) {
+      return {
+        sources: [],
+        error: `sources[${index}].url must be an absolute http/https URL`,
+      };
+    }
+
+    sources.push({
+      position: sources.length,
+      label: label ?? extractDomain(url) ?? `Zdroj ${sources.length + 1}`,
+      url,
+      title: null,
+    });
+  }
+
+  return { sources, error: null };
+}
+
 function isVerdict(value: unknown): value is Verdict {
   return typeof value === "string" && VERDICTS.includes(value as Verdict);
 }
 
-function createManualStatementMetadata() {
+function buildAnalysisParagraphs(reasoning: string | null): string[] {
+  if (!reasoning) {
+    return [];
+  }
+
+  return reasoning
+    .split(/\n{2,}/u)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function slugifySpeakerName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLocaleLowerCase("sk-SK")
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+}
+
+function deriveSpeakerUrl(name: string): string | null {
+  const slug = slugifySpeakerName(name);
+  return slug ? `https://demagog.sk/politik/${slug}` : null;
+}
+
+function createManualStatementMetadata(
+  meno: string,
+  odovodnenie: string | null,
+) {
   const manualId = crypto.randomUUID();
 
   return {
     source_id: `manual:${manualId}`,
     url: `manual://statement/${manualId}`,
-    speaker_url: null,
-    analysis_paragraphs: [] as unknown[],
-    analysis_date: null as string | null,
+    speaker_url: deriveSpeakerUrl(meno),
+    analysis_paragraphs: buildAnalysisParagraphs(odovodnenie),
+    analysis_date: new Date().toISOString(),
     scraped_at: null as string | null,
     numeric_id: null as number | null,
   };
@@ -105,6 +230,9 @@ export async function POST(request: NextRequest) {
   const oblast = coerceOptionalTrimmedString(parsedBody.oblast);
   const datum = coerceOptionalDate(parsedBody.datum);
   const odovodnenie = coerceOptionalTrimmedString(parsedBody.odovodnenie);
+  const { sources, error: sourcesError } = coerceStatementSources(
+    parsedBody.sources,
+  );
 
   if (!vyrok || !meno || !strana || !isVerdict(vyhodnotenie)) {
     return NextResponse.json(
@@ -120,7 +248,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabaseAdmin()
+  if (sourcesError) {
+    return NextResponse.json({ error: sourcesError }, { status: 400 });
+  }
+
+  const supabase = supabaseAdmin();
+
+  const { data, error } = await supabase
     .from("vyroky")
     .insert({
       vyrok,
@@ -131,7 +265,7 @@ export async function POST(request: NextRequest) {
       datum,
       odovodnenie,
       embedding: null,
-      ...createManualStatementMetadata(),
+      ...createManualStatementMetadata(meno, odovodnenie),
     })
     .select("id")
     .single();
@@ -142,6 +276,29 @@ export async function POST(request: NextRequest) {
       { error: "Failed to save statement" },
       { status: 502 },
     );
+  }
+
+  if (sources.length > 0) {
+    const { error: sourcesInsertError } = await supabase
+      .from("statement_sources")
+      .insert(
+        sources.map((source) => ({
+          statement_id: data.id,
+          ...source,
+        })),
+      );
+
+    if (sourcesInsertError) {
+      console.error(
+        "[statements] source insert failed:",
+        sourcesInsertError.message,
+      );
+      await supabase.from("vyroky").delete().eq("id", data.id);
+      return NextResponse.json(
+        { error: "Failed to save statement sources" },
+        { status: 502 },
+      );
+    }
   }
 
   void embedAndStoreStatementEmbedding(data.id, vyrok);

@@ -37,6 +37,15 @@ function buildResponse(
   };
 }
 
+function createDeferredResponse() {
+  let resolve!: (value: Response) => void;
+  const promise = new Promise<Response>((res) => {
+    resolve = res;
+  });
+
+  return { promise, resolve };
+}
+
 describe("useSearch", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
@@ -208,6 +217,136 @@ describe("useSearch", () => {
 
     expect(result.current.filters.datum_od).toBeNull();
     expect(result.current.filters.datum_do).toBeNull();
+  });
+
+  it("keeps untouched extracted filters after the user changes a different filter", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () =>
+          buildResponse({
+            query_understanding: {
+              extracted_filters: {
+                meno: null,
+                strana: ["Smer-SD"],
+                vyhodnotenie: ["Pravda"],
+                datum_od: null,
+                datum_do: null,
+              },
+              related_politicians: [],
+            },
+          }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => buildResponse(),
+      } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("fico pravda");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.strana).toEqual(["Smer-SD"]);
+      expect(result.current.filters.vyhodnotenie).toEqual(["Pravda"]);
+    });
+
+    await act(async () => {
+      result.current.setFilters((currentFilters) => ({
+        ...currentFilters,
+        strana: null,
+      }));
+    });
+    await act(async () => {
+      result.current.setQuery("ine tvrdenie");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    const secondRequest = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+
+    expect(secondRequest.strana).toBeUndefined();
+    expect(secondRequest.vyhodnotenie).toEqual(["Pravda"]);
+    expect(result.current.filters.vyhodnotenie).toEqual(["Pravda"]);
+  });
+
+  it("does not blank preserved verdict filters while a refreshed search is loading", async () => {
+    const fetchMock = vi.mocked(fetch);
+    const deferredResponse = createDeferredResponse();
+
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () =>
+          buildResponse({
+            query_understanding: {
+              extracted_filters: {
+                meno: null,
+                strana: ["Smer-SD"],
+                vyhodnotenie: ["Pravda"],
+                datum_od: null,
+                datum_do: null,
+              },
+              related_politicians: [],
+            },
+          }),
+      } as Response)
+      .mockImplementationOnce(() => deferredResponse.promise);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("fico pravda");
+    });
+    await act(async () => {
+      await result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.filters.vyhodnotenie).toEqual(["Pravda"]);
+    });
+
+    await act(async () => {
+      result.current.setFilters((currentFilters) => ({
+        ...currentFilters,
+        meno: ["Robert Fico"],
+      }));
+    });
+    await act(async () => {
+      result.current.setQuery("fico pravda zdravotnictvo");
+    });
+
+    let pendingSearch!: Promise<void>;
+
+    act(() => {
+      pendingSearch = result.current.search(1);
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(true);
+      expect(result.current.filters.vyhodnotenie).toEqual(["Pravda"]);
+      expect(result.current.filters.meno).toEqual(["Robert Fico"]);
+    });
+
+    deferredResponse.resolve({
+      ok: true,
+      json: async () => buildResponse(),
+    } as Response);
+
+    await act(async () => {
+      await pendingSearch;
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   it("applies multi-value extracted filters as arrays", async () => {

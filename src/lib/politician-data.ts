@@ -290,4 +290,8 @@ export const PARTY_FILTER_OPTIONS: PartyFilterOption[] = [
     label: "Republika",
     aliases: ["Republika", "REPUBLIKA"],
   },
+  {
+    label: "Nestranník",
+    aliases: ["Nestranník", "nestranník", "Nestraníci"],
+  },
 ];

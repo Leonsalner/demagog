@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { mockStatements } from "@/lib/mock-data";
 import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
@@ -17,13 +17,11 @@ function buildMatch(
   statement: Statement,
   similarity: number,
   classification: DetectionMatch["classification"],
-  explanation: string,
 ): DetectionMatch {
   return {
     statement,
     similarity,
     classification,
-    explanation,
   };
 }
 
@@ -36,13 +34,11 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(14)!,
       0.92,
       "DUPLICATE",
-      "Výrok používa takmer rovnaký údaj aj geografické vymedzenie. Pravdepodobne ide o parafrázu už overeného tvrdenia.",
     ),
     buildMatch(
       statementsById.get(15)!,
       0.87,
       "DUPLICATE",
-      "Zmysel výroku je zhodný, mení sa len formulácia počtu pediatrov. Existujúce overenie je priamo použiteľné.",
     ),
   ];
 
@@ -51,19 +47,16 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(11)!,
       0.65,
       "RELATED",
-      "Výrok sa týka rovnakého zdravotníckeho problému, ale opisuje ho všeobecnejšie a bez totožnej formulácie.",
     ),
     buildMatch(
       statementsById.get(12)!,
       0.58,
       "RELATED",
-      "Tvrdenie pracuje s podobnou témou čakacích lehôt a plánovaných opatrení, no nejde o priamu duplicitu.",
     ),
     buildMatch(
       statementsById.get(13)!,
       0.51,
       "RELATED",
-      "Nárok sa tematicky približuje k zahraničnopolitickým výrokom o Ukrajine, ale obsahovo zostáva širší.",
     ),
   ];
 
@@ -72,13 +65,11 @@ function createMockResponse(input: string, topK: number): DetectResponse {
       statementsById.get(1)!,
       0.31,
       "UNRELATED",
-      "Výrok rieši odlišnú ekonomickú tému bez spoločného skutkového jadra.",
     ),
     buildMatch(
       statementsById.get(7)!,
       0.26,
       "UNRELATED",
-      "Zhoda je len v niekoľkých všeobecných slovách, nie v obsahu výroku.",
     ),
   ];
 
@@ -114,19 +105,32 @@ function createMockResponse(input: string, topK: number): DetectResponse {
 
 export function useDetect() {
   const [result, setResult] = useState<DetectResponse | null>(null);
-  const [resultMode, setResultMode] = useState<DetectMode | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     setResult(null);
-    setResultMode(mode);
 
     try {
       if (USE_MOCK) {
         await wait(1200);
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
         setResult(createMockResponse(statement, 10));
         return;
       }
@@ -135,7 +139,12 @@ export function useDetect() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statement, top_k: 10, mode }),
+        signal: controller.signal,
       });
+
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Detekcia zlyhala.");
@@ -144,19 +153,31 @@ export function useDetect() {
       const data: DetectResponse = await response.json();
       setResult(data);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setResult(null);
-      setResultMode(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const reset = useCallback(() => {
+    requestIdRef.current += 1;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setResult(null);
-    setResultMode(null);
     setError(null);
+    setLoading(false);
   }, []);
 
-  return { result, resultMode, loading, error, detect, reset };
+  return { result, loading, error, detect, reset };
 }
