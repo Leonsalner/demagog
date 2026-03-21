@@ -2,73 +2,64 @@
 
 ## Scope
 
-Two tools built on the existing hackathon prototype, targeting two audiences:
+One tool targeting one audience:
 
-1. **Semantic Search** (public-facing) — replaces keyword search on demagog.sk with vector-based retrieval for better natural language query understanding
-2. **Duplicate Detector** (internal, analyst-facing) — finds related existing statements when an analyst inputs a new one, surfaces context from their own DB, and offers a UI to add new entries
+**Internal Duplicate Detector + Semantic Search** — an internal tool for Demagog analysts to search the fact-checked statement archive with natural language queries, detect duplicates when reviewing new statements, and add new entries after review. Strictly internal; no public-facing components.
 
 ## Architecture
 
-- **Frontend:** Next.js on Vercel (hobby tier)
-- **Database:** Supabase (free tier) — stores statements + embeddings
-- **Embeddings:** Jina AI
-- **Inference:** Google Cloud (trial credits, ~$250 remaining, expires ~May 2026)
-- **Small model:** handles NLU layer for query understanding
-- **Stronger model:** used in duplicate detector for relevance summaries
+- **Frontend:** Next.js — currently deployed on Vercel, migrating to Demagog's own hosting in a later phase
+- **Database:** Demagog's own Postgres — direct connection to their live DB (or a read mirror with additional columns for embeddings and RPC functions)
+- **Embeddings:** Gemini Embeddings — chosen because Demagog is already on Google Cloud billing; embedding pipeline runs as a scheduled job (e.g. hourly) rather than on-demand
+- **Inference:** Gemini API — handles query understanding, duplicate classification, optional reranking, and article title backfill
+- **Auth:** Demagog's own auth system — TBD integration details; will figure out when DB access is in hand
+- **Feedback:** Linear — analyst feedback routes directly into Linear customer requests, which become issues for tracking
 
-## Pre-Call Priorities (this week)
+## Phase 1 — Prototype to Live (in progress)
 
-In order of importance:
+The prototype is feature-complete for the core flows. Remaining work before analyst testing can begin:
 
-1. **Fix duplicate detector threshold** — currently returns matches too aggressively. Tune similarity cutoff so results are genuinely relevant, not just vaguely related. Test with 10+ real statement pairs.
-2. **Prepare demo inputs** — 3 scenarios ready to go:
-   - Query using different wording than stored statement → demonstrates semantic advantage over keyword search
-   - Clear duplicate match → shows core value of detector
-   - Near-miss / related but distinct → shows the system doesn't hallucinate false matches (once threshold is fixed)
-3. **UI cleanup** — remove rough edges, broken states, placeholder text. Doesn't need to be beautiful, needs to not break during a screenshare.
-4. **Database entry UI** — simple form: statement text, politician, party, date, verdict. Writes to Supabase. Only build if time permits before the call.
+1. **Connect live DB** — replace the current Supabase-scraped-copy with a connection to Demagog's live Postgres. This may require adding columns (e.g. `embedding` vector fields) and deploying RPC functions (`search_statements`, `match_statements`, `match_articles`, `count_statements`, `list_distinct_values`, `statement_date_bounds`) to the live DB or a read mirror. Schema changes must be applied carefully — coordinate with their DBA or IT contact.
+2. **Embedding pipeline for live data** — run the initial embedding job against all existing statements in the live DB. Set up a scheduled job (e.g. via cron or a lightweight worker) to re-embed new statements added via `/add` on a regular cadence — not real-time, since live DB is not Supabase and has no built-in trigger mechanism for async embedding jobs.
+3. **Auth wiring** — integrate Demagog's existing auth system. Details TBD; will clarify once DB access is established and their IT contact is consulted.
+4. **Polish** — small UI polish, onboarding refinements, edge case handling. No major features remain to build.
 
-## Call Structure (15–20 min)
+## Phase 2 — Analyst Private Beta
 
-1. Quick context — what the prototype does now (2 min, screenshare, not slides)
-2. Live demo — walk through the 3 prepared scenarios (5 min)
-3. Vision — where it could go, what you'd build next (3 min)
-4. Listen — what would be most useful for their analysts in practice? (5 min)
-5. Ask about: existing developer situation, scope overlap, collaboration model
-6. Offer to open it up for broader team testing after incorporating feedback
-7. Agree on next steps
+Once Phase 1 is stable:
 
-## Post-Call / Phase 2 (only after confirmed interest)
+- Open the tool to Demagog analysts for internal testing.
+- Collect feedback via the in-app feedback widget (already wired to Linear customer requests).
+- Triage issues in Linear. Iterate on polish and UX before any broader rollout.
+- No public launch. This remains an internal-only tool.
 
-- **Database entry UI + backend** — full CRUD for new statements
-- **Related statement surfacing** — when duplicate detector finds related (not duplicate) entries, surface the existing fact-checks as research starting points. "These 4 statements cover similar ground, here's what was already verified." This is an extension of the duplicate detector, not a separate feature.
-- **Filter expansion** — semantic search with structured filters (party, date range, verdict type)
-- **Full database integration** — request and ingest the complete statement dataset
+## Phase 3 — Hosting Migration (future)
 
-## Phase 3 (future, mention verbally only)
+Move from Vercel to Demagog's own webhost. This is a later step — Vercel is sufficient for the private beta.
 
-- **Article DB linking** — connect to their second database of short explainer articles, surface relevant articles alongside related statements
-- **Source suggestion tool** — for a new statement being fact-checked, suggest starting points for research drawn from their own existing work. Frame as "saves 15 minutes of manual searching," not "does the research for you"
-- **AI stance summaries** — aggregate a politician's positions on a topic from multiple statements. More useful for internal analysis than public site.
+Steps:
+- Coordinate with Demagog IT on deployment target and domain.
+- Ensure embedding endpoint is accessible from the new host (either a self-hosted Ollama on their server, or an API-accessible embedding service).
+- Migrate environment variables and any secrets to the new hosting environment.
 
-## Explicitly Out of Scope (for now)
+## Explicitly Out of Scope
 
-- Website redesign — separate conversation, after trust is established
-- External source scraping (sme.sk, dennikn.sk) — legal/partnership concerns, premature
-- AI-drafted articles or explainers — too threatening to editorial identity
-- Public-facing chatbot — editorial trust liability for a fact-checking org
+- Public-facing anything — the tool is strictly internal, agreed with Demagog on the call.
+- Website redesign — separate conversation, after trust is established.
+- External source scraping (sme.sk, dennikn.sk) — legal/partnership concerns, premature.
+- AI-drafted articles or explainers — too threatening to editorial identity.
+- Automating editorial decisions — the tool surfaces context; analysts make judgments.
+- Replacing analysts — tool, not replacement; everything augments workflow.
 
 ## Framing
 
-- **CAS project** — voluntary student contribution, no cost or commitment on their side
-- **Tool, not replacement** — everything augments analyst workflow, nothing automates editorial decisions
-- **Attribution** — "built by" credit in footer, discuss on call casually
-- **Ownership** — code handed over, open to collaboration with their existing developer
-- **IP** — clarify on call: are they okay with you referencing this in your portfolio/CV?
+- **Tool, not replacement** — everything augments analyst workflow, nothing automates editorial decisions.
+- **Ownership** — code is handed over to Demagog; open to collaboration with their existing developer.
+- **Internal only** — no public launch, no external user access.
 
 ## Risks
 
-- **Existing developer conflict** — find out scope overlap on the call before building further
-- **Scope creep** — IB coursework + other projects limit bandwidth. Commit to specific deliverables per phase, not open-ended availability.
-- **Google Cloud credits expiring** — if project continues past expiry, need a plan for inference costs. Their infra? Cheaper model? Free tier alternatives?
-- **Demo reliability** — a broken demo during the call kills the project. Prioritize stability over features.
+- **Live DB schema surprises** — the live schema may differ from what the prototype assumes. Verify table shapes, column names, and data types when access is granted. Be prepared to add migration steps or adjust the app's DB queries.
+- **Demo reliability** — a broken demo during testing kills confidence. Prioritize stability over new features during the beta period.
+- **Existing developer scope overlap** — confirm with Demagog's developer what they own vs. what this tool covers, so neither side builds redundant functionality.
+- **Embedding freshness** — since new statements are embedded on a schedule (not real-time), there is a window where recently-added statements won't appear in search results until the next embedding job runs. This is an acceptable trade-off given the architecture; document it for analysts.
