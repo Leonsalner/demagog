@@ -161,4 +161,72 @@ describe("useResearch", () => {
       await pending.promise;
     });
   });
+
+  it("dismiss closes a hidden deferred reveal immediately and prevents late reopen", async () => {
+    const pending = deferredResponse();
+    vi.mocked(fetch).mockReturnValue(pending.promise);
+
+    const { result } = renderHook(() => useResearch());
+
+    act(() => {
+      void result.current.openAggregateResearch([11, 12], { revealWhenReady: false });
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.isPendingReveal).toBe(true);
+    expect(result.current.loading).toBe(true);
+
+    act(() => {
+      result.current.dismiss();
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.displayState).toBe("closed");
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        json: async () => ({
+          mode: "aggregate",
+          items: [],
+        }),
+      } as Response);
+      await pending.promise;
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.displayState).toBe("closed");
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.data).toBeNull();
+  });
+
+  it("dismiss closes visible research without clearing cached data", async () => {
+    const { result } = renderHook(() => useResearch());
+    const request: ResearchRequest = createAggregateResearchRequest([21]);
+    const preparedData: ResearchWorkspaceResponse = {
+      mode: "aggregate",
+      items: [],
+    };
+
+    act(() => {
+      result.current.openPreparedResearch(request, preparedData);
+    });
+
+    expect(result.current.isOpen).toBe(true);
+    expect(result.current.activeMode).toBe("aggregate");
+    expect(result.current.data).toEqual(preparedData);
+
+    act(() => {
+      result.current.dismiss();
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.displayState).toBe("closed");
+    expect(result.current.activeMode).toBeNull();
+    expect(result.current.data).toEqual(preparedData);
+  });
 });

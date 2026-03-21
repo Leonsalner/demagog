@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import FooterHelperDock from "@/components/shared/FooterHelperDock";
 import { FooterHelperTrigger } from "@/components/shared/FooterHelperTrigger";
 import {
-  useFooterHelperExpansionHold,
   useFooterHelperVisibility,
 } from "@/components/shared/FooterHelperVisibility";
 import ViewportPortal from "@/components/shared/ViewportPortal";
@@ -240,7 +239,7 @@ function ReadyStage() {
           </span>
           <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
             K návodu sa vrátite cez tlačidlo Návod. Ak narazíte na chybu alebo máte nápad,
-            napíšte nám cez {`"Máte pripomienku?"`}.
+            napíšte nám cez tlačidlo v hlavičke.
           </p>
         </div>
       </div>
@@ -338,7 +337,6 @@ export default function HomeOnboarding({
     isFirstVisit,
     isMobile,
     requestExpansionWindow,
-    requestInstantCollapse,
     shouldForceExpand,
   } = useFooterHelperVisibility();
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -350,7 +348,6 @@ export default function HomeOnboarding({
   const [showScrollCue, setShowScrollCue] = useState(true);
   const currentStep = steps[activeStep] ?? steps[0];
   const shouldAutoOpen = pathname === "/";
-  useFooterHelperExpansionHold("feedback", showFeedbackToast);
   const isOpen =
     manualOpenState === "open"
       ? true
@@ -405,17 +402,15 @@ export default function HomeOnboarding({
     }
 
     const timeout = window.setTimeout(() => {
-      requestInstantCollapse("feedback");
       setShowFeedbackToast(false);
     }, isFirstVisit ? 30_000 : 6_000);
 
     return () => window.clearTimeout(timeout);
-  }, [isFirstVisit, requestInstantCollapse, showFeedbackToast]);
+  }, [isFirstVisit, showFeedbackToast]);
 
   const hideFeedbackToast = useCallback(() => {
-    requestInstantCollapse("feedback");
     setShowFeedbackToast(false);
-  }, [requestInstantCollapse]);
+  }, []);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -436,14 +431,13 @@ export default function HomeOnboarding({
     if (isFirstVisit) {
       const firstVisitExpansionDuration = isMobile ? 15_000 : 30_000;
       requestExpansionWindow("guide", firstVisitExpansionDuration);
-      requestExpansionWindow("feedback", firstVisitExpansionDuration);
     }
     maybeShowFeedbackToast();
   }
 
   return (
     <>
-      <FooterHelperDock slot="guide">
+      <FooterHelperDock slot="guide" side="right">
         <FooterHelperTrigger
           onClick={() => {
             setActiveStep(0);
@@ -618,7 +612,7 @@ export default function HomeOnboarding({
       ) : null}
 
       {showFeedbackToast ? (
-        <FooterHelperDock slot="toast" className="z-[55] w-[min(22rem,calc(100vw-2rem))]">
+        <FooterHelperDock slot="toast" side="right" className="z-[55] w-[min(22rem,calc(100vw-2rem))]">
           <div
             role="status"
             aria-live="polite"
@@ -636,7 +630,7 @@ export default function HomeOnboarding({
                   Máte postreh z prvého používania?
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Máte nápad alebo ste našli chybu? Napíšte nám cez {`"Máte pripomienku?"`}.
+                  Máte nápad alebo ste našli chybu? Napíšte nám cez tlačidlo v hlavičke.
                 </p>
               </div>
 

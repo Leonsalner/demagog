@@ -1,3 +1,6 @@
+export const FEEDBACK_PANEL_ID = "feedback-widget-panel";
+export const FEEDBACK_TRIGGER_ID = "feedback-navbar-trigger";
+
 export const FEEDBACK_CATEGORIES = [
   "bug",
   "unclear",
@@ -9,8 +12,6 @@ export const FEEDBACK_CATEGORIES = [
 export const FEEDBACK_PAGE_TYPES = [
   "home",
   "add",
-  "demo",
-  "demo-detect",
   "other",
 ] as const;
 
@@ -79,10 +80,6 @@ export function inferFeedbackPageType(pathname: string | null | undefined): Feed
       return "home";
     case "/add":
       return "add";
-    case "/demo":
-      return "demo";
-    case "/demo-detect":
-      return "demo-detect";
     case null:
     case undefined:
     case "":

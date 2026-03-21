@@ -28,8 +28,24 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:
+    "IBM Plex Sans",
+    "Avenir Next",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  --font-mono:
+    "IBM Plex Mono",
+    "SFMono-Regular",
+    "SF Mono",
+    ui-monospace,
+    "Cascadia Code",
+    "Source Code Pro",
+    Menlo,
+    Consolas,
+    monospace;
 }
 
 * {
@@ -128,20 +144,15 @@ body {
 }
 
 .footer-helper-dock[data-slot="guide"] {
-  bottom: calc(
-    env(safe-area-inset-bottom, 0px) +
-      var(--footer-helper-offset) +
-      var(--footer-helper-trigger-height) +
-      var(--footer-helper-gap)
-  );
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--footer-helper-offset));
 }
 
 .footer-helper-dock[data-slot="toast"] {
   bottom: calc(
     env(safe-area-inset-bottom, 0px) +
       var(--footer-helper-offset) +
-      (var(--footer-helper-trigger-height) * 2) +
-      (var(--footer-helper-gap) * 2)
+      var(--footer-helper-trigger-height) +
+      var(--footer-helper-gap)
   );
 }
 

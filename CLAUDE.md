@@ -33,8 +33,6 @@ Local app default: `http://localhost:3000`
 - `src/app/page.tsx`: shared home route; uses `?mode=detect` for the detect tab
 - `src/app/detect/page.tsx`: redirects to `/`
 - `src/app/add/page.tsx`: add-statement flow
-- `src/app/demo/page.tsx`: scripted search demo
-- `src/app/demo-detect/page.tsx`: scripted duplicate-detection demo
 - `src/app/layout.tsx`: app shell, navbar, theme setup, feedback widget
 - `src/components/home/HomePageClient.tsx`: top-level search/detect orchestration
 - `src/components/home/HomeOnboarding.tsx`: native onboarding shown in-app

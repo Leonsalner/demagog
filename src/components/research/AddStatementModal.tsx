@@ -37,11 +37,18 @@ export default function AddStatementModal({
   const lastAutoDetectedOblastRef = useRef<string | null>(null);
   const detectRequestRef = useRef(0);
   const detectAbortRef = useRef<AbortController | null>(null);
+  const detectTimeoutRef = useRef<number | null>(null);
 
   function invalidateOblastDetection() {
     detectRequestRef.current += 1;
-    detectAbortRef.current?.abort();
-    detectAbortRef.current = null;
+    if (detectAbortRef.current) {
+      detectAbortRef.current.abort();
+      detectAbortRef.current = null;
+    }
+    if (detectTimeoutRef.current !== null) {
+      window.clearTimeout(detectTimeoutRef.current);
+      detectTimeoutRef.current = null;
+    }
     setIsDetectingOblast(false);
   }
 
@@ -64,6 +71,10 @@ export default function AddStatementModal({
   }, [form.oblast]);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     const query = form.vyrok.trim();
     if (query.length < MIN_OBLAST_AUTO_DETECT_LENGTH) {
       invalidateOblastDetection();
@@ -86,6 +97,11 @@ export default function AddStatementModal({
     detectAbortRef.current = controller;
 
     const timeoutId = window.setTimeout(async () => {
+      detectTimeoutRef.current = null;
+      if (detectRequestRef.current !== requestId) {
+        return;
+      }
+
       setIsDetectingOblast(true);
 
       try {
@@ -145,6 +161,8 @@ export default function AddStatementModal({
       }
     }, OBLAST_AUTO_DETECT_DEBOUNCE_MS);
 
+    detectTimeoutRef.current = timeoutId;
+
     return () => {
       window.clearTimeout(timeoutId);
       controller.abort();
@@ -152,7 +170,7 @@ export default function AddStatementModal({
         detectAbortRef.current = null;
       }
     };
-  }, [form.vyrok, oblastDetectCycle]);
+  }, [form.vyrok, oblastDetectCycle, isOpen]);
 
   useEffect(
     () => () => {

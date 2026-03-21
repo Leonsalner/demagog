@@ -3,10 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import PoliticianPickerPanel from "@/components/search/PoliticianPickerPanel";
-import {
-  PARTY_FILTER_OPTIONS,
-  PARTY_GROUPS,
-} from "@/lib/politician-data";
+import { PARTY_GROUPS } from "@/lib/politician-data";
+import { buildPartyOptions } from "@/lib/party-filters";
 import { VERDICT_ROWS, VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, FiltersResponse, Verdict } from "@/types";
 
@@ -58,21 +56,6 @@ function dateControlClassName() {
 
 function normalizeListValue(value: string) {
   return value.replace(/\s+/gu, " ").trim().toLocaleLowerCase();
-}
-
-function buildPartyOptions(parties: string[]) {
-  return PARTY_FILTER_OPTIONS.map((option) => {
-    const matchedValues = parties.filter((party) =>
-      option.aliases.some(
-        (alias) => normalizeListValue(alias) === normalizeListValue(party),
-      ),
-    );
-
-    return {
-      label: option.label,
-      values: matchedValues.length > 0 ? matchedValues : [option.label],
-    };
-  });
 }
 
 export function countActiveFilters(filters: FilterState) {
@@ -272,18 +255,20 @@ export default function FilterSidebar({
               const isActive = party.values.some((partyValue) =>
                 selectedParties.includes(partyValue),
               );
+              const isDisabled = party.values.length === 0;
 
               return (
                 <button
                   key={party.label}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => toggleParty(party.values)}
+                  aria-disabled={isDisabled}
+                  onClick={() => !isDisabled && toggleParty(party.values)}
                   className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                     isActive
                       ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
                       : "border border-slate-200 bg-white text-slate-700 hover:border-[#d95830]/35 hover:text-[#c04a25] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-[#f07850]/45 dark:hover:text-[#f07850]"
-                  }`}
+                  } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
                 >
                   {party.label}
                 </button>

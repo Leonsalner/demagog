@@ -3,14 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useFeedbackWidgetControls, useFeedbackWidgetStore } from "@/components/feedback/FeedbackContext";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import { APP_NAVBAR_ID } from "@/lib/layout";
+import { FEEDBACK_PANEL_ID, FEEDBACK_TRIGGER_ID } from "@/lib/feedback";
 
 export default function Navbar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isHome = pathname === "/";
   const activeHomeTab = searchParams.get("mode") === "detect" ? "detect" : "search";
+  const { isOpen, isSubmitting, togglePanel } = useFeedbackWidgetControls();
+  const widgetStore = useFeedbackWidgetStore();
+
+  function handleFeedbackClick() {
+    if (isOpen) {
+      widgetStore.requestCloseWithReset(false);
+    } else {
+      togglePanel();
+    }
+  }
 
   return (
     <header
@@ -87,6 +99,20 @@ export default function Navbar() {
         )}
 
         <div className="ml-auto flex items-center gap-3">
+          <button
+            id={FEEDBACK_TRIGGER_ID}
+            aria-controls={FEEDBACK_PANEL_ID}
+            aria-expanded={isOpen}
+            aria-label={isOpen ? "Zavrieť spätnú väzbu" : "Otvoriť spätnú väzbu"}
+            title="Pripomienka"
+            onClick={handleFeedbackClick}
+            disabled={isOpen && isSubmitting}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/96 text-slate-500 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.55)] backdrop-blur transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path d="M2.5 3.75A2.25 2.25 0 0 1 4.75 1.5h6.5A2.25 2.25 0 0 1 13.5 3.75v4.5a2.25 2.25 0 0 1-2.25 2.25H8.9l-2.55 2.12a.75.75 0 0 1-1.23-.58V10.5H4.75A2.25 2.25 0 0 1 2.5 8.25v-4.5Z" />
+            </svg>
+          </button>
           <ThemeToggle />
         </div>
       </div>

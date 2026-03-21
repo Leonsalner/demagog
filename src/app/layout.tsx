@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import {
   FeedbackContextProvider,
@@ -29,16 +28,6 @@ const themeInitScript = `
   })();
 `;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Demagog Fact-Check Tool",
   description: "Vyhľadávanie a kontrola výrokov overených Demagog.sk.",
@@ -58,7 +47,10 @@ function NavbarFallback() {
       <div className="mx-auto flex w-full max-w-[86rem] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <div className="h-14 w-16 rounded-md border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/80 sm:h-16 sm:w-20" />
         <div className="hidden h-11 w-full max-w-md rounded-full border border-slate-200 bg-slate-100/80 dark:border-slate-700/70 dark:bg-slate-800/70 lg:block" />
-        <div className="h-9 w-9 rounded-full border border-slate-300/90 bg-white/90 dark:border-slate-700 dark:bg-slate-900/85" />
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full border border-slate-300/90 bg-white/90 dark:border-slate-700 dark:bg-slate-900/85" />
+          <div className="h-9 w-9 rounded-full border border-slate-300/90 bg-white/90 dark:border-slate-700 dark:bg-slate-900/85" />
+        </div>
       </div>
     </header>
   );
@@ -74,9 +66,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}
-      >
+      <body className="bg-background text-foreground font-sans antialiased">
         <FooterHelperVisibilityProvider>
           <FeedbackContextProvider>
             <div className="noise-overlay min-h-screen">

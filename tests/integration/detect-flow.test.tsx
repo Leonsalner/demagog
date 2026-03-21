@@ -146,6 +146,7 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
   const finishEnter = vi.fn();
   const startClose = vi.fn();
   const finishClose = vi.fn();
+  const dismiss = vi.fn();
 
   vi.mocked(useResearch).mockReturnValue({
     activeMode: null,
@@ -164,6 +165,7 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     finishEnter,
     startClose,
     finishClose,
+    dismiss,
     ...overrides,
   });
 
@@ -175,6 +177,7 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     finishEnter,
     startClose,
     finishClose,
+    dismiss,
   };
 }
 

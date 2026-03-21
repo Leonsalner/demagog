@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HomePageClient from "@/components/home/HomePageClient";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
+import Navbar from "@/components/shared/Navbar";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 
 vi.mock("@/hooks/useSearch", () => ({
@@ -38,6 +39,7 @@ function renderHarness(activeTab: "search" | "detect") {
   return render(
     <FooterHelperVisibilityProvider>
       <FeedbackContextProvider>
+        <Navbar />
         <HomePageClient activeTab={activeTab} />
         <FeedbackWidget />
       </FeedbackContextProvider>
@@ -127,6 +129,7 @@ describe("feedback context integration", () => {
       finishEnter: vi.fn(),
       startClose: vi.fn(),
       finishClose: vi.fn(),
+      dismiss: vi.fn(),
     });
   });
 
@@ -137,7 +140,7 @@ describe("feedback context integration", () => {
   it("captures the home search query in submitted feedback", async () => {
     renderHarness("search");
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Prosím skontrolujte výsledky." },
     });
@@ -165,13 +168,14 @@ describe("feedback context integration", () => {
     view.rerender(
       <FooterHelperVisibilityProvider>
         <FeedbackContextProvider>
+          <Navbar />
           <HomePageClient activeTab="search" />
           <FeedbackWidget />
         </FeedbackContextProvider>
       </FooterHelperVisibilityProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Toto sa týka vyhľadávania." },
     });
@@ -195,7 +199,7 @@ describe("feedback context integration", () => {
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Tento výrok treba lepšie prepojiť." },
     });
@@ -222,12 +226,13 @@ describe("feedback context integration", () => {
     render(
       <FooterHelperVisibilityProvider>
         <FeedbackContextProvider>
+          <Navbar />
           <FeedbackWidget />
         </FeedbackContextProvider>
       </FooterHelperVisibilityProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Na add stránke chýba vysvetlenie." },
     });

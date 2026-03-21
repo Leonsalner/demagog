@@ -1147,15 +1147,20 @@ describe("POST /api/search logic", () => {
 
   it("passes multi-party and multi-verdict arrays through to semantic RPC filters", async () => {
     const supabase = createSupabaseMock({
+      parties: ["Hlas", "SaS"],
       rpc: async (fn) => {
-        if (fn !== "search_statements" && fn !== "count_statements") {
-          throw new Error(`Unexpected RPC ${fn}`);
+        if (fn === "search_statements") {
+          return {
+            data: [buildRow(1)],
+            error: null,
+          };
         }
 
-        return {
-          data: fn === "count_statements" ? 1 : [buildRow(1)],
-          error: null,
-        };
+        if (fn === "count_statements") {
+          return { data: 1, error: null };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
       },
     });
 
@@ -1345,5 +1350,246 @@ describe("POST /api/search logic", () => {
     expect(data.results).toHaveLength(2);
     expect(data.results[0].id).toBe(1);
     expect(data.results[0].similarity).toBeGreaterThan(data.results[1].similarity);
+  });
+
+  describe("party alias expansion for body.strana", () => {
+    it("expands alias label to all canonical DB parties in semantic search", async () => {
+      const supabase = createSupabaseMock({
+        parties: ["Nestraníci", "nestranník", "Smer-SD"],
+        rpc: async (fn, args) => {
+          if (fn === "search_statements") {
+            return {
+              data: [
+                buildRow(1, { strana: String((args.filter_strana as string[])?.[0] ?? "Nestraníci") }),
+              ],
+              error: null,
+            };
+          }
+
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+      vi.mocked(understandQuery).mockResolvedValue(
+        buildUnderstanding({
+          semantic_query: "konsolidácia",
+        }),
+      );
+
+      const response = await POST(
+        createRequest({
+          query: "konsolidácia",
+          strana: ["Nestranník"],
+          page: 1,
+          page_size: 5,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          filter_strana: expect.arrayContaining(["Nestraníci", "nestranník"]),
+        }),
+      );
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "count_statements",
+        expect.objectContaining({
+          filter_strana: expect.arrayContaining(["Nestraníci", "nestranník"]),
+        }),
+      );
+    });
+
+    it("expands alias label before exact DB filtering in filter-only search", async () => {
+      const queryBuilder = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        lte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({
+          data: [buildRow(1, { strana: "Nestraníci" })],
+          error: null,
+          count: 1,
+        }),
+      };
+
+      const supabase = {
+        from: vi.fn(() => queryBuilder),
+        rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
+          if (fn === "list_distinct_values") {
+            if (args.col === "strana") {
+              return { data: [{ value: "Nestraníci" }, { value: "nestranník" }], error: null };
+            }
+
+            return { data: [{ value: "Robert Fico" }], error: null };
+          }
+
+          throw new Error(`Unexpected RPC ${fn}`);
+        }),
+      };
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          strana: ["Nestranník"],
+          page: 1,
+          page_size: 10,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(queryBuilder.in).toHaveBeenCalledWith(
+        "strana",
+        expect.arrayContaining(["Nestraníci", "nestranník"]),
+      );
+    });
+
+    it("dedupes mixed alias and exact inputs correctly", async () => {
+      const supabase = createSupabaseMock({
+        parties: ["Nestraníci", "nestranník", "Smer-SD"],
+        rpc: async (fn, args) => {
+          if (fn === "search_statements") {
+            return {
+              data: [buildRow(1, { strana: String((args.filter_strana as string[])?.[0] ?? "Nestraníci") })],
+              error: null,
+            };
+          }
+
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+      vi.mocked(understandQuery).mockResolvedValue(
+        buildUnderstanding({
+          semantic_query: "konsolidácia",
+        }),
+      );
+
+      const response = await POST(
+        createRequest({
+          query: "konsolidácia",
+          strana: ["Nestranník", "nestranník"],
+          page: 1,
+          page_size: 5,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          filter_strana: expect.arrayContaining(["Nestraníci", "nestranník"]),
+        }),
+      );
+    });
+
+    it("drops unresolvable alias cleanly instead of producing dead filter", async () => {
+      const supabase = createSupabaseMock({
+        parties: ["Smer-SD", "Hlas"],
+        rpc: async (fn, args) => {
+          if (fn === "list_distinct_values") {
+            if (args.col === "strana") {
+              return { data: [{ value: "Smer-SD" }, { value: "Hlas" }], error: null };
+            }
+
+            return { data: [{ value: "Robert Fico" }], error: null };
+          }
+
+          if (fn === "search_statements") {
+            return {
+              data: [buildRow(1)],
+              error: null,
+            };
+          }
+
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+      vi.mocked(understandQuery).mockResolvedValue(
+        buildUnderstanding({
+          semantic_query: "konsolidácia",
+        }),
+      );
+
+      const response = await POST(
+        createRequest({
+          query: "konsolidácia",
+          strana: ["Neexistujúca strana"],
+          page: 1,
+          page_size: 5,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          filter_strana: null,
+        }),
+      );
+    });
+
+    it("preserves exact canonical DB values unchanged", async () => {
+      const supabase = createSupabaseMock({
+        parties: ["Smer-SD", "Hlas", "PS"],
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return {
+              data: [buildRow(1, { strana: "Smer-SD" })],
+              error: null,
+            };
+          }
+
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+      vi.mocked(understandQuery).mockResolvedValue(
+        buildUnderstanding({
+          semantic_query: "konsolidácia",
+        }),
+      );
+
+      const response = await POST(
+        createRequest({
+          query: "konsolidácia",
+          strana: ["SMER-SD"],
+          page: 1,
+          page_size: 5,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          filter_strana: ["Smer-SD"],
+        }),
+      );
+    });
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { mockStatements } from "@/lib/mock-data";
 import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
@@ -108,7 +108,19 @@ export function useDetect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -116,6 +128,9 @@ export function useDetect() {
     try {
       if (USE_MOCK) {
         await wait(1200);
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
         setResult(createMockResponse(statement, 10));
         return;
       }
@@ -124,7 +139,12 @@ export function useDetect() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statement, top_k: 10, mode }),
+        signal: controller.signal,
       });
+
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Detekcia zlyhala.");
@@ -133,16 +153,30 @@ export function useDetect() {
       const data: DetectResponse = await response.json();
       setResult(data);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, []);
 
   const reset = useCallback(() => {
+    requestIdRef.current += 1;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setResult(null);
     setError(null);
+    setLoading(false);
   }, []);
 
   return { result, loading, error, detect, reset };

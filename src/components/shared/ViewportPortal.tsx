@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 interface ViewportPortalProps {
@@ -8,11 +8,11 @@ interface ViewportPortalProps {
 }
 
 export default function ViewportPortal({ children }: ViewportPortalProps) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   if (!isMounted) {
     return null;

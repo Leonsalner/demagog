@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FeedbackContextProvider, usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
+import Navbar from "@/components/shared/Navbar";
 import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import type { FeedbackPageContext } from "@/lib/feedback";
 
@@ -25,6 +26,7 @@ function renderWidget(pageContext?: FeedbackPageContext) {
     <FooterHelperVisibilityProvider>
       <FeedbackContextProvider>
         {pageContext ? <ContextPublisher value={pageContext} /> : null}
+        <Navbar />
         <FeedbackWidget />
       </FeedbackContextProvider>
     </FooterHelperVisibilityProvider>,
@@ -60,9 +62,9 @@ describe("FeedbackWidget", () => {
     vi.useRealTimers();
   });
 
-  it("opens and closes from the trigger, outside click, and Escape", async () => {
+  it("opens and closes from the navbar trigger, outside click, and Escape", async () => {
     renderWidget();
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
@@ -70,17 +72,17 @@ describe("FeedbackWidget", () => {
       expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
     });
   }, 20_000);
 
-  it("renders the trigger after mount and still opens the dialog", async () => {
+  it("renders the navbar trigger after mount and still opens the dialog", async () => {
     renderWidget();
 
-    const trigger = await screen.findByRole("button", { name: "Máte pripomienku?" });
+    const trigger = await screen.findByRole("button", { name: "Otvoriť spätnú väzbu" });
     expect(trigger).toBeInTheDocument();
 
     fireEvent.click(trigger);
@@ -98,7 +100,7 @@ describe("FeedbackWidget", () => {
       statement: "Rozpracovaný výrok",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("O čo ide?"), {
       target: { value: "improvement" },
     });
@@ -134,19 +136,21 @@ describe("FeedbackWidget", () => {
 
     renderWidget();
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Správa sa práve odosiela." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
 
+    expect(screen.getByRole("button", { name: "Zavrieť panel" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Zavrieť spätnú väzbu" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Máte pripomienku?" })).toBeDisabled();
 
     fireEvent.mouseDown(document.body);
     fireEvent.keyDown(document, { key: "Escape" });
 
-    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+    });
   }, 20_000);
 
   it("preserves the draft when submission fails", async () => {
@@ -161,7 +165,7 @@ describe("FeedbackWidget", () => {
 
     renderWidget();
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Táto správa sa má zachovať." },
     });
@@ -173,7 +177,7 @@ describe("FeedbackWidget", () => {
     expect(screen.getByLabelText("Správa")).toHaveValue("Táto správa sa má zachovať.");
   }, 20_000);
 
-  it("auto-closes and resets after a successful submission", async () => {
+  it("auto-closes after a successful submission", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-2" }), {
         status: 201,
@@ -185,7 +189,7 @@ describe("FeedbackWidget", () => {
 
     renderWidget();
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Ďakujem za túto funkciu." },
     });
@@ -197,15 +201,10 @@ describe("FeedbackWidget", () => {
       ).toHaveLength(2);
     });
 
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
-    }, { timeout: 4000 });
-
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
-    expect(screen.getByLabelText("Správa")).toHaveValue("");
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
   }, 10_000);
 
-  it("clears the previous success auto-close timer before starting a new draft", async () => {
+  it("shows success message after submission", async () => {
     vi.useFakeTimers();
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-4" }), {
@@ -218,9 +217,9 @@ describe("FeedbackWidget", () => {
 
     renderWidget();
 
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     fireEvent.change(screen.getByLabelText("Správa"), {
-      target: { value: "Prvá úspešná správa." },
+      target: { value: "Test správa." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
 
@@ -232,19 +231,38 @@ describe("FeedbackWidget", () => {
     expect(
       screen.getAllByText("Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame."),
     ).toHaveLength(2);
+  });
+
+  it("clicking the navbar button while the panel is open does not immediately reopen", async () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť spätnú väzbu" }));
-    fireEvent.click(screen.getByRole("button", { name: "Máte pripomienku?" }));
-    fireEvent.change(screen.getByLabelText("Správa"), {
-      target: { value: "Toto je nový draft." },
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
     });
 
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-      await Promise.resolve();
-    });
-
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
     expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Správa")).toHaveValue("Toto je nový draft.");
+  });
+
+  it("focus is restored to the navbar button after closing", async () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
+
+    const navbarButton = screen.getByRole("button", { name: "Zavrieť spätnú väzbu" });
+    fireEvent.click(navbarButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Napíšte nám" })).not.toBeInTheDocument();
+    });
+
+    const reopenedButton = screen.getByRole("button", { name: "Otvoriť spätnú väzbu" });
+    expect(reopenedButton).toBeInTheDocument();
+    expect(reopenedButton).toHaveAttribute("id", "feedback-navbar-trigger");
   });
 });

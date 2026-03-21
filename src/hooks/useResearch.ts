@@ -124,6 +124,16 @@ export function useResearch() {
     setActiveMode(null);
   }, []);
 
+  const dismiss = useCallback(() => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setDisplayState("closed");
+    setError(null);
+    setLoading(false);
+    setActiveMode(null);
+  }, []);
+
   return {
     activeMode,
     data,
@@ -141,5 +151,6 @@ export function useResearch() {
     finishEnter,
     startClose,
     finishClose,
+    dismiss,
   };
 }

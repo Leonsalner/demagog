@@ -19,16 +19,13 @@ const DESKTOP_RETURNING_VISIT_DURATION_MS = 5_000;
 const MOBILE_FIRST_VISIT_DURATION_MS = 15_000;
 const MOBILE_RETURNING_VISIT_DURATION_MS = 3_000;
 
-export type FooterHelperTarget = "feedback" | "guide";
+export type FooterHelperTarget = "guide";
 
 interface FooterHelperVisibilityValue {
   isFirstVisit: boolean;
   isMobile: boolean;
   prefersReducedMotion: boolean;
-  getInstantCollapseVersion: (target: FooterHelperTarget) => number;
-  requestInstantCollapse: (target: FooterHelperTarget) => void;
   requestExpansionWindow: (target: FooterHelperTarget, durationMs: number) => void;
-  setExpansionHold: (target: FooterHelperTarget, isActive: boolean) => void;
   shouldForceExpand: (target: FooterHelperTarget) => boolean;
 }
 
@@ -101,14 +98,7 @@ export function FooterHelperVisibilityProvider({
       : DESKTOP_RETURNING_VISIT_DURATION_MS;
   const [baseForceExpanded, setBaseForceExpanded] = useState(() => introDuration > 0);
   const [expansionHolds, setExpansionHolds] = useState<Record<FooterHelperTarget, boolean>>({
-    feedback: false,
     guide: false,
-  });
-  const [instantCollapseVersions, setInstantCollapseVersions] = useState<
-    Record<FooterHelperTarget, number>
-  >({
-    feedback: 0,
-    guide: 0,
   });
   const timedHoldTimeoutsRef = useRef<Partial<Record<FooterHelperTarget, number>>>({});
 
@@ -135,20 +125,6 @@ export function FooterHelperVisibilityProvider({
     [],
   );
 
-  const setExpansionHold = useCallback(
-    (target: FooterHelperTarget, isActive: boolean) => {
-      setExpansionHolds((currentHolds) =>
-        currentHolds[target] === isActive
-          ? currentHolds
-          : {
-              ...currentHolds,
-              [target]: isActive,
-            },
-      );
-    },
-    [],
-  );
-
   const shouldForceExpand = useCallback(
     (target: FooterHelperTarget) => baseForceExpanded || expansionHolds[target],
     [baseForceExpanded, expansionHolds],
@@ -156,6 +132,10 @@ export function FooterHelperVisibilityProvider({
 
   const requestExpansionWindow = useCallback(
     (target: FooterHelperTarget, durationMs: number) => {
+      if (target !== "guide") {
+        return;
+      }
+
       setExpansionHolds((currentHolds) =>
         currentHolds[target]
           ? currentHolds
@@ -185,39 +165,15 @@ export function FooterHelperVisibilityProvider({
     [],
   );
 
-  const requestInstantCollapse = useCallback((target: FooterHelperTarget) => {
-    setInstantCollapseVersions((currentVersions) => ({
-      ...currentVersions,
-      [target]: currentVersions[target] + 1,
-    }));
-  }, []);
-
-  const getInstantCollapseVersion = useCallback(
-    (target: FooterHelperTarget) => instantCollapseVersions[target],
-    [instantCollapseVersions],
-  );
-
   const value = useMemo(
     () => ({
-      getInstantCollapseVersion,
       isFirstVisit,
       isMobile,
       prefersReducedMotion,
-      requestInstantCollapse,
       requestExpansionWindow,
-      setExpansionHold,
       shouldForceExpand,
     }),
-    [
-      getInstantCollapseVersion,
-      isFirstVisit,
-      isMobile,
-      prefersReducedMotion,
-      requestInstantCollapse,
-      requestExpansionWindow,
-      setExpansionHold,
-      shouldForceExpand,
-    ],
+    [isFirstVisit, isMobile, prefersReducedMotion, requestExpansionWindow, shouldForceExpand],
   );
 
   return (
@@ -237,19 +193,4 @@ export function useFooterHelperVisibility() {
   }
 
   return context;
-}
-
-export function useFooterHelperExpansionHold(
-  target: FooterHelperTarget,
-  isActive: boolean,
-) {
-  const { setExpansionHold } = useFooterHelperVisibility();
-
-  useEffect(() => {
-    setExpansionHold(target, isActive);
-
-    return () => {
-      setExpansionHold(target, false);
-    };
-  }, [isActive, setExpansionHold, target]);
 }

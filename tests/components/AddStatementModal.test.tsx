@@ -123,4 +123,79 @@ describe("AddStatementModal", () => {
       }),
     );
   });
+
+  it("closes before debounce expiry without calling /api/statements/oblast", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <AddStatementModal
+        isOpen
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={onClose}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    rerender(
+      <AddStatementModal
+        isOpen={false}
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={onClose}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(700);
+      await Promise.resolve();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reopening after a cancelled debounce starts from a clean non-detecting state", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <AddStatementModal
+        isOpen
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={onClose}
+      />,
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/Rozpoznávam oblasť/i)).not.toBeInTheDocument();
+
+    rerender(
+      <AddStatementModal
+        isOpen={false}
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={onClose}
+      />,
+    );
+
+    rerender(
+      <AddStatementModal
+        isOpen
+        initialStatement="Na severe Slovenska chýbajú asi tri stovky pediatrov."
+        onClose={onClose}
+      />,
+    );
+
+    expect(screen.queryByText(/Rozpoznávam oblasť/i)).not.toBeInTheDocument();
+  });
 });

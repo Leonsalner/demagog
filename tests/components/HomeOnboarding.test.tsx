@@ -255,4 +255,45 @@ describe("HomeOnboarding", () => {
       expect(image).toHaveAttribute("src", expect.stringContaining(asset.file));
     }
   }, 20_000);
+
+  it("renders guide trigger dock with side=right after dismissal", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    const guideDock = screen.getByTestId("footer-helper-dock-guide");
+    expect(guideDock).toHaveAttribute("data-side", "right");
+  });
+
+  it("renders toast dock with side=right after dismissal on first visit", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    const toastDock = screen.getByTestId("footer-helper-dock-toast");
+    expect(toastDock).toHaveAttribute("data-side", "right");
+  });
+
+  it("shows toast with updated copy referencing the top-bar button", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+    expect(
+      screen.getByText("Máte nápad alebo ste našli chybu? Napíšte nám cez tlačidlo v hlavičke."),
+    ).toBeInTheDocument();
+  });
 });

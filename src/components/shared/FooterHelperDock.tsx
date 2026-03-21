@@ -14,6 +14,7 @@ interface FooterHelperDockProps {
   className?: string;
   side?: FooterHelperDockSide;
   slot: FooterHelperDockSlot;
+  testId?: string;
 }
 
 export default function FooterHelperDock({
@@ -21,12 +22,14 @@ export default function FooterHelperDock({
   className,
   side = "left",
   slot,
+  testId,
 }: FooterHelperDockProps) {
   return (
     <ViewportPortal>
       <div
         data-slot={slot}
         data-side={side}
+        data-testid={testId ?? `footer-helper-dock-${slot}`}
         className={cn("footer-helper-dock pointer-events-none z-50", className)}
       >
         {children}

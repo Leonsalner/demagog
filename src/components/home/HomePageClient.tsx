@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -98,6 +99,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     finishEnter: finishEnterResearch,
     startClose: startCloseResearch,
     finishClose: finishCloseResearch,
+    dismiss: dismissResearch,
   } = useResearch();
   const initializedRef = useRef(false);
   const searchRef = useRef(search);
@@ -105,6 +107,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
+  const previousTabForResearchRef = useRef<HomeTab | null>(null);
   const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
@@ -118,6 +121,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   );
 
   usePublishFeedbackPageContext(feedbackContext);
+
+  const markPreparedResearchOpened = useEffectEvent((key: string | null) => {
+    setAutoOpenedPreparedResearchKey(key);
+  });
 
   useEffect(() => {
     searchRef.current = search;
@@ -293,6 +300,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     detectResult.overall_status !== "NEW_CLAIM" &&
     matchedStatementIds.length > 0;
   const shouldAutoOpenPreparedResearch =
+    activeTab === "detect" &&
     preparedAggregateResearchStatus === "ready" &&
     preparedAggregateResearchData !== null &&
     preparedAggregateStatementIds.length > 0 &&
@@ -303,6 +311,29 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     shouldPrepareAggregateResearch &&
     researchDisplayState === "closed" &&
     (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
+
+  useEffect(() => {
+    const previousTab = previousTabForResearchRef.current;
+
+    if (previousTab === null) {
+      previousTabForResearchRef.current = activeTab;
+      return;
+    }
+
+    if (previousTab === activeTab) {
+      return;
+    }
+
+    previousTabForResearchRef.current = activeTab;
+
+    if (researchDisplayState !== "closed" || isResearchPendingReveal) {
+      dismissResearch();
+    }
+
+    if (previousTab === "detect" && preparedAggregateStatementIds.length > 0) {
+      markPreparedResearchOpened(preparedAggregateResearchKey);
+    }
+  }, [activeTab, dismissResearch, isResearchPendingReveal, preparedAggregateResearchKey, preparedAggregateStatementIds.length, researchDisplayState]);
 
   useEffect(() => {
     if (!shouldPrepareAggregateResearch || preparedAggregateResearchStatus !== "idle") {
@@ -322,7 +353,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       return;
     }
 
-    setAutoOpenedPreparedResearchKey(preparedAggregateResearchKey);
+    markPreparedResearchOpened(preparedAggregateResearchKey);
     openPreparedResearch(
       createAggregateResearchRequest(preparedAggregateStatementIds),
       preparedAggregateResearchData,
