@@ -157,6 +157,18 @@ a {
   }
 }
 
+@keyframes onboardingFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 @keyframes feedbackPanelReveal {
   from {
     opacity: 0;
@@ -166,5 +178,17 @@ a {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes feedbackPanelHide {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(10px);
   }
 }

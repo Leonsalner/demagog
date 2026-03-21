@@ -180,12 +180,12 @@ function IntroStage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
+              className="grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-100">
                 {item.label}
               </div>
-              <p className="pt-0.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {item.title}
               </p>
             </div>
@@ -345,6 +345,7 @@ export default function HomeOnboarding({
   const [activeStep, setActiveStep] = useState(0);
   const [manualOpenState, setManualOpenState] = useState<"open" | "closed" | null>(null);
   const [showFeedbackToast, setShowFeedbackToast] = useState(false);
+  const [isHidingFeedbackToast, setIsHidingFeedbackToast] = useState(false);
   const [showScrollCue, setShowScrollCue] = useState(true);
   const currentStep = steps[activeStep] ?? steps[0];
   const shouldAutoOpen = pathname === "/";
@@ -396,21 +397,25 @@ export default function HomeOnboarding({
     return () => window.cancelAnimationFrame(frame);
   }, [activeStep, isOpen]);
 
+  const hideFeedbackToast = useCallback(() => {
+    setIsHidingFeedbackToast(true);
+    window.setTimeout(() => {
+      setShowFeedbackToast(false);
+      setIsHidingFeedbackToast(false);
+    }, 240);
+  }, []);
+
   useEffect(() => {
     if (!showFeedbackToast) {
       return;
     }
 
     const timeout = window.setTimeout(() => {
-      setShowFeedbackToast(false);
+      hideFeedbackToast();
     }, isFirstVisit ? 30_000 : 6_000);
 
     return () => window.clearTimeout(timeout);
-  }, [isFirstVisit, showFeedbackToast]);
-
-  const hideFeedbackToast = useCallback(() => {
-    setShowFeedbackToast(false);
-  }, []);
+  }, [isFirstVisit, showFeedbackToast, hideFeedbackToast]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -616,7 +621,7 @@ export default function HomeOnboarding({
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6"
+            className={`pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6 ${isHidingFeedbackToast ? "animate-[feedbackPanelHide_240ms_ease-in_forwards]" : "animate-[feedbackPanelReveal_240ms_ease-out]"}`}
             style={{
               right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
             }}
