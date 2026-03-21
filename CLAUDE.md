@@ -30,16 +30,16 @@ Local app default: `http://localhost:3000`
 
 ## Primary Entry Points
 
-- `README.md`: product-facing Slovak brief for internal stakeholders
 - `src/app/page.tsx`: shared home route; uses `?mode=detect` for the detect tab
 - `src/app/detect/page.tsx`: redirects to `/`
 - `src/app/add/page.tsx`: add-statement flow
 - `src/app/demo/page.tsx`: scripted search demo
 - `src/app/demo-detect/page.tsx`: scripted duplicate-detection demo
+- `src/app/layout.tsx`: app shell, navbar, theme setup, feedback widget
 - `src/components/home/HomePageClient.tsx`: top-level search/detect orchestration
 - `src/components/home/HomeOnboarding.tsx`: native onboarding shown in-app
 - `src/components/research/ResearchWorkspace.tsx`: shared research overlay
-- `src/app/layout.tsx`: app shell, navbar, theme setup, feedback widget
+- `README.md`: product-facing Slovak brief for internal stakeholders (keep it lightweight; onboarding handles usage explanations)
 
 ## API Surface
 
@@ -63,16 +63,39 @@ Local app default: `http://localhost:3000`
 - `src/hooks/useDetect.ts`: detect requests, fast/thorough mode handling, mock fallback
 - `src/hooks/useResearch.ts`: statement and aggregate research state
 
+## Database Tables (runtime)
+
+The app reads from three primary tables:
+
+- `vyroky`: archived fact-checked statements. Key fields: `id`, `vyrok`, `vyhodnotenie`, `odovodnenie`, `oblast`, `datum`, `meno`, `strana`, `embedding`, `source_id`, `numeric_id`, `url`, `speaker_url`, `analysis_paragraphs`, `analysis_date`, `scraped_at`
+- `clanky`: internal Demagog articles. Key fields: `id`, `datum`, `autor`, `text_content`, `embedding`, `title`
+- `statement_sources`: external sources attached to a statement. Key fields: `id`, `statement_id`, `position`, `label`, `url`, `title`
+
+There are also staging tables (`vyroky_import_staging`, `statement_sources_import_staging`) used only by import pipelines, not by the running app.
+
+## RPC Functions (runtime dependency)
+
+The app depends on these Supabase RPC functions:
+
+- `search_statements`: primary vector search over `vyroky`
+- `count_statements`: count with filters
+- `match_statements`: duplicate-detection similarity search
+- `match_articles`: article matching for research context
+- `list_distinct_values`: filter options for the UI
+- `statement_date_bounds`: date range for filter UI
+
+`exec_sql` exists as a maintenance/import helper only; it is not part of the normal runtime request path.
+
 ## Data Pipeline Scripts
 
-- `scripts/setup-supabase.sql`: schema, RPCs, and SQL helpers; run this in a SQL client, not with `tsx`
+- `scripts/setup-supabase.sql`: schema, RPCs, and SQL helpers; run in a SQL client, not with `tsx`
 - `scripts/import-data.ts`: primary archive import into Supabase
 - `scripts/import-hf-vyroky.ts`: alternate HF-derived import path
 - `scripts/title-clanky.ts`: article title backfill / cleanup
 - `scripts/embed-statements.ts`: statement embeddings pipeline
 - `scripts/embed-articles.ts`: article embeddings pipeline
 - `scripts/clear-vyroky.ts`: maintenance utility for clearing imported statements
-- `scripts/test-queries.ts`: ad hoc embedding/query validation script
+- `scripts/test-queries.ts`: ad hoc embedding/query validation script (uses JINA_API_KEY, not runtime embedding path)
 
 ## Environment
 
@@ -93,7 +116,7 @@ Embedding stack:
 - Default model is `qwen3-embedding:8b`
 - Default dimensions are `2048`
 - `EMBEDDING_API_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, and `EMBEDDING_TIMEOUT_MS` override runtime behavior
-- `scripts/embed-statements.ts` and `scripts/embed-articles.ts` use the same local embedding defaults; keep runtime, scripts, and schema aligned
+- Scripts (`embed-statements.ts`, `embed-articles.ts`) use the same local defaults; keep runtime, scripts, and schema aligned
 
 Feature flags / debugging:
 
@@ -113,7 +136,7 @@ Feedback integration:
 
 Optional / script-only:
 
-- `JINA_API_KEY`: used by `scripts/test-queries.ts`, not by the main runtime embedding path
+- `JINA_API_KEY`: used only by `scripts/test-queries.ts`, not by the main runtime embedding path
 
 ## Working Notes
 
@@ -124,13 +147,13 @@ Optional / script-only:
 - Search and detect can both attach related articles and statement sources for quicker editorial follow-up.
 - The add flow is live in the app and is intended to save a new statement after review.
 - The feedback widget is mounted globally from `src/app/layout.tsx`.
-- Native onboarding already explains basic usage, so keep `README.md` product-facing and lightweight.
 - 2048-dimensional vectors exceed pgvector's 2000d HNSW limit. Retrieval is designed around RPCs / sequential scans rather than HNSW indexing.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` specifically expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+- `docs/ARCHITECTURE.md` is outdated — it still references Jina embeddings and 768d vectors. The current stack uses Ollama + `qwen3-embedding:8b` at 2048d.
 
 ## Planning References
 
-- `docs/plans`: implementation notes and feature plans
-- `demagog-plan.md`: higher-level product / implementation planning
+- `docs/plans/`: implementation notes and feature plans
+- `demagog-plan.md`: higher-level product / implementation planning (some parts reflect early-phase assumptions)
 - `PLAN.md`: original project plan
 - `README.md`: product overview for internal readers
