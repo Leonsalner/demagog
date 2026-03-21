@@ -27,11 +27,10 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
   {
     id: "basics",
     eyebrow: "1. Základ",
-    title: "Začať môžete otázkou aj hotovým tvrdením.",
+    title: "Vyhľadávanie pre kontext, Detekcia pre konkrétny výrok.",
     body: [
-      "Vo Vyhľadávaní môžete začať témou, menom, citátom alebo otázkou. Keď už máte konkrétne tvrdenie, otvorte Detekciu duplicít.",
-      "V Detekcii ho odošlete len raz. Ak sa nič podobné nenájde, hneď uvidíte stav Nový výrok.",
-      "Ak sa podobné staršie výroky nájdu, aplikácia zostane chvíľu pracovať a sama otvorí súhrnný prieskum.",
+      "Vo Vyhľadávaní sa pýtajte vlastnými slovami na témy alebo osoby. Ak už máte presné tvrdenie, vložte ho do Detekcie.",
+      "Systém ho porovná s archívom a buď potvrdí, že ide o nový výrok, alebo vám rovno pripraví spoločný prieskum.",
     ],
     media: {
       kind: "text",

@@ -121,7 +121,7 @@ function IntroStage() {
             Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Téma", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
+            {["Voľné zadanie", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -150,7 +150,7 @@ function IntroStage() {
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Jedno odoslanie", "Automatický prieskum", "Nový výrok"].map((hint) => (
+            {["Celé tvrdenie", "Kontrola archívu", "Zlúčený prehľad"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -167,15 +167,15 @@ function IntroStage() {
           {[
             {
               label: "1",
-              title: "Začnite otázkou alebo vložte konkrétne tvrdenie.",
+              title: "Pýtajte sa alebo vložte výrok.",
             },
             {
               label: "2",
-              title: "Po odoslaní systém sám pripraví ďalší krok.",
+              title: "Aplikácia za vás prehľadá archív.",
             },
             {
               label: "3",
-              title: "Pokračujte v prieskume alebo otvorte Pridať výrok.",
+              title: "Zistenia priamo spracujte do nového záznamu.",
             },
           ].map((item) => (
             <div

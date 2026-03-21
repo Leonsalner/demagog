@@ -65,7 +65,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Začať môžete otázkou aj hotovým tvrdením.")).toBeInTheDocument();
+    expect(screen.getByText("Vyhľadávanie pre kontext, Detekcia pre konkrétny výrok.")).toBeInTheDocument();
   }, 20_000);
 
   it("persists dismissal and supports manual reopen", async () => {
@@ -135,7 +135,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Začať môžete otázkou aj hotovým tvrdením.",
+        name: "Vyhľadávanie pre kontext, Detekcia pre konkrétny výrok.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("1. Základ")).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("HomeOnboarding", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
-        name: "Začať môžete otázkou aj hotovým tvrdením.",
+        name: "Vyhľadávanie pre kontext, Detekcia pre konkrétny výrok.",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("1. Základ")).toBeInTheDocument();
