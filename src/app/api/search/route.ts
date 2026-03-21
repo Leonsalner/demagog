@@ -5,13 +5,16 @@ import { rerankResults, understandQuery } from "@/lib/gemini";
 import { normalizePartyFilterValues } from "@/lib/party-filters";
 import {
   buildKeywordTerms,
+  escapeLikePattern,
   normalizeForMatching,
   scoreTextAgainstQuery,
   tokenizeForMatching,
 } from "@/lib/lexical-match";
+import { createLogger, generateCorrelationId } from "@/lib/logger";
 import { extractDateFiltersFromQuery, normalizeExtractedDateFilters } from "@/lib/search-date-understanding";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, VERDICTS } from "@/lib/utils";
+import { createRpcAvailabilityCache } from "@/lib/rpc-cache";
 import type {
   Article,
   QueryUnderstanding,
@@ -78,7 +81,7 @@ interface ArticleMatchRow {
 }
 
 const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
-let searchStatementsRpcAvailable: boolean | null = null;
+const searchStatementsRpcCache = createRpcAvailabilityCache();
 
 function toArticle(row: ArticleMatchRow): Article {
   return {
@@ -699,8 +702,8 @@ async function fetchSourcesForIds(
   return map;
 }
 
-export function resetSearchRouteStateForTests() {
-  searchStatementsRpcAvailable = null;
+export function resetSearchRouteStateForTests(): void {
+  searchStatementsRpcCache.reset();
 }
 
 function isRpcUnavailable(error: { code?: string | null } | null | undefined): boolean {
@@ -710,8 +713,11 @@ function isRpcUnavailable(error: { code?: string | null } | null | undefined): b
 async function canUseSearchStatementsRpc(
   supabase: ReturnType<typeof supabasePublic>
 ): Promise<boolean> {
-  if (searchStatementsRpcAvailable !== null) {
-    return searchStatementsRpcAvailable;
+  const now = Date.now();
+  const cached = searchStatementsRpcCache.isAvailable(now);
+
+  if (cached !== null) {
+    return cached;
   }
 
   const probe = await supabase.rpc("search_statements", {
@@ -725,8 +731,13 @@ async function canUseSearchStatementsRpc(
     filter_datum_do: null,
   });
 
-  searchStatementsRpcAvailable = !isRpcUnavailable(probe.error);
-  return searchStatementsRpcAvailable;
+  if (!isRpcUnavailable(probe.error)) {
+    searchStatementsRpcCache.recordSuccess(now);
+  } else {
+    searchStatementsRpcCache.recordFailure(now);
+  }
+
+  return searchStatementsRpcCache.isAvailable(now) ?? false;
 }
 
 function applyStatementFilters<
@@ -791,7 +802,7 @@ async function runLexicalSearchFallback(
       body
     );
     const { data, error } = await query
-      .ilike("vyrok", `%${term}%`)
+      .ilike("vyrok", `%${escapeLikePattern(term)}%`)
       .range(0, LEXICAL_SEARCH_ROWS_PER_TERM - 1);
 
     if (error) {
@@ -917,6 +928,11 @@ async function fetchRelatedResults(
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
+  const correlationId = request.headers.get("X-Correlation-ID") 
+    ?? request.headers.get("X-Request-ID") 
+    ?? generateCorrelationId();
+  const logger = createLogger(correlationId);
+
   const supabaseConfigError = getSupabasePublicConfigError();
 
   if (supabaseConfigError) {
@@ -1045,7 +1061,7 @@ export async function POST(request: NextRequest) {
 
         if (searchResult.error || countResult.error) {
           if (isRpcUnavailable(searchResult.error) || isRpcUnavailable(countResult.error)) {
-            searchStatementsRpcAvailable = false;
+            searchStatementsRpcCache.recordFailure(Date.now());
           } else {
             console.error(
               "[search] semantic search RPC error:",
@@ -1102,8 +1118,11 @@ export async function POST(request: NextRequest) {
                 relatedArticles = undefined;
               }
             }
-          } catch {
-            // Article context is best-effort; do not fail the search.
+          } catch (err) {
+            logger.warn("article_match_failed", "fetch", {
+              route: "/api/search",
+              duration_ms: Math.round(performance.now() - articlesStartedAt),
+            }, err);
           }
           recordStageTiming(timings, "related_articles_ms", articlesStartedAt);
         }
@@ -1196,12 +1215,18 @@ export async function POST(request: NextRequest) {
 
     logSearchTimings(body.query ?? "", page, pageSize, timings);
 
-    return NextResponse.json(response);
+    const nextResponse = NextResponse.json(response);
+    nextResponse.headers.set("X-Correlation-ID", correlationId);
+    return nextResponse;
   } catch (error) {
-    console.error("[search] unhandled error", error);
-    return NextResponse.json(
+    logger.error("search_unhandled_error", "catch", {
+      route: "/api/search",
+    }, error);
+    const nextResponse = NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
     );
+    nextResponse.headers.set("X-Correlation-ID", correlationId);
+    return nextResponse;
   }
 }

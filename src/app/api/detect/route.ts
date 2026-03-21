@@ -4,11 +4,14 @@ import { classifyMatches, getGeminiModel } from "@/lib/gemini";
 import { embedText } from "@/lib/jina";
 import {
   buildKeywordTerms,
+  escapeLikePattern,
   normalizeForMatching,
   scoreTextAgainstQuery,
 } from "@/lib/lexical-match";
+import { createLogger, generateCorrelationId } from "@/lib/logger";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord } from "@/lib/utils";
+import { createRpcAvailabilityCache } from "@/lib/rpc-cache";
 import type {
   Article,
   DetectMode,
@@ -54,7 +57,7 @@ const LEXICAL_DETECT_CANDIDATE_LIMIT = 120;
 const LEXICAL_DETECT_ROWS_PER_TERM = 40;
 const FAST_DETECT_RETRIEVAL_COUNT = 10;
 const THOROUGH_DETECT_RETRIEVAL_COUNT = 60;
-let matchStatementsRpcAvailable: boolean | null = null;
+const matchStatementsRpcCache = createRpcAvailabilityCache();
 const DETECT_FALLBACK_IGNORED_TERMS = new Set([
   "asi",
   "dnes",
@@ -158,8 +161,11 @@ function isRpcUnavailable(error: { code?: string | null } | null | undefined): b
 async function canUseMatchStatementsRpc(
   supabase: ReturnType<typeof supabasePublic>
 ): Promise<boolean> {
-  if (matchStatementsRpcAvailable !== null) {
-    return matchStatementsRpcAvailable;
+  const now = Date.now();
+  const cached = matchStatementsRpcCache.isAvailable(now);
+
+  if (cached !== null) {
+    return cached;
   }
 
   const probe = await supabase.rpc("match_statements", {
@@ -167,8 +173,13 @@ async function canUseMatchStatementsRpc(
     match_count: 1,
   });
 
-  matchStatementsRpcAvailable = !isRpcUnavailable(probe.error);
-  return matchStatementsRpcAvailable;
+  if (!isRpcUnavailable(probe.error)) {
+    matchStatementsRpcCache.recordSuccess(now);
+  } else {
+    matchStatementsRpcCache.recordFailure(now);
+  }
+
+  return matchStatementsRpcCache.isAvailable(now) ?? false;
 }
 
 async function runLexicalDetectFallback(
@@ -201,7 +212,7 @@ async function runLexicalDetectFallback(
       .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url");
 
     for (const term of terms) {
-      query = query.ilike("vyrok", `%${term}%`);
+      query = query.ilike("vyrok", `%${escapeLikePattern(term)}%`);
     }
 
     const { data, error } = await query.range(0, LEXICAL_DETECT_ROWS_PER_TERM - 1);
@@ -241,12 +252,17 @@ async function runLexicalDetectFallback(
     .slice(0, retrievalCount);
 }
 
-export function resetDetectRouteStateForTests() {
-  matchStatementsRpcAvailable = null;
+export function resetDetectRouteStateForTests(): void {
+  matchStatementsRpcCache.reset();
 }
 
 export async function POST(request: NextRequest) {
   const start = performance.now();
+  const correlationId = request.headers.get("X-Correlation-ID") 
+    ?? request.headers.get("X-Request-ID") 
+    ?? generateCorrelationId();
+  const logger = createLogger(correlationId);
+
   const supabaseConfigError = getSupabasePublicConfigError();
 
   if (supabaseConfigError) {
@@ -319,7 +335,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       if (isRpcUnavailable(error)) {
-        matchStatementsRpcAvailable = false;
+        matchStatementsRpcCache.recordFailure(Date.now());
         usedLexicalFallback = true;
         rows = await runLexicalDetectFallback(supabase, statement, retrievalCount);
       } else {
@@ -343,7 +359,9 @@ export async function POST(request: NextRequest) {
       query_time_ms: Math.round(performance.now() - start),
     };
 
-    return NextResponse.json(response);
+  const nextResponse = NextResponse.json(response);
+  nextResponse.headers.set("X-Correlation-ID", correlationId);
+  return nextResponse;
   }
 
   let classifications:
@@ -414,6 +432,7 @@ export async function POST(request: NextRequest) {
 
   let relatedArticles: Article[] | undefined;
   if (overallStatus !== "NEW_CLAIM" && embedding) {
+    const articlesStartedAt = performance.now();
     try {
       const { data: articleData, error: articleError } = await supabase.rpc(
         "match_articles",
@@ -430,8 +449,11 @@ export async function POST(request: NextRequest) {
           .map(toArticle)
           .filter((article) => article.text.length > 0);
       }
-    } catch {
-      // Article context is best-effort and should not fail detection.
+    } catch (err) {
+      logger.warn("article_match_failed", "fetch", {
+        route: "/api/detect",
+        duration_ms: Math.round(performance.now() - articlesStartedAt),
+      }, err);
     }
   }
 

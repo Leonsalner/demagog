@@ -143,4 +143,213 @@ describe("POST /api/research/statement", () => {
       error: "Statement not found",
     });
   });
+
+  it("returns 400 for invalid JSON body", async () => {
+    const badRequest = new NextRequest("http://localhost/api/research/statement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not valid json{{{",
+    });
+
+    const response = await POST(badRequest);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid JSON body",
+    });
+  });
+
+  it("returns 400 for null body", async () => {
+    const response = await POST(createRequest(null));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid request body",
+    });
+  });
+
+  it("returns 400 for array body", async () => {
+    const response = await POST(createRequest([1, 2, 3]));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid request body",
+    });
+  });
+
+  it("returns 400 for primitive body", async () => {
+    const response = await POST(createRequest("just a string"));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Invalid request body",
+    });
+  });
+
+  it("returns 400 for missing statement_id", async () => {
+    const response = await POST(createRequest({}));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "statement_id must be a positive integer",
+    });
+  });
+
+  it("returns 400 for statement_id of 0", async () => {
+    const response = await POST(createRequest({ statement_id: 0 }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "statement_id must be a positive integer",
+    });
+  });
+
+  it("returns 400 for negative statement_id", async () => {
+    const response = await POST(createRequest({ statement_id: -5 }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "statement_id must be a positive integer",
+    });
+  });
+
+  it("returns 400 for non-integer statement_id (float)", async () => {
+    const response = await POST(createRequest({ statement_id: 1.5 }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "statement_id must be a positive integer",
+    });
+  });
+
+  it("returns 400 for string statement_id", async () => {
+    const response = await POST(createRequest({ statement_id: "42" }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "statement_id must be a positive integer",
+    });
+  });
+
+  it("returns 502 when database error occurs on statement fetch", async () => {
+    const errorQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "42P01", message: "relation does not exist" },
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue({
+      from: vi.fn(() => errorQuery),
+      rpc: vi.fn(),
+    } as never);
+
+    const response = await POST(createRequest({ statement_id: 1 }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Database error",
+    });
+  });
+
+  it("returns 502 when database error occurs on match_articles RPC", async () => {
+    const vyrokyQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          id: 42,
+          vyrok: "Výrok 42",
+          vyhodnotenie: "Pravda",
+          odovodnenie: "Odôvodnenie.",
+          datum: "2026-02-01",
+          meno: "Robert Fico",
+          strana: "Smer-SD",
+          url: "https://demagog.sk/vyrok/42",
+          speaker_url: null,
+          embedding: [0.1, 0.2, 0.3],
+          analysis_paragraphs: [],
+        },
+        error: null,
+      }),
+    };
+
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === "vyroky") return vyrokyQuery;
+        if (table === "statement_sources") return sourcesQuery;
+        throw new Error(`Unexpected table ${table}`);
+      }),
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "42P01", message: "function does not exist" },
+      }),
+    } as never);
+
+    const response = await POST(createRequest({ statement_id: 42 }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Database error",
+    });
+  });
+
+  it("returns 502 when database error occurs on sources fetch", async () => {
+    const vyrokyQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          id: 42,
+          vyrok: "Výrok 42",
+          vyhodnotenie: "Pravda",
+          odovodnenie: "Odôvodnenie.",
+          datum: "2026-02-01",
+          meno: "Robert Fico",
+          strana: "Smer-SD",
+          url: "https://demagog.sk/vyrok/42",
+          speaker_url: null,
+          embedding: [0.1, 0.2, 0.3],
+          analysis_paragraphs: [],
+        },
+        error: null,
+      }),
+    };
+
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "42P01", message: "relation does not exist" },
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue({
+      from: vi.fn((table: string) => {
+        if (table === "vyroky") return vyrokyQuery;
+        if (table === "statement_sources") return sourcesQuery;
+        throw new Error(`Unexpected table ${table}`);
+      }),
+      rpc: vi.fn().mockResolvedValue({
+        data: [{ id: 11, autor: "Demagog.sk", datum: "2026-02-14", text_content: "Článok.", title: "Titulok", similarity: 0.82 }],
+        error: null,
+      }),
+    } as never);
+
+    const response = await POST(createRequest({ statement_id: 42 }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Database error",
+    });
+  });
 });

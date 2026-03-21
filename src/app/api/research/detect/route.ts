@@ -6,6 +6,7 @@ import {
   toClankyResearchItem,
   toExternalSourceResearchItem,
 } from "@/lib/research";
+import { createLogger, generateCorrelationId } from "@/lib/logger";
 import { getSupabasePublicConfigError, supabasePublic } from "@/lib/supabase";
 import { isRecord, normalizeExternalSourceUrl } from "@/lib/utils";
 import type {
@@ -29,7 +30,17 @@ type DetectResearchRow = {
   embedding: number[] | null;
 };
 
-type ArticleMatchRow = {
+type BatchArticleMatchRow = {
+  embedding_idx: number;
+  id: number;
+  datum: string | null;
+  autor: string | null;
+  text_content: string | null;
+  title: string | null;
+  similarity: number;
+};
+
+type SingleArticleMatchRow = {
   id: number;
   datum: string | null;
   autor: string | null;
@@ -53,14 +64,112 @@ type DedupedSource = {
   statementRefs: ResearchStatementRef[];
 };
 
-function toArticle(row: ArticleMatchRow): Article {
-  return {
-    id: row.id,
-    datum: row.datum ?? "",
-    autor: row.autor ?? "Demagog.sk",
-    text: row.text_content?.trim() ?? "",
-    title: row.title ?? null,
-  };
+async function fetchArticlesBatch(
+  supabase: ReturnType<typeof supabasePublic>,
+  statements: DetectResearchRow[],
+  statementRefs: Map<number, ResearchStatementRef>,
+  matchCount: number,
+): Promise<Map<number, DedupedArticle>> {
+  const articleMap = new Map<number, DedupedArticle>();
+  const statementsWithEmbeddings = statements.filter((s) => s.embedding);
+
+  if (statementsWithEmbeddings.length === 0) {
+    return articleMap;
+  }
+
+  const embeddings = statementsWithEmbeddings.map((s) => s.embedding as number[]);
+  const embeddingIdMap = new Map<number, number>();
+
+  statementsWithEmbeddings.forEach((statement, idx) => {
+    if (statement.embedding) {
+      embeddingIdMap.set(idx, statement.id);
+    }
+  });
+
+  const { data, error } = await supabase.rpc("match_articles_batch", {
+    query_embeddings: embeddings,
+    match_count: matchCount,
+  });
+
+  if (!error && data) {
+    for (const row of (data as BatchArticleMatchRow[])) {
+      const statementId = embeddingIdMap.get(row.embedding_idx);
+      if (!statementId) continue;
+
+      const statementRef = statementRefs.get(statementId);
+      if (!statementRef) continue;
+
+      const article: Article = {
+        id: row.id,
+        datum: row.datum ?? "",
+        autor: row.autor ?? "Demagog.sk",
+        text: row.text_content?.trim() ?? "",
+        title: row.title ?? null,
+      };
+
+      const existing = articleMap.get(row.id);
+
+      if (!existing) {
+        articleMap.set(row.id, {
+          article,
+          similarity: row.similarity,
+          statementRefs: [statementRef],
+        });
+        continue;
+      }
+
+      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
+      if (row.similarity > existing.similarity) {
+        existing.article = article;
+        existing.similarity = row.similarity;
+      }
+    }
+    return articleMap;
+  }
+
+  for (const [idx, embedding] of embeddings.entries()) {
+    const statementId = embeddingIdMap.get(idx);
+    if (!statementId) continue;
+
+    const statementRef = statementRefs.get(statementId);
+    if (!statementRef) continue;
+
+    const { data: singleData, error: singleError } = await supabase.rpc("match_articles", {
+      query_embedding: embedding,
+      match_count: matchCount,
+    });
+
+    if (singleError || !singleData) continue;
+
+    for (const row of (singleData as SingleArticleMatchRow[])) {
+      const article: Article = {
+        id: row.id,
+        datum: row.datum ?? "",
+        autor: row.autor ?? "Demagog.sk",
+        text: row.text_content?.trim() ?? "",
+        title: row.title ?? null,
+      };
+
+      const existing = articleMap.get(row.id);
+
+      if (!existing) {
+        articleMap.set(row.id, {
+          article,
+          similarity: row.similarity,
+          statementRefs: [statementRef],
+        });
+        continue;
+      }
+
+      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
+      if (row.similarity > existing.similarity) {
+        existing.article = article;
+        existing.similarity = row.similarity;
+      }
+    }
+  }
+
+  return articleMap;
 }
 
 function parseStatementIds(value: unknown): number[] | null {
@@ -76,6 +185,11 @@ function parseStatementIds(value: unknown): number[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  const correlationId = request.headers.get("X-Correlation-ID") 
+    ?? request.headers.get("X-Request-ID") 
+    ?? generateCorrelationId();
+  const logger = createLogger(correlationId);
+
   const supabaseConfigError = getSupabasePublicConfigError();
   if (supabaseConfigError) {
     return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
@@ -118,54 +232,20 @@ export async function POST(request: NextRequest) {
   const statementRefs = new Map(
     statementRows.map((statement) => [statement.id, buildResearchStatementRef(statement)]),
   );
-  const articleMap = new Map<number, DedupedArticle>();
 
+  let articleMap: Map<number, DedupedArticle>;
   try {
-    await Promise.all(
-      statementRows
-        .filter((statement) => statement.embedding)
-        .map(async (statement) => {
-          const embedding = statement.embedding;
-          if (!embedding) {
-            return;
-          }
-
-          const { data: articleRows, error: articleError } = await supabase.rpc("match_articles", {
-            query_embedding: embedding,
-            match_count: RELATED_ARTICLE_COUNT,
-          });
-
-          if (articleError) {
-            throw articleError;
-          }
-
-          const statementRef = statementRefs.get(statement.id);
-          if (!statementRef) {
-            return;
-          }
-
-          for (const row of (articleRows ?? []) as ArticleMatchRow[]) {
-            const existing = articleMap.get(row.id);
-            const article = toArticle(row);
-
-            if (!existing) {
-              articleMap.set(row.id, {
-                article,
-                similarity: row.similarity,
-                statementRefs: [statementRef],
-              });
-              continue;
-            }
-
-            existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
-            if (row.similarity > existing.similarity) {
-              existing.article = article;
-              existing.similarity = row.similarity;
-            }
-          }
-        }),
+    articleMap = await fetchArticlesBatch(
+      supabase,
+      statementRows,
+      statementRefs,
+      RELATED_ARTICLE_COUNT,
     );
-  } catch {
+  } catch (err) {
+    logger.error("research_article_match_fatal", "fetch", {
+      route: "/api/research/detect",
+      statement_ids: statementIds.length,
+    }, err);
     return NextResponse.json({ error: "Database error" }, { status: 502 });
   }
 
@@ -201,7 +281,7 @@ export async function POST(request: NextRequest) {
     existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
   }
 
-  return NextResponse.json({
+  const response: ResearchWorkspaceResponse = {
     mode: "aggregate",
     items: [
       ...Array.from(articleMap.values())
@@ -211,5 +291,9 @@ export async function POST(request: NextRequest) {
         toExternalSourceResearchItem(entry.source, entry.statementRefs),
       ),
     ],
-  } satisfies ResearchWorkspaceResponse);
+  };
+
+  const nextResponse = NextResponse.json(response);
+  nextResponse.headers.set("X-Correlation-ID", correlationId);
+  return nextResponse;
 }

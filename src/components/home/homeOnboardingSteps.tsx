@@ -117,7 +117,7 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     body: [
       "Od prvého vloženia tvrdenia až po nový záznam vás aplikácia vedie v jednom súvislom pracovnom toku.",
       "Ak nájde použiteľné staršie podklady, zostanete v prieskume. Ak nie, z toho istého miesta otvoríte pridanie nového výroku.",
-      "K návodu sa kedykoľvek vrátite cez tlačidlo Návod a spätnú väzbu pošlete cez Máte pripomienku?.",
+      "K návodu sa kedykoľvek vrátite cez tlačidlo Návod v pravom dolnom rohu. Ak narazíte na chybu alebo máte nápad, napíšte nám cez tlačidlo v hlavičke.",
     ],
     media: {
       kind: "text",

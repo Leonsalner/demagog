@@ -102,12 +102,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     dismiss: dismissResearch,
   } = useResearch();
   const initializedRef = useRef(false);
-  const searchRef = useRef(search);
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
+  const debounceTimeoutRef = useRef<number | null>(null);
   const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
@@ -124,10 +124,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const markPreparedResearchOpened = useEffectEvent((key: string | null) => {
     setAutoOpenedPreparedResearchKey(key);
-  });
-
-  useEffect(() => {
-    searchRef.current = search;
   });
 
   useEffect(() => {
@@ -150,12 +146,23 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     }
 
     setPage(1);
-    const timeout = window.setTimeout(() => {
-      void searchRef.current(1);
+
+    if (debounceTimeoutRef.current !== null) {
+      window.clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = window.setTimeout(() => {
+      debounceTimeoutRef.current = null;
+      void search(1);
     }, 500);
 
-    return () => window.clearTimeout(timeout);
-  }, [filters, hasAnyActiveFilters, hasSearched, isModelFilterUpdateRef, setPage]);
+    return () => {
+      if (debounceTimeoutRef.current !== null) {
+        window.clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+    };
+  }, [filters, hasAnyActiveFilters, hasSearched, isModelFilterUpdateRef, setPage, search]);
 
   useEffect(() => {
     if (typeof ResizeObserver === "undefined") {
@@ -249,6 +256,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     () => () => {
       if (panelHeightReleaseRef.current !== null) {
         window.clearTimeout(panelHeightReleaseRef.current);
+      }
+      if (debounceTimeoutRef.current !== null) {
+        window.clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
       }
     },
     [],

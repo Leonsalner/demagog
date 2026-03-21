@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import localFont from "next/font/local";
 import {
   FeedbackContextProvider,
 } from "@/components/feedback/FeedbackContext";
@@ -27,6 +28,20 @@ const themeInitScript = `
     root.classList.toggle("dark", theme === "dark");
   })();
 `;
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff2",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff2",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Demagog Fact-Check Tool",
@@ -66,7 +81,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="bg-background text-foreground font-sans antialiased">
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}>
         <FooterHelperVisibilityProvider>
           <FeedbackContextProvider>
             <div className="noise-overlay min-h-screen">

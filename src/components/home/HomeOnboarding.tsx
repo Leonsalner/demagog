@@ -526,7 +526,7 @@ export default function HomeOnboarding({
                 </div>
 
                 <div
-                  className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-slate-200 bg-white/94 px-5 pb-5 pt-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/94 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
+                  className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-transparent px-5 pb-5 pt-5 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
                   style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 1.25rem)" }}
                 >
                   <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200/90 bg-white/92 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_56px_-40px_rgba(2,6,23,0.95)]">
@@ -612,11 +612,14 @@ export default function HomeOnboarding({
       ) : null}
 
       {showFeedbackToast ? (
-        <FooterHelperDock slot="toast" side="right" className="z-[55] w-[min(22rem,calc(100vw-2rem))]">
+        <FooterHelperDock slot="toast" side="right" className="top-20 sm:top-24">
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-auto rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)]"
+            className="pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6"
+            style={{
+              right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+            }}
           >
             <div className="flex items-start gap-3">
               <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]">
