@@ -29,14 +29,22 @@ function createMockResponse(input: string, topK: number): DetectResponse {
   const normalized = input.toLowerCase();
   const statementsById = new Map(mockStatements.map((statement) => [statement.id, statement]));
 
+  const getStatementById = (id: number): Statement => {
+    const statement = statementsById.get(id);
+    if (!statement) {
+      throw new Error(`Mock statement ${id} not found - check mock-data.ts`);
+    }
+    return statement;
+  };
+
   const duplicateMatches = [
     buildMatch(
-      statementsById.get(14)!,
+      getStatementById(14),
       0.92,
       "DUPLICATE",
     ),
     buildMatch(
-      statementsById.get(15)!,
+      getStatementById(15),
       0.87,
       "DUPLICATE",
     ),
@@ -44,17 +52,17 @@ function createMockResponse(input: string, topK: number): DetectResponse {
 
   const relatedMatches = [
     buildMatch(
-      statementsById.get(11)!,
+      getStatementById(11),
       0.65,
       "RELATED",
     ),
     buildMatch(
-      statementsById.get(12)!,
+      getStatementById(12),
       0.58,
       "RELATED",
     ),
     buildMatch(
-      statementsById.get(13)!,
+      getStatementById(13),
       0.51,
       "RELATED",
     ),
@@ -62,12 +70,12 @@ function createMockResponse(input: string, topK: number): DetectResponse {
 
   const unrelatedMatches = [
     buildMatch(
-      statementsById.get(1)!,
+      getStatementById(1),
       0.31,
       "UNRELATED",
     ),
     buildMatch(
-      statementsById.get(7)!,
+      getStatementById(7),
       0.26,
       "UNRELATED",
     ),

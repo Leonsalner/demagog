@@ -151,8 +151,11 @@ export interface StatementCardProps {
 }
 
 export interface FilterState {
+  /** Party filter - null means no filter applied (all parties shown) */
   strana: string[] | null;
+  /** Verdict filter - null means no filter applied (all verdicts shown) */
   vyhodnotenie: Verdict[] | null;
+  /** Speaker filter - null means no filter applied (all speakers shown) */
   meno: string[] | null;
   datum_od: string | null;
   datum_do: string | null;

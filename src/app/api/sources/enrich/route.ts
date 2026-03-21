@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createLogger, generateCorrelationId } from "@/lib/logger";
 import { supabaseAdmin, getSupabaseAdminConfigError } from "@/lib/supabase";
 
-const FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 15000;
+const FETCH_BATCH_SIZE = 5;
 const MAX_IDS_PER_REQUEST = 50;
+
+async function concurrencyLimiter<T, R>(
+  items: T[],
+  batchSize: number,
+  processor: (item: T) => Promise<R>
+): Promise<Array<R | null>> {
+  const results: Array<R | null> = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((item) => processor(item).catch(() => null))
+    );
+    results.push(...batchResults);
+  }
+  return results;
+}
 
 async function fetchPageTitle(url: string): Promise<string | null> {
   try {
@@ -81,6 +99,11 @@ interface SourceForEnrich {
 }
 
 export async function POST(request: NextRequest) {
+  const correlationId = request.headers.get("X-Correlation-ID") 
+    ?? request.headers.get("X-Request-ID") 
+    ?? generateCorrelationId();
+  const logger = createLogger(correlationId);
+
   const adminError = getSupabaseAdminConfigError();
   if (adminError) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
@@ -137,12 +160,14 @@ export async function POST(request: NextRequest) {
   const needsFetching = sources.filter((s) => !s.title);
   const alreadyHave = sources.filter((s) => s.title);
 
-  // Fetch titles in parallel for sources that need them.
-  const fetchResults = await Promise.allSettled(
-    needsFetching.map(async (source) => {
+  // Fetch titles in batches for sources that need them.
+  const fetchResults = await concurrencyLimiter(
+    needsFetching,
+    FETCH_BATCH_SIZE,
+    async (source) => {
       const title = await fetchPageTitle(source.url);
       return { id: source.id, title };
-    }),
+    }
   );
 
   // Collect all titles into the response map.
@@ -156,23 +181,35 @@ export async function POST(request: NextRequest) {
 
   const updates: Array<{ id: number; title: string }> = [];
   for (const result of fetchResults) {
-    if (result.status === "fulfilled" && result.value.title) {
-      titlesMap[result.value.id] = result.value.title;
-      updates.push({ id: result.value.id, title: result.value.title });
+    if (result && result.title) {
+      titlesMap[result.id] = result.title;
+      updates.push({ id: result.id, title: result.title });
     }
   }
 
   // Persist fetched titles to DB if the column exists.
   if (updates.length > 0 && titleColumnExists) {
-    await Promise.allSettled(
-      updates.map((u) =>
-        supabase
-          .from("statement_sources")
-          .update({ title: u.title })
-          .eq("id", u.id),
-      ),
+    const persistResults = await Promise.allSettled(
+      updates.map((u) => supabase.from("statement_sources").update({ title: u.title }).eq("id", u.id))
     );
+    const persistErrors = persistResults
+      .map((r, i) => ({ update: updates[i], result: r }))
+      .filter((x): x is { update: { id: number; title: string }; result: PromiseRejectedResult } => x.result.status === "rejected");
+
+    if (persistErrors.length > 0) {
+      logger.warn("source_title_persist_failed", "persist", {
+        route: "/api/sources/enrich",
+        failed_count: persistErrors.length,
+        total_count: updates.length,
+        errors: persistErrors.map((e) => ({
+          id: e.update.id,
+          error: logger.errorInfo(e.result.reason),
+        })),
+      });
+    }
   }
 
-  return NextResponse.json({ titles: titlesMap });
+  const nextResponse = NextResponse.json({ titles: titlesMap });
+  nextResponse.headers.set("X-Correlation-ID", correlationId);
+  return nextResponse;
 }

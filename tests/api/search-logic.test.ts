@@ -1592,4 +1592,256 @@ describe("POST /api/search logic", () => {
       );
     });
   });
+
+  describe("boundary value tests", () => {
+    it("coerces page_size of 0 to default (20)", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return { data: [buildRow(1)], error: null };
+          }
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page_size: 0,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_count: 20,
+        }),
+      );
+    });
+
+    it("accepts page_size of 1", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return { data: [buildRow(1)], error: null };
+          }
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page_size: 1,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.results).toHaveLength(1);
+    });
+
+    it("accepts page_size of 50 (maximum valid)", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return {
+              data: Array.from({ length: 50 }, (_, i) => buildRow(i + 1)),
+              error: null,
+            };
+          }
+          if (fn === "count_statements") {
+            return { data: 50, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page_size: 50,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.results).toHaveLength(50);
+    });
+
+    it("caps page_size of 51 to maximum (50)", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return {
+              data: Array.from({ length: 50 }, (_, i) => buildRow(i + 1)),
+              error: null,
+            };
+          }
+          if (fn === "count_statements") {
+            return { data: 50, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page_size: 51,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_count: 50,
+        }),
+      );
+    });
+
+    it("caps page_size of 999 to maximum (50)", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return {
+              data: Array.from({ length: 50 }, (_, i) => buildRow(i + 1)),
+              error: null,
+            };
+          }
+          if (fn === "count_statements") {
+            return { data: 50, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page_size: 999,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_count: 50,
+        }),
+      );
+    });
+
+    it("correctly calculates offset for page 5 with page_size 50", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return { data: [buildRow(1)], error: null };
+          }
+          if (fn === "count_statements") {
+            return { data: 200, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page: 5,
+          page_size: 50,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_offset: 200,
+        }),
+      );
+    });
+
+    it("coerces page of 0 to 1", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return { data: [buildRow(1)], error: null };
+          }
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page: 0,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_offset: 0,
+        }),
+      );
+    });
+
+    it("coerces negative page to 1", async () => {
+      const supabase = createSupabaseMock({
+        rpc: async (fn) => {
+          if (fn === "search_statements") {
+            return { data: [buildRow(1)], error: null };
+          }
+          if (fn === "count_statements") {
+            return { data: 1, error: null };
+          }
+          throw new Error(`Unexpected RPC ${fn}`);
+        },
+      });
+
+      vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+      const response = await POST(
+        createRequest({
+          query: "zdravotnictvo",
+          page: -1,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        "search_statements",
+        expect.objectContaining({
+          match_offset: 0,
+        }),
+      );
+    });
+  });
 });

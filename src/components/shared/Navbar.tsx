@@ -109,7 +109,7 @@ export default function Navbar() {
             disabled={isOpen && isSubmitting}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/96 text-slate-500 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.55)] backdrop-blur transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/96 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
           >
-            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+            <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 translate-y-px">
               <path d="M2.5 3.75A2.25 2.25 0 0 1 4.75 1.5h6.5A2.25 2.25 0 0 1 13.5 3.75v4.5a2.25 2.25 0 0 1-2.25 2.25H8.9l-2.55 2.12a.75.75 0 0 1-1.23-.58V10.5H4.75A2.25 2.25 0 0 1 2.5 8.25v-4.5Z" />
             </svg>
           </button>

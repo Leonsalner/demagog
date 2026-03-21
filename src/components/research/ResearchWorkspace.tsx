@@ -113,6 +113,13 @@ export default function ResearchWorkspace({
   const [navbarOffset, setNavbarOffset] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousDisplayStateRef = useRef<WorkspaceDisplayState>(displayState);
+  const frameIdRef = useRef<number | null>(null);
+  const panelDelayTimeoutIdRef = useRef<number | null>(null);
+  const overlayDelayTimeoutIdRef = useRef<number | null>(null);
+  const fallbackTimeoutIdRef = useRef<number | null>(null);
+  const didFinishRef = useRef(false);
+  const transitionTargetRef = useRef<HTMLDivElement | null>(null);
+  const clearTransitionListenerRef = useRef<(() => void) | null>(null);
 
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
@@ -192,36 +199,49 @@ export default function ResearchWorkspace({
   useEffect(() => {
     const prev = previousDisplayStateRef.current;
     previousDisplayStateRef.current = displayState;
-    let frameId: number | null = null;
-    let panelDelayTimeoutId: number | null = null;
-    let overlayDelayTimeoutId: number | null = null;
-    let fallbackTimeoutId: number | null = null;
-    let transitionTarget: HTMLDivElement | null = null;
-    let didFinish = false;
+
+    if (frameIdRef.current !== null) {
+      window.cancelAnimationFrame(frameIdRef.current);
+      frameIdRef.current = null;
+    }
+    if (panelDelayTimeoutIdRef.current !== null) {
+      window.clearTimeout(panelDelayTimeoutIdRef.current);
+      panelDelayTimeoutIdRef.current = null;
+    }
+    if (overlayDelayTimeoutIdRef.current !== null) {
+      window.clearTimeout(overlayDelayTimeoutIdRef.current);
+      overlayDelayTimeoutIdRef.current = null;
+    }
+    if (fallbackTimeoutIdRef.current !== null) {
+      window.clearTimeout(fallbackTimeoutIdRef.current);
+      fallbackTimeoutIdRef.current = null;
+    }
+    didFinishRef.current = false;
+    clearTransitionListenerRef.current?.();
 
     const clearTransitionListener = () => {
-      if (transitionTarget) {
-        transitionTarget.removeEventListener("transitionend", handleTransitionEnd);
-        transitionTarget = null;
+      if (transitionTargetRef.current) {
+        transitionTargetRef.current.removeEventListener("transitionend", handleTransitionEnd);
+        transitionTargetRef.current = null;
       }
     };
 
     const finishTransition = (callback?: () => void) => {
-      if (didFinish) {
+      if (didFinishRef.current) {
         return;
       }
 
-      didFinish = true;
-      if (fallbackTimeoutId !== null) {
-        window.clearTimeout(fallbackTimeoutId);
-        fallbackTimeoutId = null;
+      didFinishRef.current = true;
+      if (fallbackTimeoutIdRef.current !== null) {
+        window.clearTimeout(fallbackTimeoutIdRef.current);
+        fallbackTimeoutIdRef.current = null;
       }
       clearTransitionListener();
       callback?.();
     };
 
     function handleTransitionEnd(event: TransitionEvent) {
-      if (!transitionTarget || event.target !== transitionTarget) {
+      if (!transitionTargetRef.current || event.target !== transitionTargetRef.current) {
         return;
       }
 
@@ -234,16 +254,16 @@ export default function ResearchWorkspace({
       setIsOverlayShown(false);
       setIsPanelShown(false);
 
-      frameId = window.requestAnimationFrame(() => {
-        transitionTarget = dialogRef.current;
-        if (transitionTarget) {
-          transitionTarget.addEventListener("transitionend", handleTransitionEnd);
+      frameIdRef.current = window.requestAnimationFrame(() => {
+        transitionTargetRef.current = dialogRef.current;
+        if (transitionTargetRef.current) {
+          transitionTargetRef.current.addEventListener("transitionend", handleTransitionEnd);
         }
-        fallbackTimeoutId = window.setTimeout(() => {
+        fallbackTimeoutIdRef.current = window.setTimeout(() => {
           finishTransition(onEntered);
         }, PANEL_ENTER_FALLBACK_MS);
         setIsOverlayShown(true);
-        panelDelayTimeoutId = window.setTimeout(() => {
+        panelDelayTimeoutIdRef.current = window.setTimeout(() => {
           setIsPanelShown(true);
         }, PANEL_ENTER_DELAY_MS);
       });
@@ -257,15 +277,15 @@ export default function ResearchWorkspace({
 
     if (displayState === "closing" && prev !== "closing") {
       setIsPanelShown(false);
-      overlayDelayTimeoutId = window.setTimeout(() => {
+      overlayDelayTimeoutIdRef.current = window.setTimeout(() => {
         setIsOverlayShown(false);
       }, OVERLAY_EXIT_DELAY_MS);
 
-      transitionTarget = dialogRef.current;
-      if (transitionTarget) {
-        transitionTarget.addEventListener("transitionend", handleTransitionEnd);
+      transitionTargetRef.current = dialogRef.current;
+      if (transitionTargetRef.current) {
+        transitionTargetRef.current.addEventListener("transitionend", handleTransitionEnd);
       }
-      fallbackTimeoutId = window.setTimeout(() => {
+      fallbackTimeoutIdRef.current = window.setTimeout(() => {
         finishTransition(onExited);
       }, PANEL_EXIT_FALLBACK_MS);
     }
@@ -273,23 +293,29 @@ export default function ResearchWorkspace({
     if (displayState === "closed") {
       setIsOverlayShown(false);
       setIsPanelShown(false);
-      frameId = window.requestAnimationFrame(() => {
+      frameIdRef.current = window.requestAnimationFrame(() => {
         setIsRendered(false);
       });
     }
 
+    clearTransitionListenerRef.current = clearTransitionListener;
+
     return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
+      if (frameIdRef.current !== null) {
+        window.cancelAnimationFrame(frameIdRef.current);
+        frameIdRef.current = null;
       }
-      if (panelDelayTimeoutId !== null) {
-        window.clearTimeout(panelDelayTimeoutId);
+      if (panelDelayTimeoutIdRef.current !== null) {
+        window.clearTimeout(panelDelayTimeoutIdRef.current);
+        panelDelayTimeoutIdRef.current = null;
       }
-      if (overlayDelayTimeoutId !== null) {
-        window.clearTimeout(overlayDelayTimeoutId);
+      if (overlayDelayTimeoutIdRef.current !== null) {
+        window.clearTimeout(overlayDelayTimeoutIdRef.current);
+        overlayDelayTimeoutIdRef.current = null;
       }
-      if (fallbackTimeoutId !== null) {
-        window.clearTimeout(fallbackTimeoutId);
+      if (fallbackTimeoutIdRef.current !== null) {
+        window.clearTimeout(fallbackTimeoutIdRef.current);
+        fallbackTimeoutIdRef.current = null;
       }
       clearTransitionListener();
     };

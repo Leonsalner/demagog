@@ -148,11 +148,44 @@ type Database = {
         };
         Returns: MatchArticleRow[];
       };
+      match_articles_batch: {
+        Args: {
+          query_embeddings: number[][];
+          match_count?: number;
+        };
+        Returns: Array<{
+          embedding_idx: number;
+          id: number;
+          datum: string | null;
+          autor: string | null;
+          text_content: string | null;
+          title: string | null;
+          similarity: number;
+        }>;
+      };
       exec_sql: {
         Args: {
           query: string;
         };
         Returns: null;
+      };
+      create_statement_with_sources: {
+        Args: {
+          p_vyrok: string;
+          p_vyhodnotenie: string;
+          p_meno: string;
+          p_strana: string;
+          p_oblast: string | null;
+          p_datum: string | null;
+          p_odovodnenie: string | null;
+          p_sources: Array<{
+            position: number;
+            label: string;
+            url: string;
+            title: string | null;
+          }>;
+        };
+        Returns: { id: number } | null;
       };
     };
     Enums: Record<string, never>;

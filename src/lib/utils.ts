@@ -75,3 +75,20 @@ export function normalizeExternalSourceUrl(url: string): string {
     return url.trim().toLocaleLowerCase();
   }
 }
+
+export function rateLimitExceededResponse(retryAfter: number) {
+  return new Response(
+    JSON.stringify({
+      error: "rate_limit_exceeded",
+      message: "Too many requests. Please wait before retrying.",
+      retry_after: retryAfter,
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(retryAfter),
+      },
+    }
+  );
+}

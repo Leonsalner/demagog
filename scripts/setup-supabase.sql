@@ -260,6 +260,45 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION match_articles_batch(
+  query_embeddings vector(2048)[],
+  match_count int DEFAULT 3
+) RETURNS TABLE (
+  embedding_idx int,
+  id int,
+  datum timestamptz,
+  autor text,
+  text_content text,
+  title text,
+  similarity float
+) LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    idx,
+    c.id,
+    c.datum,
+    c.autor,
+    c.text_content,
+    c.title,
+    (1 - (c.embedding <=> emb))::float AS similarity
+  FROM unnest(query_embeddings) WITH ORDINALITY AS t(emb, idx)
+  CROSS JOIN LATERAL (
+    SELECT
+      c.id,
+      c.datum,
+      c.autor,
+      c.text_content,
+      c.title,
+      (1 - (c.embedding <=> emb))::float AS similarity
+    FROM clanky c
+    WHERE c.embedding IS NOT NULL
+    ORDER BY c.embedding <=> emb
+    LIMIT match_count
+  ) sub;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION exec_sql(query text)
 RETURNS void
 LANGUAGE plpgsql
@@ -292,6 +331,60 @@ $$;
 -- CREATE INDEX IF NOT EXISTS idx_vyroky_embedding ON vyroky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 -- CREATE INDEX IF NOT EXISTS idx_clanky_embedding ON clanky USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
+CREATE OR REPLACE FUNCTION create_statement_with_sources(
+  p_vyrok TEXT,
+  p_vyhodnotenie TEXT,
+  p_meno TEXT,
+  p_strana TEXT,
+  p_oblast TEXT,
+  p_datum DATE,
+  p_odovodnenie TEXT,
+  p_sources JSONB
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_statement_id BIGINT;
+  v_source JSONB;
+BEGIN
+  INSERT INTO vyroky (
+    vyrok, vyhodnotenie, meno, strana, oblast, datum, odovodnenie,
+    embedding, source_id, url, speaker_url, analysis_paragraphs,
+    analysis_date, scraped_at, numeric_id
+  ) VALUES (
+    p_vyrok, p_vyhodnotenie, p_meno, p_strana, p_oblast, p_datum, p_odovodnenie,
+    NULL,
+    'manual:' || gen_random_uuid()::text,
+    'manual://statement/' || gen_random_uuid()::text,
+    'https://demagog.sk/politik/' || lower(regexp_replace(p_meno, '[^a-z0-9]+', '-', 'g')),
+    CASE WHEN p_odovodnenie IS NOT NULL THEN
+      ARRAY(SELECT trim(s) FROM unnest(string_to_array(p_odovodnenie, E'\n\n')) s WHERE trim(s) <> '')
+    ELSE ARRAY[]::TEXT[] END,
+    NOW(),
+    NULL,
+    NULL
+  )
+  RETURNING id INTO v_statement_id;
+
+  IF jsonb_array_length(p_sources) > 0 THEN
+    FOR v_source IN SELECT * FROM jsonb_array_elements(p_sources)
+    LOOP
+      INSERT INTO statement_sources (statement_id, position, label, url, title)
+      VALUES (
+        v_statement_id,
+        (v_source->>'position')::INT,
+        v_source->>'label',
+        v_source->>'url',
+        NULLIF(v_source->>'title', '')::TEXT
+      );
+    END LOOP;
+  END IF;
+
+  RETURN jsonb_build_object('id', v_statement_id);
+END;
+$$;
+
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON TABLE vyroky TO anon, authenticated;
 GRANT SELECT ON TABLE statement_sources TO anon, authenticated;
@@ -300,4 +393,6 @@ GRANT EXECUTE ON FUNCTION count_statements(text[], text[], text[], date, date, b
 GRANT EXECUTE ON FUNCTION list_distinct_values(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_statements(vector, int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION match_articles(vector, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION match_articles_batch(vector[], int) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION statement_date_bounds() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_statement_with_sources(TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TEXT, JSONB) TO anon, authenticated;

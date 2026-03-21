@@ -346,4 +346,136 @@ describe("POST /api/detect logic", () => {
       error: "top_k must be between 1 and 20",
     });
   });
+
+  it("accepts top_k of 1 (minimum valid)", async () => {
+    const rows = [buildRow(1, 0.9)];
+    const supabase = createSupabaseMock(rows);
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      { id: 1, classification: "RELATED" },
+    ]);
+
+    const response = await POST(
+      createRequest({
+        statement: "Nova formulacia tvrdenia",
+        top_k: 1,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.matches).toHaveLength(1);
+  });
+
+  it("accepts top_k of 20 (maximum valid)", async () => {
+    const rows = Array.from({ length: 20 }, (_, index) =>
+      buildRow(index + 1, Number((0.99 - index * 0.01).toFixed(2))),
+    );
+    const supabase = createSupabaseMock(rows);
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue(
+      rows.map((row) => ({ id: row.id, classification: "RELATED" })),
+    );
+
+    const response = await POST(
+      createRequest({
+        statement: "Nova formulacia tvrdenia",
+        top_k: 20,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.matches).toHaveLength(20);
+  });
+
+  it("rejects top_k of 21 (over maximum)", async () => {
+    const response = await POST(
+      createRequest({
+        statement: "Nova formulacia tvrdenia",
+        top_k: 21,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "top_k must be between 1 and 20",
+    });
+  });
+
+  it("accepts statement at 2000 chars (exact limit)", async () => {
+    const rows = [buildRow(1, 0.9)];
+    const supabase = createSupabaseMock(rows);
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      { id: 1, classification: "RELATED" },
+    ]);
+
+    const statement = "a".repeat(2000);
+    const response = await POST(
+      createRequest({
+        statement,
+        top_k: 3,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.input_statement).toHaveLength(2000);
+  });
+
+  it("rejects statement over 2000 chars", async () => {
+    const statement = "a".repeat(2001);
+    const response = await POST(
+      createRequest({
+        statement,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Statement too long (max 2000 chars)",
+    });
+  });
+
+  it("rejects whitespace-only statement", async () => {
+    const response = await POST(
+      createRequest({
+        statement: "   ",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Statement is required",
+    });
+  });
+
+  it("does not fetch related articles when overall_status is NEW_CLAIM", async () => {
+    const rows = [
+      buildRow(1, 0.1),
+    ];
+    const supabase = createSupabaseMock(rows);
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      { id: 1, classification: "UNRELATED" },
+    ]);
+
+    const response = await POST(
+      createRequest({
+        statement: " uplne nova tema ktora nema nic spolocne",
+        top_k: 3,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.overall_status).toBe("NEW_CLAIM");
+    expect(data.related_articles).toBeUndefined();
+    expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
+  });
 });

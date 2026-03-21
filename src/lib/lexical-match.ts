@@ -31,6 +31,10 @@ function tokenStem(token: string): string {
   return token.length > 6 ? token.slice(0, 6) : token;
 }
 
+export function escapeLikePattern(term: string): string {
+  return term.replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 function tokensMatch(left: string, right: string): boolean {
   if (left === right) {
     return true;

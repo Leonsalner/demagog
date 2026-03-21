@@ -24,44 +24,18 @@ function createRequest(body: unknown) {
 }
 
 function createSupabaseMock() {
-  const statementSingle = vi.fn(async () => ({
-    data: { id: 17 },
-    error: null,
-  }));
-  const statementSelect = vi.fn(() => ({ single: statementSingle }));
-  const statementInsert = vi.fn(() => ({ select: statementSelect }));
-  const statementDeleteEq = vi.fn(async () => ({ error: null }));
-  const statementDelete = vi.fn(() => ({ eq: statementDeleteEq }));
-  const sourceInsert = vi.fn(
-    async (): Promise<{ error: { message: string } | null }> => ({ error: null }),
-  );
+  const rpc = vi.fn(async () => ({ data: { id: 17 }, error: null }));
   const updateEq = vi.fn(async () => ({ error: null }));
   const update = vi.fn(() => ({ eq: updateEq }));
 
   return {
+    rpc,
     from: vi.fn((table: string) => {
       if (table === "vyroky") {
-        return {
-          insert: statementInsert,
-          update,
-          delete: statementDelete,
-        };
+        return { update };
       }
-
-      if (table === "statement_sources") {
-        return {
-          insert: sourceInsert,
-        };
-      }
-
       throw new Error(`Unexpected table: ${table}`);
     }),
-    statementInsert,
-    statementSelect,
-    statementSingle,
-    statementDelete,
-    statementDeleteEq,
-    sourceInsert,
     update,
     updateEq,
   };
@@ -146,15 +120,23 @@ describe("POST /api/statements", () => {
     );
 
     expect(response.status).toBe(201);
-    expect(supabase.sourceInsert).toHaveBeenCalledWith([
-      {
-        statement_id: 17,
-        position: 0,
-        label: "Dennik N",
-        url: "https://dennikn.sk/clanok/123",
-        title: null,
-      },
-    ]);
+    expect(supabase.rpc).toHaveBeenCalledWith("create_statement_with_sources", {
+      p_vyrok: "Vyrok",
+      p_vyhodnotenie: "Pravda",
+      p_meno: "Politik",
+      p_strana: "Strana",
+      p_oblast: null,
+      p_datum: null,
+      p_odovodnenie: null,
+      p_sources: [
+        {
+          position: 0,
+          label: "Dennik N",
+          url: "https://dennikn.sk/clanok/123",
+          title: null,
+        },
+      ],
+    });
   });
 
   it("saves a statement, stamps analysis metadata, and persists sources", async () => {
@@ -163,7 +145,6 @@ describe("POST /api/statements", () => {
 
     const supabase = createSupabaseMock();
     vi.mocked(supabaseAdmin).mockReturnValue(supabase as never);
-    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("statement-uuid");
 
     const response = await POST(
       createRequest({
@@ -191,39 +172,29 @@ describe("POST /api/statements", () => {
       id: 17,
       status: "saved",
     });
-    expect(supabase.statementInsert).toHaveBeenCalledWith({
-      vyrok: "Nový výrok o zdravotníctve.",
-      meno: "Robert Fico",
-      strana: "SMER-SD",
-      vyhodnotenie: "Pravda",
-      oblast: "Zdravotníctvo",
-      datum: "2026-03-09",
-      odovodnenie: "Stručné zdôvodnenie.\n\nDruhý odsek.",
-      embedding: null,
-      source_id: "manual:statement-uuid",
-      numeric_id: null,
-      url: "manual://statement/statement-uuid",
-      speaker_url: "https://demagog.sk/politik/robert-fico",
-      analysis_paragraphs: ["Stručné zdôvodnenie.", "Druhý odsek."],
-      analysis_date: "2026-03-18T09:10:11.000Z",
-      scraped_at: null,
+    expect(supabase.rpc).toHaveBeenCalledWith("create_statement_with_sources", {
+      p_vyrok: "Nový výrok o zdravotníctve.",
+      p_vyhodnotenie: "Pravda",
+      p_meno: "Robert Fico",
+      p_strana: "SMER-SD",
+      p_oblast: "Zdravotníctvo",
+      p_datum: "2026-03-09",
+      p_odovodnenie: "Stručné zdôvodnenie.\n\nDruhý odsek.",
+      p_sources: [
+        {
+          position: 0,
+          label: "Denník N",
+          url: "https://dennikn.sk/clanok/123",
+          title: null,
+        },
+        {
+          position: 1,
+          label: "nrsr.sk",
+          url: "https://www.nrsr.sk/web/Default.aspx?sid=schodze",
+          title: null,
+        },
+      ],
     });
-    expect(supabase.sourceInsert).toHaveBeenCalledWith([
-      {
-        statement_id: 17,
-        position: 0,
-        label: "Denník N",
-        url: "https://dennikn.sk/clanok/123",
-        title: null,
-      },
-      {
-        statement_id: 17,
-        position: 1,
-        label: "nrsr.sk",
-        url: "https://www.nrsr.sk/web/Default.aspx?sid=schodze",
-        title: null,
-      },
-    ]);
     expect(embedText).toHaveBeenCalledWith("Nový výrok o zdravotníctve.", "index-statement");
     expect(supabase.update).toHaveBeenCalledWith({
       embedding: [0.1, 0.2, 0.3],
@@ -231,12 +202,13 @@ describe("POST /api/statements", () => {
     expect(supabase.updateEq).toHaveBeenCalledWith("id", 17);
   });
 
-  it("rolls back the statement when source persistence fails", async () => {
+  it("returns 502 when RPC fails", async () => {
     const supabase = createSupabaseMock();
     vi.mocked(supabaseAdmin).mockReturnValue(supabase as never);
-    supabase.sourceInsert.mockResolvedValue({
-      error: { message: "insert failed" },
-    });
+    supabase.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "database error" },
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
     const response = await POST(
       createRequest({
@@ -250,9 +222,7 @@ describe("POST /api/statements", () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
-      error: "Failed to save statement sources",
+      error: "Failed to save statement",
     });
-    expect(supabase.statementDelete).toHaveBeenCalledTimes(1);
-    expect(supabase.statementDeleteEq).toHaveBeenCalledWith("id", 17);
   });
 });

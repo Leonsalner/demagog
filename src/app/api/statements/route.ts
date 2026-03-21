@@ -139,48 +139,6 @@ function isVerdict(value: unknown): value is Verdict {
   return typeof value === "string" && VERDICTS.includes(value as Verdict);
 }
 
-function buildAnalysisParagraphs(reasoning: string | null): string[] {
-  if (!reasoning) {
-    return [];
-  }
-
-  return reasoning
-    .split(/\n{2,}/u)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-}
-
-function slugifySpeakerName(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/gu, "")
-    .toLocaleLowerCase("sk-SK")
-    .replace(/[^a-z0-9]+/gu, "-")
-    .replace(/^-+|-+$/gu, "");
-}
-
-function deriveSpeakerUrl(name: string): string | null {
-  const slug = slugifySpeakerName(name);
-  return slug ? `https://demagog.sk/politik/${slug}` : null;
-}
-
-function createManualStatementMetadata(
-  meno: string,
-  odovodnenie: string | null,
-) {
-  const manualId = crypto.randomUUID();
-
-  return {
-    source_id: `manual:${manualId}`,
-    url: `manual://statement/${manualId}`,
-    speaker_url: deriveSpeakerUrl(meno),
-    analysis_paragraphs: buildAnalysisParagraphs(odovodnenie),
-    analysis_date: new Date().toISOString(),
-    scraped_at: null as string | null,
-    numeric_id: null as number | null,
-  };
-}
-
 async function embedAndStoreStatementEmbedding(
   statementId: number,
   vyrok: string,
@@ -254,51 +212,23 @@ export async function POST(request: NextRequest) {
 
   const supabase = supabaseAdmin();
 
-  const { data, error } = await supabase
-    .from("vyroky")
-    .insert({
-      vyrok,
-      meno,
-      strana,
-      vyhodnotenie,
-      oblast,
-      datum,
-      odovodnenie,
-      embedding: null,
-      ...createManualStatementMetadata(meno, odovodnenie),
-    })
-    .select("id")
-    .single();
+  const { data, error } = await supabase.rpc("create_statement_with_sources", {
+    p_vyrok: vyrok,
+    p_vyhodnotenie: vyhodnotenie,
+    p_meno: meno,
+    p_strana: strana,
+    p_oblast: oblast,
+    p_datum: datum,
+    p_odovodnenie: odovodnenie,
+    p_sources: sources.length > 0 ? sources : [],
+  });
 
   if (error || !data) {
-    console.error("[statements] insert failed:", error?.message);
+    console.error("[statements] atomic insert failed:", error?.message);
     return NextResponse.json(
       { error: "Failed to save statement" },
       { status: 502 },
     );
-  }
-
-  if (sources.length > 0) {
-    const { error: sourcesInsertError } = await supabase
-      .from("statement_sources")
-      .insert(
-        sources.map((source) => ({
-          statement_id: data.id,
-          ...source,
-        })),
-      );
-
-    if (sourcesInsertError) {
-      console.error(
-        "[statements] source insert failed:",
-        sourcesInsertError.message,
-      );
-      await supabase.from("vyroky").delete().eq("id", data.id);
-      return NextResponse.json(
-        { error: "Failed to save statement sources" },
-        { status: 502 },
-      );
-    }
   }
 
   void embedAndStoreStatementEmbedding(data.id, vyrok);

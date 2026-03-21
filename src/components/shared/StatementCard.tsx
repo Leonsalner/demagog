@@ -174,33 +174,15 @@ export default function StatementCard({
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md active:shadow-none dark:border-slate-700/60 dark:bg-slate-800">
-      {(classification || (show_similarity && typeof similarity === "number")) && (
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            {classification ? (
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${classificationLabels[classification].badge}`}
-              >
-                {classificationLabels[classification].label}
-              </span>
-            ) : null}
-          </div>
-
-          {show_similarity && typeof similarity === "number" ? (
-            <div className="min-w-24 text-right">
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Podobnosť: {Math.round(similarity * 100)} %
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <div
-                  className={`h-full rounded-full ${similarityTone(similarity)}`}
-                  style={{ width: `${Math.max(0, Math.min(100, similarity * 100))}%` }}
-                />
-              </div>
-            </div>
-          ) : null}
+      {classification ? (
+        <div className="mb-4">
+          <span
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${classificationLabels[classification].badge}`}
+          >
+            {classificationLabels[classification].label}
+          </span>
         </div>
-      )}
+      ) : null}
 
       <p className="text-base leading-7 text-slate-900 dark:text-slate-100 sm:text-lg">{statement.vyrok}</p>
 
@@ -234,6 +216,19 @@ export default function StatementCard({
               Demagog.sk
             </a>
           </>
+        ) : null}
+        {show_similarity && typeof similarity === "number" ? (
+          <div className="ml-auto min-w-24 shrink-0 text-right">
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Podobnosť: {Math.round(similarity * 100)} %
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+              <div
+                className={`h-full rounded-full ${similarityTone(similarity)}`}
+                style={{ width: `${Math.max(0, Math.min(100, similarity * 100))}%` }}
+              />
+            </div>
+          </div>
         ) : null}
       </div>
 

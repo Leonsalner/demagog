@@ -121,7 +121,7 @@ function IntroStage() {
             Čo povedali členovia SMER-u o vojne na Ukrajine od roku 2022?
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Téma", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
+            {["Voľné zadanie", "Prirodzený jazyk", "Automatické filtre"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -150,7 +150,7 @@ function IntroStage() {
             Táto vojna začala už v roku 2014 vyčíňaním ukrajinských neonacistov.
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {["Jedno odoslanie", "Automatický prieskum", "Nový výrok"].map((hint) => (
+            {["Celé tvrdenie", "Kontrola archívu", "Zlúčený prehľad"].map((hint) => (
               <span
                 key={hint}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -167,25 +167,25 @@ function IntroStage() {
           {[
             {
               label: "1",
-              title: "Začnite otázkou alebo vložte konkrétne tvrdenie.",
+              title: "Pýtajte sa alebo vložte výrok.",
             },
             {
               label: "2",
-              title: "Po odoslaní systém sám pripraví ďalší krok.",
+              title: "Aplikácia za vás prehľadá archív.",
             },
             {
               label: "3",
-              title: "Pokračujte v prieskume alebo otvorte Pridať výrok.",
+              title: "Zistenia priamo spracujte do nového záznamu.",
             },
           ].map((item) => (
             <div
               key={item.label}
-              className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
+              className="grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-100">
                 {item.label}
               </div>
-              <p className="pt-0.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {item.title}
               </p>
             </div>
@@ -207,15 +207,15 @@ function ReadyStage() {
         {[
           {
             label: "Odoslať",
-            text: "Vložte tvrdenie raz a aplikácia sa postará o ďalší krok.",
+            text: "Vložte tvrdenie a aplikácia vyhľadá kontext za vás.",
           },
           {
             label: "Preskúmať",
-            text: "Pri zhodách sa širší kontext otvorí automaticky na jednej obrazovke.",
+            text: "Zistenia, zdroje a podobné výroky máte na jednom mieste.",
           },
           {
             label: "Pridať",
-            text: "Ak nič nesedí, nový záznam otvoríte priamo z prieskumu.",
+            text: "Rovno z prieskumu jednoducho vytvoríte nový záznam.",
           },
         ].map((item) => (
           <article
@@ -345,6 +345,7 @@ export default function HomeOnboarding({
   const [activeStep, setActiveStep] = useState(0);
   const [manualOpenState, setManualOpenState] = useState<"open" | "closed" | null>(null);
   const [showFeedbackToast, setShowFeedbackToast] = useState(false);
+  const [isHidingFeedbackToast, setIsHidingFeedbackToast] = useState(false);
   const [showScrollCue, setShowScrollCue] = useState(true);
   const currentStep = steps[activeStep] ?? steps[0];
   const shouldAutoOpen = pathname === "/";
@@ -396,21 +397,25 @@ export default function HomeOnboarding({
     return () => window.cancelAnimationFrame(frame);
   }, [activeStep, isOpen]);
 
+  const hideFeedbackToast = useCallback(() => {
+    setIsHidingFeedbackToast(true);
+    window.setTimeout(() => {
+      setShowFeedbackToast(false);
+      setIsHidingFeedbackToast(false);
+    }, 240);
+  }, []);
+
   useEffect(() => {
     if (!showFeedbackToast) {
       return;
     }
 
     const timeout = window.setTimeout(() => {
-      setShowFeedbackToast(false);
+      hideFeedbackToast();
     }, isFirstVisit ? 30_000 : 6_000);
 
     return () => window.clearTimeout(timeout);
-  }, [isFirstVisit, showFeedbackToast]);
-
-  const hideFeedbackToast = useCallback(() => {
-    setShowFeedbackToast(false);
-  }, []);
+  }, [isFirstVisit, showFeedbackToast, hideFeedbackToast]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -526,7 +531,7 @@ export default function HomeOnboarding({
                 </div>
 
                 <div
-                  className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-slate-200 bg-white/94 px-5 pb-5 pt-5 backdrop-blur dark:border-slate-800 dark:bg-slate-950/94 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
+                  className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-transparent px-5 pb-5 pt-5 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
                   style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 1.25rem)" }}
                 >
                   <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200/90 bg-white/92 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_56px_-40px_rgba(2,6,23,0.95)]">
@@ -612,11 +617,14 @@ export default function HomeOnboarding({
       ) : null}
 
       {showFeedbackToast ? (
-        <FooterHelperDock slot="toast" side="right" className="z-[55] w-[min(22rem,calc(100vw-2rem))]">
+        <FooterHelperDock slot="toast" side="right" className="top-20 sm:top-24">
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-auto rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)]"
+            className={`pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6 ${isHidingFeedbackToast ? "animate-[feedbackPanelHide_240ms_ease-in_forwards]" : "animate-[feedbackPanelReveal_240ms_ease-out]"}`}
+            style={{
+              right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+            }}
           >
             <div className="flex items-start gap-3">
               <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]">
