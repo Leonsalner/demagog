@@ -40,21 +40,13 @@ export default function Template({
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial={{
-          opacity: 0,
-          y: isAddRoute ? addEnterOffset : 12,
-          scale: isAddRoute ? addInitialScale : 0.996,
-        }}
+        initial={{ opacity: 0, y: 12, scale: 0.996 }}
         animate={{
           opacity: 1,
           y: 0,
           scale: 1,
         }}
-        exit={{
-          opacity: 0,
-          y: isAddRoute ? addExitOffset : -8,
-          scale: isAddRoute ? 0.988 : 0.994,
-        }}
+        exit={{ opacity: 0, y: -8, scale: 0.994 }}
         transition={{
           duration: isAddRoute ? (isCompactViewport ? 0.28 : 0.36) : 0.22,
           ease: [0.22, 1, 0.36, 1],

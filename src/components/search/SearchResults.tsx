@@ -229,7 +229,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page - 1)}
             disabled={results.page === 1}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             «
           </button>
@@ -247,7 +247,7 @@ export default function SearchResults({
                 type="button"
                 onClick={() => onPageChange(item)}
                 aria-current={item === results.page ? "page" : undefined}
-                className={`min-w-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`min-w-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
                   item === results.page
                     ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
                     : "border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -261,7 +261,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page + 1)}
             disabled={results.page === totalPages}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             »
           </button>
