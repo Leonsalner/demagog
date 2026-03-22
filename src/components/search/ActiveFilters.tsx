@@ -60,6 +60,7 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   }, [filters]);
 
   const [closingIds, setClosingIds] = useState<string[]>([]);
+  const [previousChipCount, setPreviousChipCount] = useState(activeChips.length);
   const timeoutIdsRef = useRef<number[]>([]);
 
   useEffect(
@@ -70,10 +71,25 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
     [],
   );
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setPreviousChipCount(activeChips.length);
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+    }, 0);
+
+    timeoutIdsRef.current.push(timeoutId);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+    };
+  }, [activeChips.length]);
+
   const visibleChips = activeChips.filter(
     (chip) => !closingIds.includes(`${chip.key}-${chip.value}`),
   );
   const shouldShowContainer = activeChips.length > 0 || closingIds.length > 0;
+  const shouldDelayEntry = previousChipCount === 0 && activeChips.length > 0;
 
   function scheduleFilterUpdate(nextIds: string[], nextFilters: FilterState) {
     const timeoutId = window.setTimeout(() => {
@@ -138,15 +154,12 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
                 return (
                   <span
                     key={chipId}
-                    style={
-                      isClosing
-                        ? undefined
-                        : { animationDelay: `${FILTER_ROW_EXPAND_LEAD_MS}ms` }
-                    }
                     className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
                       isClosing
                         ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)_forwards]"
-                        : "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_forwards]"
+                        : shouldDelayEntry
+                          ? `animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_${FILTER_ROW_EXPAND_LEAD_MS}ms_both]`
+                          : "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_both]"
                     }`}
                   >
                     <span className={chipClass}>
