@@ -38,11 +38,16 @@ export async function fetchResearch(
   request: ResearchRequest,
   signal?: AbortSignal,
 ): Promise<ResearchWorkspaceResponse> {
+  const timeoutSignal = AbortSignal.timeout(30_000);
+  const effectiveSignal = signal
+    ? AbortSignal.any([signal, timeoutSignal])
+    : timeoutSignal;
+
   const response = await fetch(request.endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request.body),
-    signal,
+    signal: effectiveSignal,
   });
 
   if (!response.ok) {

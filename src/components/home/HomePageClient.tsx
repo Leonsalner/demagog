@@ -403,12 +403,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     researchDisplayState === "entering" &&
     researchMode === "aggregate" &&
     researchData === preparedAggregateResearchData;
+  const isDetectProgressCompleting =
+    isPreparedResearchHandoff ||
+    (!detectLoading &&
+      preparedAggregateResearchStatus === "error" &&
+      shouldPrepareAggregateResearch);
   const {
     isVisible: isDetectProgressVisible,
     progress: detectProgress,
   } = useFakeProgress({
     pending: hasDetectPanelLoading,
-    completing: isPreparedResearchHandoff,
+    completing: isDetectProgressCompleting,
     phase: detectLoadingPhase,
     completionDurationMs: 280,
   });
