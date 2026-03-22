@@ -412,10 +412,10 @@ export default function HomeOnboarding({
 
     const timeout = window.setTimeout(() => {
       hideFeedbackToast();
-    }, isFirstVisit ? 30_000 : 6_000);
+    }, 10_000);
 
     return () => window.clearTimeout(timeout);
-  }, [isFirstVisit, showFeedbackToast, hideFeedbackToast]);
+  }, [showFeedbackToast, hideFeedbackToast]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
@@ -425,7 +425,9 @@ export default function HomeOnboarding({
 
   function maybeShowFeedbackToast() {
     if (markFeedbackToastSeen()) {
-      setShowFeedbackToast(true);
+      window.setTimeout(() => {
+        setShowFeedbackToast(true);
+      }, 30_000);
     }
   }
 
@@ -621,7 +623,7 @@ export default function HomeOnboarding({
           <div
             role="status"
             aria-live="polite"
-            className={`pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6 ${isHidingFeedbackToast ? "animate-[feedbackPanelHide_240ms_ease-in_forwards]" : "animate-[feedbackPanelReveal_240ms_ease-out]"}`}
+            className={`pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6 ${isHidingFeedbackToast ? "animate-feedback-hide" : "animate-feedback-reveal"}`}
             style={{
               right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
             }}
@@ -635,10 +637,10 @@ export default function HomeOnboarding({
 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  Máte postreh z prvého používania?
+                  Pomôžte nám vylepšiť aplikáciu
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Máte nápad alebo ste našli chybu? Napíšte nám cez tlačidlo v hlavičke.
+                  Našli ste chybu alebo máte nápad, čo by mohlo fungovať lepšie? Dajte nám vedieť cez tlačidlo v hlavičke.
                 </p>
               </div>
 

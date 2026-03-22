@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 
 import HomeOnboarding, {
@@ -59,6 +59,10 @@ describe("HomeOnboarding", () => {
     document.documentElement.dataset.theme = "light";
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("opens automatically on first visit", async () => {
     renderOnboarding();
 
@@ -69,6 +73,7 @@ describe("HomeOnboarding", () => {
   }, 20_000);
 
   it("persists dismissal and supports manual reopen", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
     fireEvent.click(
@@ -81,7 +86,11 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
-    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+    
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť návod" }));
 
@@ -113,6 +122,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("stores completion on the last step", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
@@ -126,7 +136,11 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("completed");
-    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+    
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
   }, 20_000);
 
   it("navigates forward and backward across steps", async () => {
@@ -179,6 +193,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("dismisses from the close button and persists the dismissed status", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
@@ -187,7 +202,11 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
-    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+    
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
   });
 
   it("shows and hides the mobile scroll cue on the first step", async () => {
@@ -270,12 +289,17 @@ describe("HomeOnboarding", () => {
   });
 
   it("renders toast dock with side=right after dismissal on first visit", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(30000);
     });
 
     const toastDock = screen.getByTestId("footer-helper-dock-toast");
@@ -283,6 +307,7 @@ describe("HomeOnboarding", () => {
   });
 
   it("shows toast with updated copy referencing the top-bar button", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
     fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
@@ -291,9 +316,13 @@ describe("HomeOnboarding", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText("Máte postreh z prvého používania?")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
     expect(
-      screen.getByText("Máte nápad alebo ste našli chybu? Napíšte nám cez tlačidlo v hlavičke."),
+      screen.getByText("Našli ste chybu alebo máte nápad, čo by mohlo fungovať lepšie? Dajte nám vedieť cez tlačidlo v hlavičke."),
     ).toBeInTheDocument();
   });
 });

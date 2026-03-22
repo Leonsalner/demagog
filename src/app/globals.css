@@ -192,3 +192,11 @@ a {
     transform: translateY(10px);
   }
 }
+
+.animate-feedback-reveal {
+  animation: feedbackPanelReveal 240ms ease-out forwards;
+}
+
+.animate-feedback-hide {
+  animation: feedbackPanelHide 240ms ease-in forwards;
+}
