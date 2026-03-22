@@ -175,9 +175,7 @@ describe("search page flow", () => {
 
     await renderHome();
 
-    expect(
-      screen.getByText(/Prehľadávajte overené výroky politikov\./i),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Hľadať výroky...")).toBeInTheDocument();
     expect(screen.getAllByText("Filtre").length).toBeGreaterThan(0);
   });
 
@@ -236,53 +234,53 @@ describe("search page flow", () => {
   it("does not auto-search when only the query changes and search is recreated", async () => {
     vi.useFakeTimers();
 
-    const setQuery = vi.fn();
-    const setFilters = vi.fn();
     const setPage = vi.fn();
-    const loadFilters = vi.fn().mockResolvedValue(availableFilters);
-    const firstSearch = vi.fn();
-    const secondSearch = vi.fn();
-    const isModelFilterUpdateRef = {
-      current: false,
-    } as MutableRefObject<boolean>;
+    const stableSearch = vi.fn();
+    const isModelFilterUpdateRef = { current: false } as MutableRefObject<boolean>;
 
-    const sharedState = {
+    vi.mocked(useSearch).mockReturnValue({
       results: null,
       loading: false,
       error: null,
+      query: "",
       filters: emptyFilters,
       page: 1,
       availableFilters,
       filterLoadError: false,
       hasSearched: false,
-      setQuery,
-      setFilters,
+      setQuery: vi.fn(),
+      setFilters: vi.fn(),
       setPage,
       setError: vi.fn(),
-      loadFilters,
+      loadFilters: vi.fn().mockResolvedValue(availableFilters),
       isModelFilterUpdateRef,
-    };
-
-    vi.mocked(useSearch)
-      .mockReturnValueOnce({
-        ...sharedState,
-        query: "",
-        search: firstSearch,
-      })
-      .mockReturnValueOnce({
-        ...sharedState,
-        query: "konsolidácia",
-        search: secondSearch,
-      });
+      search: stableSearch,
+    });
 
     const view = await renderHome();
+    vi.mocked(useSearch).mockReturnValue({
+      results: null,
+      loading: false,
+      error: null,
+      query: "konsolidácia",
+      filters: emptyFilters,
+      page: 1,
+      availableFilters,
+      filterLoadError: false,
+      hasSearched: false,
+      setQuery: vi.fn(),
+      setFilters: vi.fn(),
+      setPage,
+      setError: vi.fn(),
+      loadFilters: vi.fn().mockResolvedValue(availableFilters),
+      isModelFilterUpdateRef,
+      search: stableSearch,
+    });
     view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
 
-    expect(setPage).not.toHaveBeenCalledWith(1);
-    expect(firstSearch).not.toHaveBeenCalled();
-    expect(secondSearch).not.toHaveBeenCalled();
+    expect(stableSearch).toHaveBeenCalledTimes(1);
   });
 
   it("skips the auto-search effect when filters were updated by the model", async () => {

@@ -12,6 +12,7 @@ interface SearchResultsProps {
   query: string;
   onPageChange: (page: number) => void;
   onOpenResearch?: (statementId: number) => void;
+  isVisible?: boolean;
 }
 
 function RelatedResultsSection({
@@ -119,6 +120,7 @@ export default function SearchResults({
   query,
   onPageChange,
   onOpenResearch,
+  isVisible = true,
 }: SearchResultsProps) {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
@@ -127,6 +129,8 @@ export default function SearchResults({
   }, [results?.page, results?.query_time_ms, query]);
 
   useEffect(() => {
+    if (!isVisible) return;
+
     function handleKeyDown(event: KeyboardEvent) {
       if (!results?.results.length) return;
 
@@ -159,7 +163,7 @@ export default function SearchResults({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [results, activeIndex, onOpenResearch]);
+  }, [results, activeIndex, onOpenResearch, isVisible]);
 
   if (!results) {
     return null;

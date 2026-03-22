@@ -328,7 +328,7 @@ function OnboardingPreloader({ steps }: { steps: HomeOnboardingStep[] }) {
               width={1280}
               height={720}
               priority
-              sizes="1px" // Minimize the size requested for preload if possible, or keep same as real usage
+              sizes="(max-width: 640px) 100vw, 640px"
             />
             {step.media.darkSrc && (
               <Image
@@ -337,7 +337,7 @@ function OnboardingPreloader({ steps }: { steps: HomeOnboardingStep[] }) {
                 width={1280}
                 height={720}
                 priority
-                sizes="1px"
+                sizes="(max-width: 640px) 100vw, 640px"
               />
             )}
           </div>
@@ -391,6 +391,73 @@ export default function HomeOnboarding({
         ? false
         : storedStatus === null && shouldAutoOpen;
 
+  const clearFeedbackToastShowTimeout = useCallback(() => {
+    if (feedbackToastShowTimeoutRef.current !== null) {
+      window.clearTimeout(feedbackToastShowTimeoutRef.current);
+      feedbackToastShowTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearFeedbackToastHideTimeout = useCallback(() => {
+    if (feedbackToastHideTimeoutRef.current !== null) {
+      window.clearTimeout(feedbackToastHideTimeoutRef.current);
+      feedbackToastHideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const hideFeedbackToast = useCallback(() => {
+    clearFeedbackToastHideTimeout();
+    setIsHidingFeedbackToast(true);
+    feedbackToastHideTimeoutRef.current = window.setTimeout(() => {
+      setShowFeedbackToast(false);
+      setIsHidingFeedbackToast(false);
+      feedbackToastHideTimeoutRef.current = null;
+    }, 240);
+  }, [clearFeedbackToastHideTimeout]);
+
+  const maybeShowFeedbackToast = useCallback(() => {
+    if (markFeedbackToastSeen()) {
+      clearFeedbackToastShowTimeout();
+      feedbackToastShowTimeoutRef.current = window.setTimeout(() => {
+        setShowFeedbackToast(true);
+        feedbackToastShowTimeoutRef.current = null;
+      }, 30_000);
+    }
+  }, [clearFeedbackToastShowTimeout]);
+
+  const closeOnboarding = useCallback(
+    (status: OnboardingStatus) => {
+      persistStatus(status);
+      setManualOpenState("closed");
+      setShowScrollCue(false);
+      if (isFirstVisit) {
+        const firstVisitExpansionDuration = isMobile ? 15_000 : 30_000;
+        requestExpansionWindow("guide", firstVisitExpansionDuration);
+      }
+      maybeShowFeedbackToast();
+    },
+    [isFirstVisit, isMobile, maybeShowFeedbackToast, requestExpansionWindow],
+  );
+
+  useEffect(() => {
+    return () => {
+      clearFeedbackToastShowTimeout();
+      clearFeedbackToastHideTimeout();
+    };
+  }, [clearFeedbackToastShowTimeout, clearFeedbackToastHideTimeout]);
+
+  useEffect(() => {
+    if (!showFeedbackToast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      hideFeedbackToast();
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [showFeedbackToast, hideFeedbackToast]);
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -400,13 +467,8 @@ export default function HomeOnboarding({
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        persistStatus("dismissed");
-        setManualOpenState("closed");
-        setShowScrollCue(false);
-        if (markFeedbackToastSeen()) {
-          setShowFeedbackToast(true);
-        }
+      if (event.key === "Escape" && isOpen) {
+        closeOnboarding("dismissed");
       }
     }
 
@@ -416,7 +478,7 @@ export default function HomeOnboarding({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, closeOnboarding]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -432,75 +494,47 @@ export default function HomeOnboarding({
     return () => window.cancelAnimationFrame(frame);
   }, [activeStep, isOpen]);
 
-  const clearFeedbackToastShowTimeout = useCallback(() => {
-    if (feedbackToastShowTimeoutRef.current !== null) {
-      window.clearTimeout(feedbackToastShowTimeoutRef.current);
-      feedbackToastShowTimeoutRef.current = null;
-    }
-  }, []);
-
-  const clearFeedbackToastHideTimeout = useCallback(() => {
-    if (feedbackToastHideTimeoutRef.current !== null) {
-      window.clearTimeout(feedbackToastHideTimeoutRef.current);
-      feedbackToastHideTimeoutRef.current = null;
-    }
-  }, []);
-
   useEffect(() => {
-    return () => {
-      clearFeedbackToastShowTimeout();
-      clearFeedbackToastHideTimeout();
-    };
-  }, [clearFeedbackToastShowTimeout, clearFeedbackToastHideTimeout]);
+    if (!isOpen) return;
 
-  const hideFeedbackToast = useCallback(() => {
-    clearFeedbackToastHideTimeout();
-    setIsHidingFeedbackToast(true);
-    feedbackToastHideTimeoutRef.current = window.setTimeout(() => {
-      setShowFeedbackToast(false);
-      setIsHidingFeedbackToast(false);
-      feedbackToastHideTimeoutRef.current = null;
-    }, 240);
-  }, [clearFeedbackToastHideTimeout]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
 
-  useEffect(() => {
-    if (!showFeedbackToast) {
-      return;
+    const focusableSelector =
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
+
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
 
-    const timeout = window.setTimeout(() => {
-      hideFeedbackToast();
-    }, 10_000);
+    document.addEventListener("keydown", handleTab);
+    getFocusable()[0]?.focus();
 
-    return () => window.clearTimeout(timeout);
-  }, [showFeedbackToast, hideFeedbackToast]);
+    return () => document.removeEventListener("keydown", handleTab);
+  }, [isOpen]);
 
   if (storedStatus === "loading" || !currentStep) {
     return null;
   }
 
   const isLastStep = activeStep === steps.length - 1;
-
-  function maybeShowFeedbackToast() {
-    if (markFeedbackToastSeen()) {
-      clearFeedbackToastShowTimeout();
-      feedbackToastShowTimeoutRef.current = window.setTimeout(() => {
-        setShowFeedbackToast(true);
-        feedbackToastShowTimeoutRef.current = null;
-      }, 30_000);
-    }
-  }
-
-  function closeOnboarding(status: OnboardingStatus) {
-    persistStatus(status);
-    setManualOpenState("closed");
-    setShowScrollCue(false);
-    if (isFirstVisit) {
-      const firstVisitExpansionDuration = isMobile ? 15_000 : 30_000;
-      requestExpansionWindow("guide", firstVisitExpansionDuration);
-    }
-    maybeShowFeedbackToast();
-  }
 
   return (
     <>
@@ -509,6 +543,7 @@ export default function HomeOnboarding({
       <FooterHelperDock slot="guide" side="right">
         <FooterHelperTrigger
           onClick={() => {
+            clearFeedbackToastShowTimeout();
             setActiveStep(0);
             setManualOpenState("open");
             setShowFeedbackToast(false);
@@ -681,14 +716,11 @@ export default function HomeOnboarding({
       ) : null}
 
       {showFeedbackToast ? (
-        <FooterHelperDock slot="toast" side="right" className="top-20 sm:top-24">
+        <FooterHelperDock slot="toast" side="right">
           <div
             role="status"
             aria-live="polite"
-            className={`pointer-events-auto fixed right-4 z-[55] w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] sm:right-6 ${isHidingFeedbackToast ? "animate-feedback-hide" : "animate-feedback-reveal"}`}
-            style={{
-              right: "calc(env(safe-area-inset-right, 0px) + 1rem)",
-            }}
+            className={`pointer-events-auto w-[min(22rem,calc(100vw-2rem))] rounded-[1.5rem] border border-[#f3c2b1] bg-white/96 p-4 shadow-[0_28px_72px_-40px_rgba(15,23,42,0.42)] backdrop-blur dark:border-[#7a3a28] dark:bg-slate-950/94 dark:shadow-[0_32px_86px_-44px_rgba(2,6,23,0.95)] ${isHidingFeedbackToast ? "animate-feedback-hide" : "animate-feedback-reveal"}`}
           >
             <div className="flex items-start gap-3">
               <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff2ea] text-[#c04a25] dark:bg-[#2a1510] dark:text-[#ffb29c]">

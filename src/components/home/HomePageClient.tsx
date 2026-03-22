@@ -611,6 +611,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     query={query}
                     onPageChange={handlePageChange}
                     onOpenResearch={handleOpenStatementResearch}
+                    isVisible={activeTab === "search"}
                   />
                 ) : null}
               </div>
