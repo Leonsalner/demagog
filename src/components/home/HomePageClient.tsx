@@ -605,6 +605,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
                 {!isSearchPanelLoading && !error && results?.results.length ? (
                   <SearchResults
+                    key={`${results.page}-${results.query_time_ms}-${query}`}
                     results={results}
                     relatedResults={results.related_results}
                     queryUnderstanding={results.query_understanding}

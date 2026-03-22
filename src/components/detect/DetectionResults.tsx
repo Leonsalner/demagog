@@ -1,6 +1,7 @@
 "use client";
 
 import type { PreparedAggregateResearchStatus } from "@/hooks/usePreparedAggregateResearch";
+import { formatSlovakFurtherResults } from "@/lib/utils";
 import type { DetectResponse, DetectionMatch } from "@/types";
 
 import StatementCard from "../shared/StatementCard";
@@ -224,7 +225,7 @@ export default function DetectionResults({
       {hiddenMatches.length > 0 ? (
         <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
           <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Ďalšie výsledky ({hiddenMatches.length})
+            {formatSlovakFurtherResults(hiddenMatches.length)} ({hiddenMatches.length})
           </summary>
           <div className="mt-4 space-y-4">
             {hiddenMatches.map((match) => (

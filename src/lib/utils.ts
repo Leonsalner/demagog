@@ -92,3 +92,33 @@ export function rateLimitExceededResponse(retryAfter: number) {
     }
   );
 }
+
+export function formatSlovakResultWord(count: number): string {
+  if (count === 1) {
+    return "výsledok";
+  }
+  if (count >= 2 && count <= 4) {
+    return "výsledky";
+  }
+  return "výsledkov";
+}
+
+export function formatSlovakFurtherResults(count: number): string {
+  if (count === 1) {
+    return "Ďalší výsledok";
+  }
+  if (count >= 2 && count <= 4) {
+    return "Ďalšie výsledky";
+  }
+  return "Ďalších výsledkov";
+}
+
+export function formatSlovakResultCount(count: number): string {
+  if (count === 1) {
+    return `Nájdený 1 výsledok`;
+  }
+  if (count >= 2 && count <= 4) {
+    return `Nájdené ${count} výsledky`;
+  }
+  return `Nájdených ${count} výsledkov`;
+}

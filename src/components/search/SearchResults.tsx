@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
+import { formatSlovakResultCount } from "@/lib/utils";
 import type { SearchResponse, Statement } from "@/types";
 
 interface SearchResultsProps {
@@ -125,10 +126,6 @@ export default function SearchResults({
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   useEffect(() => {
-    setActiveIndex(-1);
-  }, [results?.page, results?.query_time_ms, query]);
-
-  useEffect(() => {
     if (!isVisible) return;
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -188,7 +185,7 @@ export default function SearchResults({
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-700/60 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Nájdených {results.total_count} výsledkov
+            {formatSlovakResultCount(results.total_count)}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Spracované za {results.query_time_ms} ms
