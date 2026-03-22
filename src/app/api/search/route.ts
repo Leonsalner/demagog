@@ -968,11 +968,11 @@ export async function POST(request: NextRequest) {
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
     page: coercePositiveInteger(parsedBody.page, 1),
-    page_size: coercePositiveInteger(parsedBody.page_size, 20, 50),
+    page_size: coercePositiveInteger(parsedBody.page_size, 10, 50),
   };
 
   const page = body.page ?? 1;
-  const pageSize = body.page_size ?? 20;
+  const pageSize = body.page_size ?? 10;
   const offset = (page - 1) * pageSize;
   const timings: SearchStageTimings = {};
 

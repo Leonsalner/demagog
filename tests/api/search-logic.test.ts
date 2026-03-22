@@ -1594,7 +1594,7 @@ describe("POST /api/search logic", () => {
   });
 
   describe("boundary value tests", () => {
-    it("coerces page_size of 0 to default (20)", async () => {
+    it("coerces page_size of 0 to default (10)", async () => {
       const supabase = createSupabaseMock({
         rpc: async (fn) => {
           if (fn === "search_statements") {
@@ -1620,7 +1620,7 @@ describe("POST /api/search logic", () => {
       expect(supabase.rpc).toHaveBeenCalledWith(
         "search_statements",
         expect.objectContaining({
-          match_count: 20,
+          match_count: 10,
         }),
       );
     });
