@@ -60,8 +60,7 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   const visibleChips = activeChips.filter(
     (chip) => !closingIds.includes(`${chip.key}-${chip.value}`),
   );
-
-  if (activeChips.length === 0) return null;
+  const shouldShowContainer = activeChips.length > 0 || closingIds.length > 0;
 
   function scheduleFilterUpdate(nextIds: string[], nextFilters: FilterState) {
     const timeoutId = window.setTimeout(() => {
@@ -106,8 +105,14 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
-      {activeChips.map((chip) => {
+    <div
+      className={`grid overflow-hidden transition-[grid-template-rows,opacity,margin-bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        shouldShowContainer ? "mb-4 opacity-100 [grid-template-rows:1fr]" : "mb-0 opacity-0 [grid-template-rows:0fr]"
+      }`}
+    >
+      <div className="min-h-0 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          {activeChips.map((chip) => {
         const chipId = `${chip.key}-${chip.value}`;
         const isClosing = closingIds.includes(chipId);
 
@@ -123,13 +128,8 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
             key={chipId}
             className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
               isClosing
-                ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)]"
-                : visibleChips.some(
-                      (visibleChip) =>
-                        visibleChip.key === chip.key && visibleChip.value === chip.value,
-                    )
-                ? "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)]"
-                : ""
+                ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)_forwards]"
+                : "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_forwards]"
             }`}
           >
             <span className={chipClass}>
@@ -148,16 +148,18 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
             </span>
           </span>
         );
-      })}
-      {visibleChips.length > 0 ? (
-        <button
-          type="button"
-          onClick={clearAll}
-          className="ml-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          Zrušiť filtre
-        </button>
-      ) : null}
+          })}
+          {visibleChips.length > 0 ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="ml-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Zrušiť filtre
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
