@@ -1166,21 +1166,23 @@ export async function POST(request: NextRequest) {
           .from("vyroky")
           .select(
             "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
-            { count: "exact" }
+            { count: "planned" }
           ),
         filterBody
       );
 
       const { data, error, count } = await query
         .order("datum", { ascending: false, nullsFirst: false })
-        .range(offset, offset + pageSize - 1);
+        .range(offset, offset + pageSize);
 
       if (error) {
         return NextResponse.json({ error: "Database error" }, { status: 502 });
       }
 
-      results = ((data ?? []) as SearchRow[]).map(toStatement);
-      totalCount = count ?? 0;
+      const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
+      results = pageRows.map(toStatement);
+      hasMore = (data?.length ?? 0) > pageSize;
+      totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
     }
 
     // Fetch and attach statement sources for all result IDs.

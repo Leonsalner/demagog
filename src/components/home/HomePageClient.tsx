@@ -28,22 +28,11 @@ import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResear
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
-import type { FilterState } from "@/types";
 
 export type HomeTab = "search" | "detect";
 
 interface HomePageClientProps {
   activeTab: HomeTab;
-}
-
-function hasActiveFilters(filters: FilterState) {
-  return Boolean(
-    filters.strana?.length ||
-      filters.vyhodnotenie?.length ||
-      filters.meno?.length ||
-      filters.datum_od ||
-      filters.datum_do,
-  );
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
@@ -61,6 +50,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     loading,
     error,
     query,
+    submittedQuery,
     filters,
     page,
     availableFilters,
@@ -71,7 +61,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setPage,
     search,
     loadFilters,
-    isModelFilterUpdateRef,
   } = useSearch();
   const {
     result: detectResult,
@@ -103,23 +92,20 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     finishClose: finishCloseResearch,
     dismiss: dismissResearch,
   } = useResearch();
-  const initializedRef = useRef(false);
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
-  const debounceTimeoutRef = useRef<number | null>(null);
-  const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
       mode: activeTab,
-      query: activeTab === "search" ? query.trim() || null : null,
+      query: activeTab === "search" ? submittedQuery.trim() || null : null,
       statement: activeTab === "detect" ? detectStatement.trim() || null : null,
     }),
-    [activeTab, detectStatement, query],
+    [activeTab, detectStatement, submittedQuery],
   );
 
   usePublishFeedbackPageContext(feedbackContext);
@@ -138,7 +124,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     // Initial fetch to populate with latest statements
     if (!initialSearchDoneRef.current) {
       initialSearchDoneRef.current = true;
-      void search(1);
+      void search({ nextPage: 1 });
     }
   }, [search]);
 
@@ -148,36 +134,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     },
     [openStatementResearch]
   );
-
-  useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      return;
-    }
-
-    if (isModelFilterUpdateRef.current) {
-      isModelFilterUpdateRef.current = false;
-      return;
-    }
-
-    setPage(1);
-
-    if (debounceTimeoutRef.current !== null) {
-      window.clearTimeout(debounceTimeoutRef.current);
-    }
-
-    debounceTimeoutRef.current = window.setTimeout(() => {
-      debounceTimeoutRef.current = null;
-      void search(1);
-    }, 500);
-
-    return () => {
-      if (debounceTimeoutRef.current !== null) {
-        window.clearTimeout(debounceTimeoutRef.current);
-        debounceTimeoutRef.current = null;
-      }
-    };
-  }, [filters, search, setPage, isModelFilterUpdateRef]);
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
@@ -292,17 +248,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       if (panelHeightReleaseRef.current !== null) {
         window.clearTimeout(panelHeightReleaseRef.current);
       }
-      if (debounceTimeoutRef.current !== null) {
-        window.clearTimeout(debounceTimeoutRef.current);
-        debounceTimeoutRef.current = null;
-      }
     },
     [],
   );
 
   const handleSearch = () => {
     setPage(1);
-    void search(1);
+    void search({ nextPage: 1, submit: true });
   };
 
   useEffect(() => {
@@ -329,7 +281,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const handlePageChange = (nextPage: number) => {
     setPage(nextPage);
-    void search(nextPage);
+    void search({ nextPage });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -584,7 +536,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void search(page)}
+                      onClick={() => void search({ nextPage: page })}
                       className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                     >
                       Skúsiť znova
@@ -609,7 +561,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     results={results}
                     relatedResults={results.related_results}
                     queryUnderstanding={results.query_understanding}
-                    query={query}
+                    query={submittedQuery}
                     onPageChange={handlePageChange}
                     onOpenResearch={handleOpenStatementResearch}
                     isVisible={activeTab === "search"}
