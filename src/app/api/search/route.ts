@@ -968,11 +968,11 @@ export async function POST(request: NextRequest) {
     datum_od: coerceOptionalString(parsedBody.datum_od),
     datum_do: coerceOptionalString(parsedBody.datum_do),
     page: coercePositiveInteger(parsedBody.page, 1),
-    page_size: coercePositiveInteger(parsedBody.page_size, 20, 50),
+    page_size: coercePositiveInteger(parsedBody.page_size, 10, 50),
   };
 
   const page = body.page ?? 1;
-  const pageSize = body.page_size ?? 20;
+  const pageSize = body.page_size ?? 10;
   const offset = (page - 1) * pageSize;
   const timings: SearchStageTimings = {};
 
@@ -1166,21 +1166,23 @@ export async function POST(request: NextRequest) {
           .from("vyroky")
           .select(
             "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
-            { count: "exact" }
+            { count: "planned" }
           ),
         filterBody
       );
 
       const { data, error, count } = await query
         .order("datum", { ascending: false, nullsFirst: false })
-        .range(offset, offset + pageSize - 1);
+        .range(offset, offset + pageSize);
 
       if (error) {
         return NextResponse.json({ error: "Database error" }, { status: 502 });
       }
 
-      results = ((data ?? []) as SearchRow[]).map(toStatement);
-      totalCount = count ?? 0;
+      const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
+      results = pageRows.map(toStatement);
+      hasMore = (data?.length ?? 0) > pageSize;
+      totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
     }
 
     // Fetch and attach statement sources for all result IDs.

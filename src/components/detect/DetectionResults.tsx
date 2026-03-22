@@ -1,6 +1,7 @@
 "use client";
 
 import type { PreparedAggregateResearchStatus } from "@/hooks/usePreparedAggregateResearch";
+import { formatSlovakFurtherResults } from "@/lib/utils";
 import type { DetectResponse, DetectionMatch } from "@/types";
 
 import StatementCard from "../shared/StatementCard";
@@ -42,7 +43,7 @@ export const detectStatusConfig = {
       "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)] dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/80",
     icon: "+",
     title: "Nový výrok",
-    description: "V databáze sa nenašiel podobný overený nárok.",
+    description: "Tento výrok vyzerá byť nový. Chcete ho pridať do databázy?",
     detail: "Tento výrok vyžaduje úplné overenie.",
     button:
       "border-[var(--brand-accent)] bg-[var(--brand-accent)] !text-white shadow-[0_12px_28px_-18px_rgba(217,88,48,0.85)] hover:border-[var(--brand-accent-hover)] hover:bg-[var(--brand-accent-hover)] hover:!text-white visited:!text-white dark:border-[var(--brand-accent)] dark:bg-[var(--brand-accent)] dark:!text-white dark:shadow-[0_12px_28px_-16px_rgba(240,120,80,0.65)] dark:hover:border-[var(--brand-accent-dark)] dark:hover:bg-[var(--brand-accent-dark)]",
@@ -224,7 +225,7 @@ export default function DetectionResults({
       {hiddenMatches.length > 0 ? (
         <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/60 dark:bg-slate-800">
           <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Ďalšie výsledky ({hiddenMatches.length})
+            {formatSlovakFurtherResults(hiddenMatches.length)} ({hiddenMatches.length})
           </summary>
           <div className="mt-4 space-y-4">
             {hiddenMatches.map((match) => (

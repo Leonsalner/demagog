@@ -206,6 +206,8 @@ export function useSearch() {
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [filters, setFiltersState] = useState<FilterState>(emptyFilters);
   const [query, setQueryState] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,7 +217,6 @@ export function useSearch() {
   const [filterLoadError, setFilterLoadError] = useState(false);
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const modelSetFields = useRef<Set<keyof FilterState>>(new Set<keyof FilterState>());
-  const isModelFilterUpdateRef = useRef(false);
 
   const loadFilters = useCallback(async () => {
     if (availableFiltersRef.current) {
@@ -249,10 +250,19 @@ export function useSearch() {
   }, []);
 
   const search = useCallback(
-    async (nextPage = page) => {
+    async ({
+      nextPage = page,
+      submit = false,
+    }: {
+      nextPage?: number;
+      submit?: boolean;
+    } = {}) => {
       setLoading(true);
       setError(null);
       setHasSearched(true);
+
+      const activeQuery = submit ? query : submittedQuery;
+      const activeFilters = submit ? filters : submittedFilters;
 
       // Capture and clear model-owned filters immediately so stale
       // auto-detected filters disappear from the UI as soon as a new
@@ -260,12 +270,14 @@ export function useSearch() {
       const previousOwnedFields = new Set(modelSetFields.current);
       if (previousOwnedFields.size > 0) {
         modelSetFields.current = new Set<keyof FilterState>();
-        isModelFilterUpdateRef.current = true;
         setFiltersState((cur) => clearModelOwnedFilters(cur, previousOwnedFields));
       }
 
-      const cleanedFilters = clearModelOwnedFilters(filters, previousOwnedFields);
-      const request = buildRequestBody(query, cleanedFilters, nextPage);
+      const cleanedFilters = clearModelOwnedFilters(activeFilters, previousOwnedFields);
+      const request = buildRequestBody(activeQuery, cleanedFilters, nextPage);
+
+      setSubmittedQuery(activeQuery);
+      setSubmittedFilters(cleanedFilters);
 
       try {
         if (USE_MOCK) {
@@ -289,7 +301,7 @@ export function useSearch() {
         setResults(data);
         if (data.query_understanding?.extracted_filters) {
           const extractedFilters = data.query_understanding.extracted_filters;
-          isModelFilterUpdateRef.current = true;
+          let nextSubmittedFilters: FilterState | null = null;
           setFiltersState((currentFilters) => {
             const nextState = applyExtractedFilters(
               currentFilters,
@@ -297,8 +309,12 @@ export function useSearch() {
               modelSetFields.current,
             );
             modelSetFields.current = nextState.ownedFields;
+            nextSubmittedFilters = nextState.filters;
             return nextState.filters;
           });
+          if (nextSubmittedFilters) {
+            setSubmittedFilters(nextSubmittedFilters);
+          }
         }
       } catch (caughtError) {
         setResults(null);
@@ -311,7 +327,7 @@ export function useSearch() {
         setLoading(false);
       }
     },
-    [filters, page, query],
+    [filters, page, query, submittedFilters, submittedQuery],
   );
 
   const setFilters = useCallback((nextState: SetStateAction<FilterState>) => {
@@ -359,6 +375,7 @@ export function useSearch() {
     loading,
     error,
     query,
+    submittedQuery,
     filters,
     page,
     availableFilters,
@@ -370,6 +387,5 @@ export function useSearch() {
     setError,
     search,
     loadFilters,
-    isModelFilterUpdateRef,
   };
 }

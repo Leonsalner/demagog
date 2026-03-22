@@ -16,7 +16,7 @@ interface ResearchPaneProps {
 export default function ResearchPane({ item, onNavigateToStatement }: ResearchPaneProps) {
   if (!item) {
     return (
-      <div className="flex min-h-[280px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
+      <div className="flex min-h-[280px] items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400">
         Vyberte položku z ľavého panelu.
       </div>
     );

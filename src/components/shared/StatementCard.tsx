@@ -144,8 +144,16 @@ export default function StatementCard({
   show_similarity = false,
   classification,
   onOpenResearch,
+  isActive = false,
 }: StatementCardProps) {
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
+  const articleRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      articleRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [isActive]);
 
   const speakerName = (
     <span key="meno" className="font-semibold text-slate-700 dark:text-slate-300">
@@ -173,7 +181,15 @@ export default function StatementCard({
   const similarity = statement.similarity;
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md active:shadow-none dark:border-slate-700/60 dark:bg-slate-800">
+    <article
+      ref={articleRef}
+      tabIndex={isActive ? 0 : -1}
+      className={`rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md active:shadow-none dark:bg-slate-800 ${
+        isActive
+          ? "border-[#d95830] ring-1 ring-[#d95830] dark:border-[#f07850] dark:ring-[#f07850]"
+          : "border-slate-200 dark:border-slate-700/60"
+      }`}
+    >
       {classification ? (
         <div className="mb-4">
           <span

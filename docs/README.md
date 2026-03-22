@@ -14,7 +14,7 @@ Demagog Tool is a Next.js application for searching and reviewing fact-checked S
 - Next.js 16 with the App Router
 - React 19
 - TypeScript
-- Node.js 22
+- Node.js 24.x
 - Supabase and `pgvector` for storage and vector search
 - Local Qwen3 2048d for semantic retrieval (migrating to Gemini embeddings)
 - Gemini 1.5 for duplicate-classification and query understanding
@@ -22,7 +22,7 @@ Demagog Tool is a Next.js application for searching and reviewing fact-checked S
 
 ## Prerequisites
 
-- Node.js 22 or newer
+- Node.js 24.x
 - npm
 - A Supabase project
 - Gemini API key

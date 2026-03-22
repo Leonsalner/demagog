@@ -49,6 +49,17 @@ type SingleArticleMatchRow = {
   similarity: number;
 };
 
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutError: Error,
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(timeoutError), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]);
+}
+
 type SourceRow = StatementSource & {
   statement_id: number;
 };
@@ -72,103 +83,69 @@ async function fetchArticlesBatch(
 ): Promise<Map<number, DedupedArticle>> {
   const articleMap = new Map<number, DedupedArticle>();
   const statementsWithEmbeddings = statements.filter((s) => s.embedding);
-
-  if (statementsWithEmbeddings.length === 0) {
-    return articleMap;
-  }
+  if (statementsWithEmbeddings.length === 0) return articleMap;
 
   const embeddings = statementsWithEmbeddings.map((s) => s.embedding as number[]);
   const embeddingIdMap = new Map<number, number>();
-
-  statementsWithEmbeddings.forEach((statement, idx) => {
-    if (statement.embedding) {
-      embeddingIdMap.set(idx, statement.id);
-    }
+  statementsWithEmbeddings.forEach((s, idx) => {
+    if (s.embedding) embeddingIdMap.set(idx, s.id);
   });
 
-  const { data, error } = await supabase.rpc("match_articles_batch", {
-    query_embeddings: embeddings,
-    match_count: matchCount,
-  });
-
-  if (!error && data) {
-    for (const row of (data as BatchArticleMatchRow[])) {
-      const statementId = embeddingIdMap.get(row.embedding_idx);
-      if (!statementId) continue;
-
-      const statementRef = statementRefs.get(statementId);
-      if (!statementRef) continue;
-
-      const article: Article = {
-        id: row.id,
-        datum: row.datum ?? "",
-        autor: row.autor ?? "Demagog.sk",
-        text: row.text_content?.trim() ?? "",
-        title: row.title ?? null,
-      };
-
-      const existing = articleMap.get(row.id);
-
-      if (!existing) {
-        articleMap.set(row.id, {
-          article,
-          similarity: row.similarity,
-          statementRefs: [statementRef],
-        });
-        continue;
-      }
-
-      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
-      if (row.similarity > existing.similarity) {
-        existing.article = article;
-        existing.similarity = row.similarity;
-      }
+  function addArticle(row: { id: number; datum: string | null; autor: string | null; text_content: string | null; title: string | null; similarity: number }, ref: ResearchStatementRef) {
+    const article: Article = {
+      id: row.id, datum: row.datum ?? "", autor: row.autor ?? "Demagog.sk",
+      text: row.text_content?.trim() ?? "", title: row.title ?? null,
+    };
+    const existing = articleMap.get(row.id);
+    if (!existing) {
+      articleMap.set(row.id, { article, similarity: row.similarity, statementRefs: [ref] });
+    } else {
+      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [ref]);
+      if (row.similarity > existing.similarity) { existing.article = article; existing.similarity = row.similarity; }
     }
-    return articleMap;
   }
 
-  for (const [idx, embedding] of embeddings.entries()) {
-    const statementId = embeddingIdMap.get(idx);
-    if (!statementId) continue;
-
-    const statementRef = statementRefs.get(statementId);
-    if (!statementRef) continue;
-
-    const { data: singleData, error: singleError } = await supabase.rpc("match_articles", {
-      query_embedding: embedding,
-      match_count: matchCount,
+  try {
+    const { data, error } = await supabase.rpc("match_articles_batch", {
+      query_embeddings: embeddings, match_count: matchCount,
     });
-
-    if (singleError || !singleData) continue;
-
-    for (const row of (singleData as SingleArticleMatchRow[])) {
-      const article: Article = {
-        id: row.id,
-        datum: row.datum ?? "",
-        autor: row.autor ?? "Demagog.sk",
-        text: row.text_content?.trim() ?? "",
-        title: row.title ?? null,
-      };
-
-      const existing = articleMap.get(row.id);
-
-      if (!existing) {
-        articleMap.set(row.id, {
-          article,
-          similarity: row.similarity,
-          statementRefs: [statementRef],
-        });
-        continue;
+    if (!error && data) {
+      for (const row of (data as BatchArticleMatchRow[])) {
+        const sid = embeddingIdMap.get(row.embedding_idx);
+        const ref = sid != null ? statementRefs.get(sid) : undefined;
+        if (ref) addArticle(row, ref);
       }
-
-      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
-      if (row.similarity > existing.similarity) {
-        existing.article = article;
-        existing.similarity = row.similarity;
-      }
+      return articleMap;
     }
-  }
+  } catch { /* batch unavailable or slow → fall through */ }
 
+  const INDIVIDUAL_TIMEOUT_MS = 5_000;
+  const results = await Promise.all(
+    embeddings.map(async (embedding, idx) => {
+      const sid = embeddingIdMap.get(idx);
+      const ref = sid != null ? statementRefs.get(sid) : undefined;
+      if (!ref) return null;
+      try {
+        const rows = await withTimeout(
+          (async () => {
+            const { data, error } = await supabase.rpc("match_articles", {
+              query_embedding: embedding, match_count: matchCount,
+            });
+            if (error || !data) return null;
+            return data as SingleArticleMatchRow[];
+          })(),
+          INDIVIDUAL_TIMEOUT_MS,
+          new Error("match_articles timed out"),
+        );
+        return rows ? { rows, ref } : null;
+      } catch { return null; }
+    }),
+  );
+
+  for (const item of results) {
+    if (!item) continue;
+    for (const row of item.rows) addArticle(row, item.ref);
+  }
   return articleMap;
 }
 

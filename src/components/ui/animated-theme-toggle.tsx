@@ -67,7 +67,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
   const duration = 0.7;
 
   return (
-    <motion.div animate={isDark ? "checked" : "unchecked"}>
+    <div>
       <motion.svg
         width="20"
         height="20"
@@ -93,6 +93,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            initial={false}
             animate={{
               opacity: isDark ? 0 : 1,
               pathLength: isDark ? 0 : 1,
@@ -107,6 +108,7 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          initial={false}
           animate={{
             opacity: isDark ? 1 : 0,
             pathLength: isDark ? 1 : 0,
@@ -116,6 +118,6 @@ const SolarSwitch = ({ isDark }: { isDark: boolean }) => {
           style={{ originX: "50%", originY: "50%" }}
         />
       </motion.svg>
-    </motion.div>
+    </div>
   );
 };

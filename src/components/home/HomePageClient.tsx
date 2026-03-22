@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -15,6 +16,7 @@ import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackCon
 import AddStatementModal from "@/components/research/AddStatementModal";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
+import ActiveFilters from "@/components/search/ActiveFilters";
 import FilterSidebar, { countActiveFilters } from "@/components/search/FilterSidebar";
 import SearchBar from "@/components/search/SearchBar";
 import SearchResults from "@/components/search/SearchResults";
@@ -26,22 +28,11 @@ import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResear
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
-import type { FilterState } from "@/types";
 
 export type HomeTab = "search" | "detect";
 
 interface HomePageClientProps {
   activeTab: HomeTab;
-}
-
-function hasActiveFilters(filters: FilterState) {
-  return Boolean(
-    filters.strana?.length ||
-      filters.vyhodnotenie?.length ||
-      filters.meno?.length ||
-      filters.datum_od ||
-      filters.datum_do,
-  );
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
@@ -59,6 +50,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     loading,
     error,
     query,
+    submittedQuery,
     filters,
     page,
     availableFilters,
@@ -69,7 +61,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setPage,
     search,
     loadFilters,
-    isModelFilterUpdateRef,
   } = useSearch();
   const {
     result: detectResult,
@@ -101,23 +92,20 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     finishClose: finishCloseResearch,
     dismiss: dismissResearch,
   } = useResearch();
-  const initializedRef = useRef(false);
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
-  const debounceTimeoutRef = useRef<number | null>(null);
-  const hasAnyActiveFilters = hasActiveFilters(filters);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
       mode: activeTab,
-      query: activeTab === "search" ? query.trim() || null : null,
+      query: activeTab === "search" ? submittedQuery.trim() || null : null,
       statement: activeTab === "detect" ? detectStatement.trim() || null : null,
     }),
-    [activeTab, detectStatement, query],
+    [activeTab, detectStatement, submittedQuery],
   );
 
   usePublishFeedbackPageContext(feedbackContext);
@@ -126,43 +114,46 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setAutoOpenedPreparedResearchKey(key);
   });
 
+  const initialSearchDoneRef = useRef(false);
+
   useEffect(() => {
     void loadFilters();
   }, [loadFilters]);
 
   useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      return;
+    // Initial fetch to populate with latest statements
+    if (!initialSearchDoneRef.current) {
+      initialSearchDoneRef.current = true;
+      void search({ nextPage: 1 });
     }
+  }, [search]);
 
-    if (isModelFilterUpdateRef.current) {
-      isModelFilterUpdateRef.current = false;
-      return;
-    }
+  const handleOpenStatementResearch = useCallback(
+    (statementId: number) => {
+      void openStatementResearch(statementId, { revealWhenReady: false });
+    },
+    [openStatementResearch]
+  );
 
-    if (!hasSearched && !hasAnyActiveFilters) {
-      return;
-    }
-
-    setPage(1);
-
-    if (debounceTimeoutRef.current !== null) {
-      window.clearTimeout(debounceTimeoutRef.current);
-    }
-
-    debounceTimeoutRef.current = window.setTimeout(() => {
-      debounceTimeoutRef.current = null;
-      void search(1);
-    }, 500);
-
-    return () => {
-      if (debounceTimeoutRef.current !== null) {
-        window.clearTimeout(debounceTimeoutRef.current);
-        debounceTimeoutRef.current = null;
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      if (
+        event.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        event.preventDefault();
+        if (activeTab === "search") {
+          document.getElementById("search-input")?.focus();
+        } else if (activeTab === "detect") {
+          document.getElementById("statement")?.focus();
+        }
       }
-    };
-  }, [filters, hasAnyActiveFilters, hasSearched, isModelFilterUpdateRef, setPage, search]);
+    }
+
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [activeTab]);
 
   useEffect(() => {
     if (typeof ResizeObserver === "undefined") {
@@ -257,17 +248,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       if (panelHeightReleaseRef.current !== null) {
         window.clearTimeout(panelHeightReleaseRef.current);
       }
-      if (debounceTimeoutRef.current !== null) {
-        window.clearTimeout(debounceTimeoutRef.current);
-        debounceTimeoutRef.current = null;
-      }
     },
     [],
   );
 
   const handleSearch = () => {
     setPage(1);
-    void search(1);
+    void search({ nextPage: 1, submit: true });
   };
 
   useEffect(() => {
@@ -294,7 +281,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const handlePageChange = (nextPage: number) => {
     setPage(nextPage);
-    void search(nextPage);
+    void search({ nextPage });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -416,12 +403,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     researchDisplayState === "entering" &&
     researchMode === "aggregate" &&
     researchData === preparedAggregateResearchData;
+  const isDetectProgressCompleting =
+    isPreparedResearchHandoff ||
+    (!detectLoading &&
+      preparedAggregateResearchStatus === "error" &&
+      shouldPrepareAggregateResearch);
   const {
     isVisible: isDetectProgressVisible,
     progress: detectProgress,
   } = useFakeProgress({
     pending: hasDetectPanelLoading,
-    completing: isPreparedResearchHandoff,
+    completing: isDetectProgressCompleting,
     phase: detectLoadingPhase,
     completionDurationMs: 280,
   });
@@ -522,13 +514,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   </p>
                 </div>
 
-                {!hasSearched && !loading && !error && !results ? (
-                  <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
-                    <h2 className="max-w-2xl text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                      Prehľadávajte overené výroky politikov.
-                    </h2>
-                  </div>
-                ) : null}
+                <div className="hidden lg:block">
+                  <ActiveFilters filters={filters} onChange={setFilters} />
+                </div>
+                <div className="lg:hidden">
+                  {/* On mobile, filters are shown in the drawer, but chips can still be useful to see. */}
+                  <ActiveFilters filters={filters} onChange={setFilters} />
+                </div>
 
                 {isSearchPanelLoading ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center">
@@ -549,7 +541,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void search(page)}
+                      onClick={() => void search({ nextPage: page })}
                       className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                     >
                       Skúsiť znova
@@ -558,7 +550,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 ) : null}
 
                 {!isSearchPanelLoading && !error && hasSearched && results?.results.length === 0 ? (
-                  <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
+                  <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Žiadne výsledky pre zadané kritériá.
                     </h2>
@@ -570,14 +562,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
                 {!isSearchPanelLoading && !error && results?.results.length ? (
                   <SearchResults
+                    key={`${results.page}-${results.query_time_ms}-${query}`}
                     results={results}
                     relatedResults={results.related_results}
                     queryUnderstanding={results.query_understanding}
-                    query={query}
+                    query={submittedQuery}
                     onPageChange={handlePageChange}
-                    onOpenResearch={(statementId) => {
-                      void openStatementResearch(statementId, { revealWhenReady: false });
-                    }}
+                    onOpenResearch={handleOpenStatementResearch}
+                    isVisible={activeTab === "search"}
                   />
                 ) : null}
               </div>
@@ -679,7 +671,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               ) : null}
 
               {!isDetectPanelLoading && !detectResult ? (
-                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
+                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Výsledky detekcie sa zobrazia tu

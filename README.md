@@ -45,7 +45,7 @@ Formulár na pridanie nového výroku otvoríte priamo nad zhromaždenými podkl
 Aplikácia je postavená ako moderné full-stack riešenie v jednom repozitári.
 
 ### Architektúra a technológie
-- **Frontend & Backend:** Next.js 16 (App Router) a React 19, písané v TypeScripte pre Node.js 22 runtime. Nasadenie je orientované na Vercel (`.vercel/project.json`).
+- **Frontend & Backend:** Next.js 16 (App Router) a React 19, písané v TypeScripte pre Node.js 24.x runtime. Nasadenie je orientované na Vercel (`.vercel/project.json`).
 - **Databáza:** Supabase (PostgreSQL) s rozšírením `pgvector` pre podobnostné vyhľadávanie.
 - **AI modely:** Gemini API na porozumenie dopytu, klasifikáciu zhôd a preklady (používa modely rodiny `gemini-1.5`). Vektorové embeddingy bežia externe (Ollama-kompatibilné `/v1/embeddings`, napr. `qwen3-embedding:8b`).
 

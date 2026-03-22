@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
+import { formatSlovakResultCount } from "@/lib/utils";
 import type { SearchResponse, Statement } from "@/types";
 
 interface SearchResultsProps {
@@ -12,6 +13,7 @@ interface SearchResultsProps {
   query: string;
   onPageChange: (page: number) => void;
   onOpenResearch?: (statementId: number) => void;
+  isVisible?: boolean;
 }
 
 function RelatedResultsSection({
@@ -28,7 +30,7 @@ function RelatedResultsSection({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
+    <section className="border-t border-slate-200 pt-2 dark:border-slate-700/60">
       <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -119,7 +121,53 @@ export default function SearchResults({
   query,
   onPageChange,
   onOpenResearch,
+  isVisible = true,
 }: SearchResultsProps) {
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const onOpenResearchRef = useRef(onOpenResearch);
+  const activeIndexRef = useRef(activeIndex);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    onOpenResearchRef.current = onOpenResearch;
+    activeIndexRef.current = activeIndex;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!results?.results.length) return;
+
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
+        if (event.key === "ArrowDown" && document.activeElement.id === "search-input") {
+          event.preventDefault();
+          (document.activeElement as HTMLElement).blur();
+          setActiveIndex(0);
+        }
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((prev) => (prev < results.results.length - 1 ? prev + 1 : prev));
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((prev) => {
+          if (prev <= 0) {
+            document.getElementById("search-input")?.focus();
+            return -1;
+          }
+          return prev - 1;
+        });
+      } else if (event.key === "Enter" && activeIndexRef.current >= 0 && activeIndexRef.current < results.results.length) {
+        event.preventDefault();
+        onOpenResearchRef.current?.(results.results[activeIndexRef.current].id);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, isVisible]);
+
   if (!results) {
     return null;
   }
@@ -143,7 +191,7 @@ export default function SearchResults({
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 dark:border-slate-700/60 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Nájdených {results.total_count} výsledkov
+            {formatSlovakResultCount(results.total_count)}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Spracované za {results.query_time_ms} ms
@@ -161,12 +209,13 @@ export default function SearchResults({
       </div>
 
       <div className="space-y-4">
-        {results.results.map((statement) => (
+        {results.results.map((statement, index) => (
           <StatementCard
             key={statement.id}
             statement={statement}
             show_similarity={Boolean(query)}
             onOpenResearch={onOpenResearch}
+            isActive={index === activeIndex}
           />
         ))}
       </div>
@@ -180,7 +229,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page - 1)}
             disabled={results.page === 1}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             «
           </button>
@@ -198,7 +247,7 @@ export default function SearchResults({
                 type="button"
                 onClick={() => onPageChange(item)}
                 aria-current={item === results.page ? "page" : undefined}
-                className={`min-w-10 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`min-w-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
                   item === results.page
                     ? "bg-[#d95830] text-white shadow-sm dark:bg-[#f07850]"
                     : "border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -212,7 +261,7 @@ export default function SearchResults({
             type="button"
             onClick={() => onPageChange(results.page + 1)}
             disabled={results.page === totalPages}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:disabled:opacity-30"
           >
             »
           </button>

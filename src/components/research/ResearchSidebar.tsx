@@ -67,15 +67,15 @@ export default function ResearchSidebar({
         </p>
 
         {showTabs ? (
-          <div className="relative mt-4 grid grid-cols-2 rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80">
+          <div className="relative mt-4 grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80">
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
+              className="pointer-events-none absolute inset-y-1 left-1 z-0 w-1/2 rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
               style={{
                 transform:
                   activeTab === "articles"
                     ? "translateX(0)"
-                    : "translateX(calc(100% + 0.25rem))",
+                    : "translateX(100%)",
               }}
             />
             <button
@@ -125,17 +125,14 @@ export default function ResearchSidebar({
                         : "border-transparent text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {classificationLabels[match.classification]}
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
+                        {match.statement.meno} • {match.statement.strana}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                         {Math.round(match.similarity * 100)} %
                       </span>
                     </div>
-                    <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
-                      {match.statement.meno} • {match.statement.strana}
-                    </span>
                     <span className="mt-2 line-clamp-3 block text-sm font-medium">
                       {match.statement.vyrok}
                     </span>
@@ -160,20 +157,18 @@ export default function ResearchSidebar({
                       type="button"
                       onClick={() => onSelect(item.id)}
                       title={item.title}
-                      className={`w-full rounded-2xl px-3 py-3 text-left text-sm transition ${
+                      className={`w-full rounded-2xl px-3 pt-3 pb-2.5 text-left text-sm transition ${
                         isSelected
                           ? "border border-[var(--brand-accent)]/20 bg-white text-slate-900 shadow-sm dark:border-[var(--brand-accent-dark)]/30 dark:bg-slate-950 dark:text-slate-100"
                           : "border border-transparent text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"
                       }`}
                     >
                       <span className="block break-words font-medium">{item.title}</span>
-                      <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-                        {item.kind === "external_source"
-                          ? item.domain || "Externý zdroj"
-                          : item.statement_refs.length === 1
-                          ? item.statement_refs[0]?.meno
-                          : `${item.statement_refs.length} výroky`}
-                      </span>
+                      {!showTabs && item.kind === "external_source" && (
+                        <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                          {item.domain || "Externý zdroj"}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

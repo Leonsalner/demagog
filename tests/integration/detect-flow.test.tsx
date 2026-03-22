@@ -284,7 +284,7 @@ describe("detect page flow", () => {
     await renderHome("detect");
 
     expect(
-      screen.getByText(/V databáze sa nenašiel podobný overený nárok\./i),
+      screen.getByText(/Tento výrok vyzerá byť nový\. Chcete ho pridať do databázy\?/i),
     ).toBeInTheDocument();
   });
 
