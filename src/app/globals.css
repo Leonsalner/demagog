@@ -193,6 +193,20 @@ a {
   }
 }
 
+@keyframes activeFilterChipEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+    grid-template-columns: 0fr;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    grid-template-columns: 1fr;
+  }
+}
+
 .animate-feedback-reveal {
   animation: feedbackPanelReveal 240ms ease-out forwards;
 }
