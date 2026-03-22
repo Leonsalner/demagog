@@ -359,6 +359,22 @@ export default function HomeOnboarding({
         : storedStatus === null && shouldAutoOpen;
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    // Preload images for a smoother onboarding experience
+    steps.forEach((step) => {
+      if (step.media.kind === "image") {
+        const lightImg = new window.Image();
+        lightImg.src = step.media.lightSrc;
+        if (step.media.darkSrc) {
+          const darkImg = new window.Image();
+          darkImg.src = step.media.darkSrc;
+        }
+      }
+    });
+  }, [isOpen, steps]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
