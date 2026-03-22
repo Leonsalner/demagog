@@ -271,6 +271,7 @@ function MediaStage({ step, theme }: { step: HomeOnboardingStep; theme: ThemeMod
             alt={step.media.alt}
             width={1280}
             height={720}
+            priority
             sizes="(min-width: 1280px) 70vw, (min-width: 1024px) 60vw, 100vw"
             className="h-full w-full object-cover object-top"
           />
@@ -310,6 +311,38 @@ function ProgressDots({
           }`}
         />
       ))}
+    </div>
+  );
+}
+
+function OnboardingPreloader({ steps }: { steps: HomeOnboardingStep[] }) {
+  return (
+    <div className="sr-only" aria-hidden="true">
+      {steps.map((step) => {
+        if (step.media.kind !== "image") return null;
+        return (
+          <div key={step.id}>
+            <Image
+              src={step.media.lightSrc}
+              alt=""
+              width={1280}
+              height={720}
+              priority
+              sizes="1px" // Minimize the size requested for preload if possible, or keep same as real usage
+            />
+            {step.media.darkSrc && (
+              <Image
+                src={step.media.darkSrc}
+                alt=""
+                width={1280}
+                height={720}
+                priority
+                sizes="1px"
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -357,22 +390,6 @@ export default function HomeOnboarding({
       : manualOpenState === "closed"
         ? false
         : storedStatus === null && shouldAutoOpen;
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // Preload images for a smoother onboarding experience
-    steps.forEach((step) => {
-      if (step.media.kind === "image") {
-        const lightImg = new window.Image();
-        lightImg.src = step.media.lightSrc;
-        if (step.media.darkSrc) {
-          const darkImg = new window.Image();
-          darkImg.src = step.media.darkSrc;
-        }
-      }
-    });
-  }, [isOpen, steps]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -487,6 +504,8 @@ export default function HomeOnboarding({
 
   return (
     <>
+      {isOpen ? <OnboardingPreloader steps={steps} /> : null}
+
       <FooterHelperDock slot="guide" side="right">
         <FooterHelperTrigger
           onClick={() => {
