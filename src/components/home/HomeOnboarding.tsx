@@ -342,6 +342,8 @@ export default function HomeOnboarding({
   const dialogRef = useRef<HTMLElement | null>(null);
   const mediaPaneRef = useRef<HTMLDivElement | null>(null);
   const contentPaneRef = useRef<HTMLDivElement | null>(null);
+  const feedbackToastShowTimeoutRef = useRef<number | null>(null);
+  const feedbackToastHideTimeoutRef = useRef<number | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [manualOpenState, setManualOpenState] = useState<"open" | "closed" | null>(null);
   const [showFeedbackToast, setShowFeedbackToast] = useState(false);
@@ -397,13 +399,36 @@ export default function HomeOnboarding({
     return () => window.cancelAnimationFrame(frame);
   }, [activeStep, isOpen]);
 
+  const clearFeedbackToastShowTimeout = useCallback(() => {
+    if (feedbackToastShowTimeoutRef.current !== null) {
+      window.clearTimeout(feedbackToastShowTimeoutRef.current);
+      feedbackToastShowTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearFeedbackToastHideTimeout = useCallback(() => {
+    if (feedbackToastHideTimeoutRef.current !== null) {
+      window.clearTimeout(feedbackToastHideTimeoutRef.current);
+      feedbackToastHideTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearFeedbackToastShowTimeout();
+      clearFeedbackToastHideTimeout();
+    };
+  }, [clearFeedbackToastShowTimeout, clearFeedbackToastHideTimeout]);
+
   const hideFeedbackToast = useCallback(() => {
+    clearFeedbackToastHideTimeout();
     setIsHidingFeedbackToast(true);
-    window.setTimeout(() => {
+    feedbackToastHideTimeoutRef.current = window.setTimeout(() => {
       setShowFeedbackToast(false);
       setIsHidingFeedbackToast(false);
+      feedbackToastHideTimeoutRef.current = null;
     }, 240);
-  }, []);
+  }, [clearFeedbackToastHideTimeout]);
 
   useEffect(() => {
     if (!showFeedbackToast) {
@@ -425,8 +450,10 @@ export default function HomeOnboarding({
 
   function maybeShowFeedbackToast() {
     if (markFeedbackToastSeen()) {
-      window.setTimeout(() => {
+      clearFeedbackToastShowTimeout();
+      feedbackToastShowTimeoutRef.current = window.setTimeout(() => {
         setShowFeedbackToast(true);
+        feedbackToastShowTimeoutRef.current = null;
       }, 30_000);
     }
   }
