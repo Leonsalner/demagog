@@ -108,14 +108,20 @@ async function fetchArticlesBatch(
       query_embeddings: embeddings,
       match_count: matchCount,
     });
-    // Supabase RPC returns a Thenable, wrap it in Promise to ensure compatibility
-    const rpcPromise = Promise.resolve(rpcCall);
+    const rpcPromise = Promise.resolve(rpcCall) as Promise<{
+      data: BatchArticleMatchRow[] | null;
+      error: { message: string } | null;
+    }>;
     const result = await withTimeout(
       rpcPromise,
       MATCH_ARTICLES_BATCH_TIMEOUT_MS,
       timeoutError,
     );
-    data = result;
+    if (result.error) {
+      error = result.error;
+    } else {
+      data = result.data;
+    }
   } catch (err) {
     error = { message: err instanceof Error ? err.message : String(err) };
     data = null;
@@ -159,33 +165,33 @@ async function fetchArticlesBatch(
 
   const MATCH_ARTICLES_TIMEOUT_MS = 5_000;
 
-  for (const [idx, embedding] of embeddings.entries()) {
-    const statementId = embeddingIdMap.get(idx);
-    if (!statementId) continue;
+  const results = await Promise.all(
+    embeddings.map(async (embedding, idx) => {
+      const statementId = embeddingIdMap.get(idx);
+      if (!statementId) return null;
+      const statementRef = statementRefs.get(statementId);
+      if (!statementRef) return null;
 
-    const statementRef = statementRefs.get(statementId);
-    if (!statementRef) continue;
+      try {
+        const timeoutError = new Error("match_articles timed out");
+        const rpcPromise = Promise.resolve(
+          supabase.rpc("match_articles", {
+            query_embedding: embedding,
+            match_count: matchCount,
+          }),
+        ) as Promise<{ data: SingleArticleMatchRow[] | null; error: { message: string } | null }>;
+        const result = await withTimeout(rpcPromise, MATCH_ARTICLES_TIMEOUT_MS, timeoutError);
+        if (result.error || !result.data) return null;
+        return { rows: result.data, statementRef };
+      } catch {
+        return null;
+      }
+    }),
+  );
 
-    let singleData: unknown;
-    let singleError: { message: string } | null = null;
-
-    try {
-      const timeoutError = new Error("match_articles timed out");
-      const rpcPromise = Promise.resolve(
-        supabase.rpc("match_articles", {
-          query_embedding: embedding,
-          match_count: matchCount,
-        }),
-      );
-      singleData = await withTimeout(rpcPromise, MATCH_ARTICLES_TIMEOUT_MS, timeoutError);
-    } catch (err) {
-      singleError = { message: err instanceof Error ? err.message : String(err) };
-      singleData = null;
-    }
-
-    if (singleError || !singleData) continue;
-
-    for (const row of (singleData as SingleArticleMatchRow[])) {
+  for (const item of results) {
+    if (!item) continue;
+    for (const row of item.rows) {
       const article: Article = {
         id: row.id,
         datum: row.datum ?? "",
@@ -200,12 +206,12 @@ async function fetchArticlesBatch(
         articleMap.set(row.id, {
           article,
           similarity: row.similarity,
-          statementRefs: [statementRef],
+          statementRefs: [item.statementRef],
         });
         continue;
       }
 
-      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [statementRef]);
+      existing.statementRefs = mergeStatementRefs(existing.statementRefs, [item.statementRef]);
       if (row.similarity > existing.similarity) {
         existing.article = article;
         existing.similarity = row.similarity;
