@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
 import { formatSlovakResultCount } from "@/lib/utils";
@@ -124,9 +124,14 @@ export default function SearchResults({
   isVisible = true,
 }: SearchResultsProps) {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const onOpenResearchRef = useRef(onOpenResearch);
+  const activeIndexRef = useRef(activeIndex);
 
   useEffect(() => {
     if (!isVisible) return;
+
+    onOpenResearchRef.current = onOpenResearch;
+    activeIndexRef.current = activeIndex;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (!results?.results.length) return;
@@ -152,15 +157,16 @@ export default function SearchResults({
           }
           return prev - 1;
         });
-      } else if (event.key === "Enter" && activeIndex >= 0 && activeIndex < results.results.length) {
+      } else if (event.key === "Enter" && activeIndexRef.current >= 0 && activeIndexRef.current < results.results.length) {
         event.preventDefault();
-        onOpenResearch?.(results.results[activeIndex].id);
+        onOpenResearchRef.current?.(results.results[activeIndexRef.current].id);
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [results, activeIndex, onOpenResearch, isVisible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, isVisible]);
 
   if (!results) {
     return null;
