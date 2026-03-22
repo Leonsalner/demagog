@@ -10,7 +10,7 @@ Browser UI (React 19)
   |-- Add Statement Flow
   |-- Feedback Widget
   v
-Next.js 16 App Router (Node.js 22)
+Next.js 16 App Router (Node.js 24.x)
   |-- /api/search (Semantic search, query understanding)
   |-- /api/detect (Duplicate detection & classification)
   |-- /api/research/statement (Context for single statement)
@@ -86,4 +86,4 @@ The application relies heavily on Supabase RPCs for performance and security:
 ## Testing Strategy
 - **Unit & Integration:** Covered by Vitest and React Testing Library (`tests/api/*`, `tests/components/*`).
 - **Live API Tests:** API route tests run against a live Supabase instance when `TEST_LIVE_API=true` is set, ensuring RPC contracts remain valid.
-- **Node native features:** Tests run with `--no-webstorage` to prevent warnings from Node 22's native Web Storage API conflicting with JSDOM.
+- **Node native features:** Tests run with `--no-webstorage` to prevent warnings from Node 24's native Web Storage API conflicting with JSDOM.
