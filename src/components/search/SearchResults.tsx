@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
 import type { SearchResponse, Statement } from "@/types";
@@ -28,7 +28,7 @@ function RelatedResultsSection({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <section className="border-t border-dashed border-slate-200 pt-2 dark:border-slate-700/60">
+    <section className="border-t border-slate-200 pt-2 dark:border-slate-700/60">
       <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -120,6 +120,47 @@ export default function SearchResults({
   onPageChange,
   onOpenResearch,
 }: SearchResultsProps) {
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
+
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [results?.page, results?.query_time_ms, query]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!results?.results.length) return;
+
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") {
+        if (event.key === "ArrowDown" && document.activeElement.id === "search-input") {
+          event.preventDefault();
+          (document.activeElement as HTMLElement).blur();
+          setActiveIndex(0);
+        }
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((prev) => (prev < results.results.length - 1 ? prev + 1 : prev));
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((prev) => {
+          if (prev <= 0) {
+            document.getElementById("search-input")?.focus();
+            return -1;
+          }
+          return prev - 1;
+        });
+      } else if (event.key === "Enter" && activeIndex >= 0 && activeIndex < results.results.length) {
+        event.preventDefault();
+        onOpenResearch?.(results.results[activeIndex].id);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [results, activeIndex, onOpenResearch]);
+
   if (!results) {
     return null;
   }
@@ -161,12 +202,13 @@ export default function SearchResults({
       </div>
 
       <div className="space-y-4">
-        {results.results.map((statement) => (
+        {results.results.map((statement, index) => (
           <StatementCard
             key={statement.id}
             statement={statement}
             show_similarity={Boolean(query)}
             onOpenResearch={onOpenResearch}
+            isActive={index === activeIndex}
           />
         ))}
       </div>

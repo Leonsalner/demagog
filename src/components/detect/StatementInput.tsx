@@ -53,7 +53,7 @@ export default function StatementInput({
       <div className="relative">
         <label
           htmlFor="statement"
-          className="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-100"
+          className="mb-3 block text-base font-bold text-slate-900 dark:text-slate-100"
         >
           Politický výrok
         </label>
@@ -66,8 +66,8 @@ export default function StatementInput({
             onReset?.();
           }}
           placeholder="Vložte politický výrok na overenie..."
-          rows={5}
-          className="min-h-36 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-950 dark:focus:ring-[#f07850]/20"
+          rows={3}
+          className="min-h-24 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-base leading-7 text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-2 focus:ring-[#d95830] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-950 dark:focus:ring-2 dark:focus:ring-[#f07850]"
         />
 
         <div
@@ -83,7 +83,7 @@ export default function StatementInput({
         <button
           type="submit"
           disabled={isDisabled}
-          className="inline-flex min-w-48 items-center justify-center rounded-full bg-[var(--brand-accent)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] disabled:cursor-not-allowed disabled:bg-[var(--brand-accent)]/40 disabled:text-white/80 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-[var(--brand-accent-dark)]/28 dark:disabled:text-white/70"
+          className="inline-flex min-w-48 items-center justify-center rounded-full bg-[var(--brand-accent)] px-8 py-3.5 text-base font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
         >
           {loading ? (
             <>

@@ -15,6 +15,7 @@ import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackCon
 import AddStatementModal from "@/components/research/AddStatementModal";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
 import StatementInput from "@/components/detect/StatementInput";
+import ActiveFilters from "@/components/search/ActiveFilters";
 import FilterSidebar, { countActiveFilters } from "@/components/search/FilterSidebar";
 import SearchBar from "@/components/search/SearchBar";
 import SearchResults from "@/components/search/SearchResults";
@@ -131,6 +132,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   }, [loadFilters]);
 
   useEffect(() => {
+    // Initial fetch to populate with latest statements
+    void search(1);
+  }, [search]);
+
+  useEffect(() => {
     if (!initializedRef.current) {
       initializedRef.current = true;
       return;
@@ -138,10 +144,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
     if (isModelFilterUpdateRef.current) {
       isModelFilterUpdateRef.current = false;
-      return;
-    }
-
-    if (!hasSearched && !hasAnyActiveFilters) {
       return;
     }
 
@@ -162,7 +164,27 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         debounceTimeoutRef.current = null;
       }
     };
-  }, [filters, hasAnyActiveFilters, hasSearched, isModelFilterUpdateRef, setPage, search]);
+  }, [filters, search, setPage, isModelFilterUpdateRef]);
+
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      if (
+        event.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        event.preventDefault();
+        if (activeTab === "search") {
+          document.getElementById("search-input")?.focus();
+        } else if (activeTab === "detect") {
+          document.getElementById("statement")?.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [activeTab]);
 
   useEffect(() => {
     if (typeof ResizeObserver === "undefined") {
@@ -522,13 +544,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   </p>
                 </div>
 
-                {!hasSearched && !loading && !error && !results ? (
-                  <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
-                    <h2 className="max-w-2xl text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                      Prehľadávajte overené výroky politikov.
-                    </h2>
-                  </div>
-                ) : null}
+                <div className="hidden lg:block">
+                  <ActiveFilters filters={filters} onChange={setFilters} />
+                </div>
+                <div className="lg:hidden">
+                  {/* On mobile, filters are shown in the drawer, but chips can still be useful to see. */}
+                  <ActiveFilters filters={filters} onChange={setFilters} />
+                </div>
 
                 {isSearchPanelLoading ? (
                   <div className="flex min-h-[300px] flex-col items-center justify-center">
@@ -558,7 +580,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 ) : null}
 
                 {!isSearchPanelLoading && !error && hasSearched && results?.results.length === 0 ? (
-                  <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
+                  <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Žiadne výsledky pre zadané kritériá.
                     </h2>
@@ -679,7 +701,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               ) : null}
 
               {!isDetectPanelLoading && !detectResult ? (
-                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
+                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       Výsledky detekcie sa zobrazia tu

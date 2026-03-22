@@ -148,6 +148,7 @@ export interface StatementCardProps {
   show_similarity?: boolean;
   classification?: DetectionMatch["classification"];
   onOpenResearch?: (statementId: number) => void;
+  isActive?: boolean;
 }
 
 export interface FilterState {

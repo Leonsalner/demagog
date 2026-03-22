@@ -52,7 +52,7 @@ export default function Navbar() {
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-[var(--brand-accent)] shadow-[0_12px_30px_rgba(217,88,48,0.2)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-[var(--brand-accent)] dark:shadow-[0_12px_30px_rgba(217,88,48,0.24)]"
+                className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-[var(--brand-accent)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-[var(--brand-accent)]"
                 style={{
                   transform:
                     activeHomeTab === "search"
