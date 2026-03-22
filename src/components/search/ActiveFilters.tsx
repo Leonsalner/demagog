@@ -16,6 +16,7 @@ type ActiveChip = {
 };
 
 const CHIP_ANIMATION_MS = 220;
+const FILTER_ROW_EXPAND_LEAD_MS = 140;
 
 export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps) {
   const activeChips = useMemo(() => {
@@ -26,21 +27,33 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
         nextChips.push({ key: "vyhodnotenie", value: v, label: v, isVerdict: true });
       });
     }
+
     if (filters.strana) {
       filters.strana.forEach((s) => {
         nextChips.push({ key: "strana", value: s, label: s });
       });
     }
+
     if (filters.meno) {
       filters.meno.forEach((m) => {
         nextChips.push({ key: "meno", value: m, label: m });
       });
     }
+
     if (filters.datum_od) {
-      nextChips.push({ key: "datum_od", value: filters.datum_od, label: `Od: ${filters.datum_od}` });
+      nextChips.push({
+        key: "datum_od",
+        value: filters.datum_od,
+        label: `Od: ${filters.datum_od}`,
+      });
     }
+
     if (filters.datum_do) {
-      nextChips.push({ key: "datum_do", value: filters.datum_do, label: `Do: ${filters.datum_do}` });
+      nextChips.push({
+        key: "datum_do",
+        value: filters.datum_do,
+        label: `Do: ${filters.datum_do}`,
+      });
     }
 
     return nextChips;
@@ -92,63 +105,74 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   }
 
   function clearAll() {
-    startClosing(
-      activeChips.map((chip) => `${chip.key}-${chip.value}`),
-      {
+    startClosing(activeChips.map((chip) => `${chip.key}-${chip.value}`), {
       strana: null,
       vyhodnotenie: null,
       meno: null,
       datum_od: null,
       datum_do: null,
-    },
-    );
+    });
   }
 
   return (
     <div
       className={`grid overflow-hidden transition-[grid-template-rows,opacity,margin-bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        shouldShowContainer ? "mb-4 opacity-100 [grid-template-rows:1fr]" : "mb-0 opacity-0 [grid-template-rows:0fr]"
+        shouldShowContainer
+          ? "mb-4 opacity-100 [grid-template-rows:1fr]"
+          : "mb-0 opacity-0 [grid-template-rows:0fr]"
       }`}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-h-8 flex-wrap items-center gap-2">
           {activeChips.map((chip) => {
-        const chipId = `${chip.key}-${chip.value}`;
-        const isClosing = closingIds.includes(chipId);
+                const chipId = `${chip.key}-${chip.value}`;
+                const isClosing = closingIds.includes(chipId);
 
-        let chipClass =
-          "inline-flex min-w-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+                let chipClass =
+                  "inline-flex min-w-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
-        if (chip.isVerdict && VERDICT_THEME[chip.value as Verdict]) {
-          chipClass = `inline-flex min-w-0 items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium shadow-sm ${VERDICT_THEME[chip.value as Verdict].chipActive}`;
-        }
+                if (chip.isVerdict && VERDICT_THEME[chip.value as Verdict]) {
+                  chipClass = `inline-flex min-w-0 items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium shadow-sm ${VERDICT_THEME[chip.value as Verdict].chipActive}`;
+                }
 
-        return (
-          <span
-            key={chipId}
-            className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
-              isClosing
-                ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)_forwards]"
-                : "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_forwards]"
-            }`}
-          >
-            <span className={chipClass}>
-              <span className="overflow-hidden whitespace-nowrap">{chip.label}</span>
-              <button
-                type="button"
-                onClick={() => removeFilter(chip.key, chip.value)}
-                disabled={isClosing}
-                className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/20"
-                aria-label={`Odstrániť filter ${chip.label}`}
-              >
-                <svg aria-hidden="true" viewBox="0 0 14 14" fill="none" className="h-2.5 w-2.5 stroke-current stroke-2" strokeLinecap="round">
-                  <path d="m3.5 3.5 7 7m0-7-7 7" />
-                </svg>
-              </button>
-            </span>
-          </span>
-        );
-          })}
+                return (
+                  <span
+                    key={chipId}
+                    style={
+                      isClosing
+                        ? undefined
+                        : { animationDelay: `${FILTER_ROW_EXPAND_LEAD_MS}ms` }
+                    }
+                    className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
+                      isClosing
+                        ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)_forwards]"
+                        : "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)_forwards]"
+                    }`}
+                  >
+                    <span className={chipClass}>
+                      <span className="overflow-hidden whitespace-nowrap">{chip.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFilter(chip.key, chip.value)}
+                        disabled={isClosing}
+                        className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/20"
+                        aria-label={`Odstrániť filter ${chip.label}`}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 14 14"
+                          fill="none"
+                          className="h-2.5 w-2.5 stroke-current stroke-2"
+                          strokeLinecap="round"
+                        >
+                          <path d="m3.5 3.5 7 7m0-7-7 7" />
+                        </svg>
+                      </button>
+                    </span>
+                  </span>
+                );
+              })}
+
           {visibleChips.length > 0 ? (
             <button
               type="button"
