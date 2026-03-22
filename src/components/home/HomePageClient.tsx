@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -127,14 +128,26 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setAutoOpenedPreparedResearchKey(key);
   });
 
+  const initialSearchDoneRef = useRef(false);
+
   useEffect(() => {
     void loadFilters();
   }, [loadFilters]);
 
   useEffect(() => {
     // Initial fetch to populate with latest statements
-    void search(1);
+    if (!initialSearchDoneRef.current) {
+      initialSearchDoneRef.current = true;
+      void search(1);
+    }
   }, [search]);
+
+  const handleOpenStatementResearch = useCallback(
+    (statementId: number) => {
+      void openStatementResearch(statementId, { revealWhenReady: false });
+    },
+    [openStatementResearch]
+  );
 
   useEffect(() => {
     if (!initializedRef.current) {
@@ -597,9 +610,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                     queryUnderstanding={results.query_understanding}
                     query={query}
                     onPageChange={handlePageChange}
-                    onOpenResearch={(statementId) => {
-                      void openStatementResearch(statementId, { revealWhenReady: false });
-                    }}
+                    onOpenResearch={handleOpenStatementResearch}
                   />
                 ) : null}
               </div>
