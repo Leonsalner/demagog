@@ -2,7 +2,7 @@
 
 Operational guide for agents working in this repository.
 
-`AGENTS.md` is symlinked to this file, so updates here also update the agent guide used by tooling.
+`AGENTS.md` and `GEMINI.md` are symlinked to this file, so updates here also update the agent guide used by tooling.
 
 ## Product Snapshot
 
