@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, Verdict } from "@/types";
 
@@ -6,35 +8,83 @@ interface ActiveFiltersProps {
   onChange: (filters: FilterState) => void;
 }
 
-export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps) {
-  const activeChips: { key: keyof FilterState; value: string; label: string; isVerdict?: boolean }[] = [];
+type ActiveChip = {
+  key: keyof FilterState;
+  value: string;
+  label: string;
+  isVerdict?: boolean;
+};
 
-  if (filters.vyhodnotenie) {
-    filters.vyhodnotenie.forEach((v) => {
-      activeChips.push({ key: "vyhodnotenie", value: v, label: v, isVerdict: true });
-    });
-  }
-  if (filters.strana) {
-    filters.strana.forEach((s) => {
-      activeChips.push({ key: "strana", value: s, label: s });
-    });
-  }
-  if (filters.meno) {
-    filters.meno.forEach((m) => {
-      activeChips.push({ key: "meno", value: m, label: m });
-    });
-  }
-  if (filters.datum_od) {
-    activeChips.push({ key: "datum_od", value: filters.datum_od, label: `Od: ${filters.datum_od}` });
-  }
-  if (filters.datum_do) {
-    activeChips.push({ key: "datum_do", value: filters.datum_do, label: `Do: ${filters.datum_do}` });
-  }
+const CHIP_ANIMATION_MS = 220;
+
+export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps) {
+  const activeChips = useMemo(() => {
+    const nextChips: ActiveChip[] = [];
+
+    if (filters.vyhodnotenie) {
+      filters.vyhodnotenie.forEach((v) => {
+        nextChips.push({ key: "vyhodnotenie", value: v, label: v, isVerdict: true });
+      });
+    }
+    if (filters.strana) {
+      filters.strana.forEach((s) => {
+        nextChips.push({ key: "strana", value: s, label: s });
+      });
+    }
+    if (filters.meno) {
+      filters.meno.forEach((m) => {
+        nextChips.push({ key: "meno", value: m, label: m });
+      });
+    }
+    if (filters.datum_od) {
+      nextChips.push({ key: "datum_od", value: filters.datum_od, label: `Od: ${filters.datum_od}` });
+    }
+    if (filters.datum_do) {
+      nextChips.push({ key: "datum_do", value: filters.datum_do, label: `Do: ${filters.datum_do}` });
+    }
+
+    return nextChips;
+  }, [filters]);
+
+  const [closingIds, setClosingIds] = useState<string[]>([]);
+  const timeoutIdsRef = useRef<number[]>([]);
+
+  useEffect(
+    () => () => {
+      timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      timeoutIdsRef.current = [];
+    },
+    [],
+  );
+
+  const visibleChips = activeChips.filter(
+    (chip) => !closingIds.includes(`${chip.key}-${chip.value}`),
+  );
 
   if (activeChips.length === 0) return null;
 
+  function scheduleFilterUpdate(nextIds: string[], nextFilters: FilterState) {
+    const timeoutId = window.setTimeout(() => {
+      onChange(nextFilters);
+      setClosingIds((current) => current.filter((id) => !nextIds.includes(id)));
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+    }, CHIP_ANIMATION_MS);
+
+    timeoutIdsRef.current.push(timeoutId);
+  }
+
+  function startClosing(nextIds: string[], nextFilters: FilterState) {
+    if (nextIds.length === 0) {
+      onChange(nextFilters);
+      return;
+    }
+
+    setClosingIds((current) => Array.from(new Set([...current, ...nextIds])));
+    scheduleFilterUpdate(nextIds, nextFilters);
+  }
+
   function removeFilter(key: keyof FilterState, valueToRemove: string) {
-    onChange({
+    startClosing([`${key}-${valueToRemove}`], {
       ...filters,
       [key]: Array.isArray(filters[key])
         ? (filters[key] as string[]).filter((v) => v !== valueToRemove)
@@ -43,18 +93,24 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   }
 
   function clearAll() {
-    onChange({
+    startClosing(
+      activeChips.map((chip) => `${chip.key}-${chip.value}`),
+      {
       strana: null,
       vyhodnotenie: null,
       meno: null,
       datum_od: null,
       datum_do: null,
-    });
+    },
+    );
   }
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
       {activeChips.map((chip) => {
+        const chipId = `${chip.key}-${chip.value}`;
+        const isClosing = closingIds.includes(chipId);
+
         let chipClass =
           "inline-flex min-w-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
@@ -64,14 +120,24 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
 
         return (
           <span
-            key={`${chip.key}-${chip.value}`}
-            className="inline-grid overflow-hidden align-middle animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)] [grid-template-columns:1fr]"
+            key={chipId}
+            className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
+              isClosing
+                ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)]"
+                : visibleChips.some(
+                      (visibleChip) =>
+                        visibleChip.key === chip.key && visibleChip.value === chip.value,
+                    )
+                ? "animate-[activeFilterChipEnter_220ms_cubic-bezier(0.22,1,0.36,1)]"
+                : ""
+            }`}
           >
             <span className={chipClass}>
-              <span className="truncate">{chip.label}</span>
+              <span className="overflow-hidden whitespace-nowrap">{chip.label}</span>
               <button
                 type="button"
                 onClick={() => removeFilter(chip.key, chip.value)}
+                disabled={isClosing}
                 className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/20"
                 aria-label={`Odstrániť filter ${chip.label}`}
               >
@@ -83,13 +149,15 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
           </span>
         );
       })}
-      <button
-        type="button"
-        onClick={clearAll}
-        className="ml-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-      >
-        Zrušiť filtre
-      </button>
+      {visibleChips.length > 0 ? (
+        <button
+          type="button"
+          onClick={clearAll}
+          className="ml-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          Zrušiť filtre
+        </button>
+      ) : null}
     </div>
   );
 }
