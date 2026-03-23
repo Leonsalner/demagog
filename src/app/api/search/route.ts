@@ -1218,12 +1218,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!isDefaultBrowseQuery) {
-      const sourcesStartedAt = performance.now();
-      const allIds = [
-        ...results.map((s) => s.id),
-        ...(relatedResults ?? []).map((s) => s.id),
-      ];
+    const sourcesStartedAt = performance.now();
+    const allIds = [
+      ...results.map((s) => s.id),
+      ...(relatedResults ?? []).map((s) => s.id),
+    ];
+    if (allIds.length > 0) {
       const sourcesMap = await fetchSourcesForIds(supabase, allIds);
       recordStageTiming(timings, "sources_ms", sourcesStartedAt);
 

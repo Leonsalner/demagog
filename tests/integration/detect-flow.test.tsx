@@ -370,7 +370,7 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("shows inline aggregate preparation state without blocking rendered detect results", async () => {
+  it("blocks detect surface while aggregate preparation is in progress", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -378,15 +378,17 @@ describe("detect page flow", () => {
       status: "preparing",
       statementIds: [201],
     });
+    mockUseResearchReturn({ displayState: "closed" as const });
 
     await renderHome("detect");
 
     expect(
-      screen.getByText("Pripravujem súhrnný prieskum"),
+      screen.getByRole("progressbar", { name: "Priebeh detekcie" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Nájdené súvisiace výroky/i),
+      screen.getByText(/Pripravujem súhrnný prieskum a súvisiace zdroje/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
   it("does not block the detect surface while aggregate research is idle", async () => {

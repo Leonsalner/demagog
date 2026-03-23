@@ -211,13 +211,23 @@ describe("POST /api/search logic", () => {
         error: null,
       }),
     };
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      }),
+    };
     const supabase = {
       from: vi.fn((table: string) => {
-        if (table !== "vyroky") {
-          throw new Error(`Unexpected table ${table}`);
+        if (table === "vyroky") {
+          return newestQuery;
         }
-
-        return newestQuery;
+        if (table === "statement_sources") {
+          return sourcesQuery;
+        }
+        throw new Error(`Unexpected table ${table}`);
       }),
       rpc: vi.fn(),
     };
@@ -238,6 +248,59 @@ describe("POST /api/search logic", () => {
     expect(data.related_results).toBeUndefined();
     expect(data.related_articles).toBeUndefined();
     expect(data.query_understanding).toBeUndefined();
+  });
+
+  it("attaches sources to browse results when statement_sources rows exist", async () => {
+    const newestRows = [
+      buildRow(1, { datum: "2026-01-15" }),
+      buildRow(2, { datum: "2026-01-14" }),
+    ];
+    const sourceRows = [
+      { id: 101, statement_id: 1, position: 1, label: "Primary source", url: "https://example.com/1", title: "Example 1" },
+      { id: 102, statement_id: 1, position: 2, label: "Secondary source", url: "https://example.com/2", title: "Example 2" },
+    ];
+    const newestQuery = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({
+        data: newestRows,
+        error: null,
+      }),
+    };
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({
+        data: sourceRows,
+        error: null,
+      }),
+    };
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "vyroky") {
+          return newestQuery;
+        }
+        if (table === "statement_sources") {
+          return sourcesQuery;
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }),
+      rpc: vi.fn(),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(createRequest({}));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.results).toHaveLength(2);
+    expect(data.results[0].sources).toEqual([
+      { id: 101, position: 1, label: "Primary source", url: "https://example.com/1", title: "Example 1" },
+      { id: 102, position: 2, label: "Secondary source", url: "https://example.com/2", title: "Example 2" },
+    ]);
+    expect(data.results[1].sources).toBeUndefined();
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 
   it("fetches only the requested semantic page and exposes the database total", async () => {

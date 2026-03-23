@@ -334,6 +334,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     }
 
     lastHandledSearchRestoreVersionRef.current = restoreVersion;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mark restore hydration for the next render cycle
     setIsHydratingSearchRestore(true);
   }, [restoreVersion]);
 
@@ -590,7 +591,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     preparedAggregateResearchData !== null &&
     preparedAggregateStatementIds.length > 0 &&
     autoOpenedPreparedResearchKey !== preparedAggregateResearchKey;
-  const isAggregatePreparationBlocking = false;
+  const isAggregatePreparationBlocking =
+    activeTab === "detect" &&
+    !!detectResult &&
+    shouldPrepareAggregateResearch &&
+    researchDisplayState === "closed" &&
+    (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
 
   useEffect(() => {
     const previousTab = previousTabForResearchRef.current;
