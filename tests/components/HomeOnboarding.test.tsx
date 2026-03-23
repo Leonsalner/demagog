@@ -78,7 +78,7 @@ describe("HomeOnboarding", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Zavrieť návod",
+        name: "Preskočiť",
       }),
     );
 
@@ -196,7 +196,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -226,7 +226,7 @@ describe("HomeOnboarding", () => {
 
     renderOnboarding();
 
-    await screen.findByRole("button", { name: "Zavrieť návod" });
+    await screen.findByRole("button", { name: "Preskočiť" });
 
     expect(document.querySelector(".pointer-events-none.sticky")).not.toBeNull();
   });
@@ -300,7 +300,7 @@ describe("HomeOnboarding", () => {
   it("renders guide trigger dock with side=right after dismissal", async () => {
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -314,7 +314,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -332,7 +332,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

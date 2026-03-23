@@ -590,30 +590,38 @@ export default function HomeOnboarding({
                   <button
                     type="button"
                     onClick={() => closeOnboarding("dismissed")}
-                    className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
-                    aria-label="Zavrieť návod"
+                    className={`pointer-events-auto inline-flex items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950 ${isLastStep ? "h-11 w-11" : "h-9 px-3 text-xs font-semibold"}`}
+                    aria-label={isLastStep ? "Zavrieť návod" : "Preskočiť"}
                   >
-                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                      <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
+                    {isLastStep ? (
+                      <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                        <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                      </svg>
+                    ) : (
+                      "Preskočiť"
+                    )}
                   </button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => closeOnboarding("dismissed")}
-                  className="absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950"
-                  aria-label="Zavrieť návod"
+                  className={`absolute right-4 top-4 z-20 inline-flex items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50 dark:focus-visible:ring-slate-700 dark:focus-visible:ring-offset-slate-950 ${isLastStep ? "h-11 w-11" : "h-9 px-3 text-xs font-semibold"}`}
+                  aria-label={isLastStep ? "Zavrieť návod" : "Preskočiť"}
                 >
-                  <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-                    <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                  </svg>
+                  {isLastStep ? (
+                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                      <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  ) : (
+                    "Preskočiť"
+                  )}
                 </button>
               )}
 
               <div
                 ref={contentPaneRef}
-                className="flex flex-col overflow-visible bg-slate-100 p-5 pt-6 dark:bg-slate-950 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
+                className="flex flex-col overflow-visible bg-slate-200 p-5 pt-6 dark:bg-slate-950 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
               >
                 <div className="pr-0 lg:pr-14">
                   <div>
@@ -658,7 +666,7 @@ export default function HomeOnboarding({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-3 sm:flex-nowrap">
+                    <div className="flex items-center justify-end gap-3">
                       {activeStep > 0 ? (
                         <button
                           type="button"
@@ -675,40 +683,29 @@ export default function HomeOnboarding({
                         </button>
                       ) : null}
 
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        {isLastStep ? (
-                          <button
-                            type="button"
-                            onClick={() => closeOnboarding("completed")}
-                            className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                          >
-                            Hotovo
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setActiveStep((stepIndex) => {
-                                  const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
-                                  setShowScrollCue(false);
-                                  return nextStepIndex;
-                                })
-                              }
-                              className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                            >
-                              Ďalej
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => closeOnboarding("dismissed")}
-                              className="inline-flex items-center justify-center text-sm text-slate-500 transition hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
-                            >
-                              Preskočiť
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {isLastStep ? (
+                        <button
+                          type="button"
+                          onClick={() => closeOnboarding("completed")}
+                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                        >
+                          Hotovo
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveStep((stepIndex) => {
+                              const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
+                              setShowScrollCue(false);
+                              return nextStepIndex;
+                            })
+                          }
+                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                        >
+                          Ďalej
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
