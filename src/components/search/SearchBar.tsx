@@ -295,7 +295,7 @@ function SearchHistoryRow({
           onBlur={hideDesktopDetail}
           className="min-w-0 w-full pr-10 text-left"
         >
-          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+          <p className="line-clamp-2 text-sm font-medium leading-6 text-slate-900 dark:text-slate-100">
             {entry.query || "(prázdny dopyt)"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
@@ -489,13 +489,18 @@ export default function SearchBar({
           <button
             ref={historyButtonRef}
             type="button"
-            onClick={() => setIsHistoryOpen(true)}
-            disabled={loading}
+            onClick={() => setIsHistoryOpen((current) => !current)}
+            disabled={loading && value.trim().length > 0}
+            aria-expanded={isHistoryOpen}
             aria-label="História"
             title="História"
-            className="inline-flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+            className={`inline-flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm transition-all duration-200 ease-out ${
+              isHistoryOpen
+                ? "border-[var(--brand-accent)] bg-[color:color-mix(in_srgb,var(--brand-accent)_10%,white)] text-[var(--brand-accent)] shadow-[0_10px_30px_-18px_rgba(217,88,48,0.55)] dark:border-[var(--brand-accent-dark)] dark:bg-[color:color-mix(in_srgb,var(--brand-accent-dark)_14%,rgb(2,6,23))] dark:text-[var(--brand-accent-dark)]"
+                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+            } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500`}
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 transition-transform duration-200 ease-out ${isHistoryOpen ? "scale-110 rotate-[-14deg]" : "scale-100 rotate-0"}`}>
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
               <path d="M12 7v5l4 2" />
@@ -506,10 +511,10 @@ export default function SearchBar({
         <button
           type="button"
           onClick={onSearch}
-          disabled={loading}
+          disabled={loading && value.trim().length > 0}
           className="inline-flex h-14 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400 sm:min-w-36"
         >
-          {loading ? "Vyhľadáva sa..." : "Hľadať"}
+          {loading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
         </button>
       </div>
 
@@ -524,8 +529,10 @@ export default function SearchBar({
           headerLabel="História vyhľadávania"
           anchorRef={historyButtonRef}
           desktopAnchorAlign="center"
-          desktopWidth={420}
+          desktopWidth={560}
+          desktopMaxWidth={760}
           desktopMaxHeight={440}
+          desktopOffsetY={12}
           emptyMessage="Žiadne uložené vyhľadávania"
           renderEntry={(entry, _index, isActive) => (
             <SearchHistoryRow

@@ -17,7 +17,9 @@ interface HistoryPopoverProps<T extends { id: string; createdAt: string }> {
   anchorRef?: React.RefObject<HTMLElement | null>;
   desktopAnchorAlign?: "center" | "end";
   desktopWidth?: number;
+  desktopMaxWidth?: number;
   desktopMaxHeight?: number;
+  desktopOffsetY?: number;
 }
 
 function getIsMobile(): boolean {
@@ -40,13 +42,16 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   anchorRef,
   desktopAnchorAlign = "end",
   desktopWidth = 320,
+  desktopMaxWidth,
   desktopMaxHeight = 460,
+  desktopOffsetY = 8,
 }: HistoryPopoverProps<T>) {
   const [isMobile, setIsMobile] = useState(getIsMobile);
   const dialogRef = useRef<HTMLElement | null>(null);
   const [desktopPosition, setDesktopPosition] = useState<{
     top: number;
     left: number;
+    width: number;
     maxHeight: number;
   } | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -169,22 +174,26 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         return;
       }
 
-      const viewportPadding = 16;
-      const top = rect.bottom + 8;
+      const viewportPadding = 24;
+      const resolvedWidth = Math.min(
+        desktopMaxWidth ?? desktopWidth,
+        window.innerWidth - viewportPadding * 2,
+      );
+      const top = rect.bottom + desktopOffsetY;
       const unclampedLeft =
         desktopAnchorAlign === "center"
-          ? rect.left + rect.width / 2 - desktopWidth / 2
-          : rect.right - desktopWidth;
+          ? rect.left + rect.width / 2 - resolvedWidth / 2
+          : rect.right - resolvedWidth;
       const left = Math.min(
         Math.max(viewportPadding, unclampedLeft),
-        window.innerWidth - desktopWidth - viewportPadding,
+        window.innerWidth - resolvedWidth - viewportPadding,
       );
       const maxHeight = Math.min(
         Math.max(192, window.innerHeight - top - viewportPadding),
         desktopMaxHeight,
       );
 
-      setDesktopPosition({ top, left, maxHeight });
+      setDesktopPosition({ top, left, width: resolvedWidth, maxHeight });
     };
 
     updatePosition();
@@ -195,7 +204,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [anchorRef, desktopAnchorAlign, desktopMaxHeight, desktopWidth, isMobile, isOpen]);
+  }, [anchorRef, desktopAnchorAlign, desktopMaxHeight, desktopMaxWidth, desktopOffsetY, desktopWidth, isMobile, isOpen]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent, entryId: string) => {
     touchStartX.current = e.touches[0].clientX;
@@ -347,7 +356,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         aria-label={headerLabel}
         className="flex min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-150"
         style={{
-          width: anchorRef ? desktopWidth : undefined,
+          width: anchorRef ? (desktopPosition?.width ?? desktopWidth) : undefined,
           maxHeight: desktopPosition?.maxHeight ?? 384,
         }}
       >

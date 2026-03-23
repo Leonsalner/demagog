@@ -157,11 +157,26 @@ describe("SearchBar history filter summary", () => {
     fireEvent.click(screen.getByRole("button", { name: "História" }));
 
     const dialog = screen.getByRole("dialog", { name: "História vyhľadávania" });
-    expect(dialog).toHaveStyle({ width: "420px" });
+    expect(dialog).toHaveStyle({ width: "760px" });
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
 
     expect(screen.queryByRole("dialog", { name: "História vyhľadávania" })).not.toBeInTheDocument();
+  });
+
+  it("keeps search and history available during browse loading", () => {
+    render(
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={() => {}}
+        loading
+        historyEntries={[sampleEntry]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "História" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Hľadať" })).toBeEnabled();
   });
 
   it("closes the history popover when the search panel becomes inactive", () => {
