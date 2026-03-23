@@ -15,6 +15,8 @@ interface HistoryPopoverProps<T extends { id: string; createdAt: string }> {
   headerLabel?: string;
   onClearAll?: () => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
+  desktopAnchorAlign?: "center" | "end";
+  desktopWidth?: number;
 }
 
 function getIsMobile(): boolean {
@@ -35,6 +37,8 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   headerLabel = "História",
   onClearAll,
   anchorRef,
+  desktopAnchorAlign = "end",
+  desktopWidth = 320,
 }: HistoryPopoverProps<T>) {
   const [isMobile, setIsMobile] = useState(getIsMobile);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -137,12 +141,15 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         return;
       }
 
-      const width = 320;
       const viewportPadding = 16;
       const top = rect.bottom + 8;
+      const unclampedLeft =
+        desktopAnchorAlign === "center"
+          ? rect.left + rect.width / 2 - desktopWidth / 2
+          : rect.right - desktopWidth;
       const left = Math.min(
-        Math.max(viewportPadding, rect.right - width),
-        window.innerWidth - width - viewportPadding,
+        Math.max(viewportPadding, unclampedLeft),
+        window.innerWidth - desktopWidth - viewportPadding,
       );
       const maxHeight = Math.max(192, window.innerHeight - top - viewportPadding);
 
@@ -157,7 +164,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [anchorRef, isMobile, isOpen]);
+  }, [anchorRef, desktopAnchorAlign, desktopWidth, isMobile, isOpen]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent, entryId: string) => {
     touchStartX.current = e.touches[0].clientX;
@@ -309,6 +316,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         aria-label={headerLabel}
         className="flex min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-150"
         style={{
+          width: anchorRef ? desktopWidth : undefined,
           maxHeight: desktopPosition?.maxHeight ?? 384,
         }}
       >

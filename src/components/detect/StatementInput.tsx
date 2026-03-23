@@ -262,6 +262,8 @@ export default function StatementInput({
           onClearAll={handleHistoryClear}
           headerLabel="História analýz"
           anchorRef={historyButtonRef}
+          desktopAnchorAlign="end"
+          desktopWidth={420}
           emptyMessage="Žiadne uložené analýzy"
           renderEntry={(entry, _index, isActive) => (
             <DetectHistoryRow

@@ -396,6 +396,7 @@ export default function SearchBar({
 }: SearchBarProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const historyButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -477,6 +478,7 @@ export default function SearchBar({
 
         {isMounted && historyEntries.length > 0 && (
           <button
+            ref={historyButtonRef}
             type="button"
             onClick={() => setIsHistoryOpen(true)}
             disabled={loading}
@@ -511,6 +513,8 @@ export default function SearchBar({
           onEntryRemove={handleHistoryRemove}
           onClearAll={handleHistoryClear}
           headerLabel="História vyhľadávania"
+          anchorRef={historyButtonRef}
+          desktopAnchorAlign="center"
           emptyMessage="Žiadne uložené vyhľadávania"
           renderEntry={(entry, _index, isActive) => (
             <SearchHistoryRow
