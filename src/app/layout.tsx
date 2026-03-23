@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import localFont from "next/font/local";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import {
   FeedbackContextProvider,
@@ -15,17 +15,15 @@ import { APP_NAVBAR_ID } from "@/lib/layout";
 import { getThemeInitScript } from "@/lib/theme";
 import "./globals.css";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff2",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-inter",
   display: "swap",
 });
 
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff2",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
@@ -72,7 +70,7 @@ export default function RootLayout({
           {getThemeInitScript()}
         </Script>
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} bg-background text-foreground font-sans antialiased`}>
         <FooterHelperVisibilityProvider>
           <FeedbackContextProvider>
             <div className="noise-overlay min-h-screen">
