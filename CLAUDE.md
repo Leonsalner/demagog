@@ -148,11 +148,11 @@ Optional / script-only:
 - The feedback widget is mounted globally from `src/app/layout.tsx`.
 - 2048-dimensional vectors exceed pgvector's 2000d HNSW limit. Retrieval is designed around RPCs / sequential scans rather than HNSW indexing.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` specifically expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
-- `docs/ARCHITECTURE.md` is outdated — it still references Jina embeddings and 768d vectors. The current stack uses Ollama + `qwen3-embedding:8b` at 2048d.
 
 ## Planning References
 
 - `docs/plans/`: implementation notes and feature plans
 - `demagog-plan.md`: higher-level product / implementation planning (some parts reflect early-phase assumptions)
 - `PLAN.md`: original project plan
-- `README.md`: product overview for internal readers
+- `README.md`: product overview for internal readers (non-technical) and technical specification (at the end of the file)
+- `docs/README.md`: developer guide and setup instructions

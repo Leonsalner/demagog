@@ -17,7 +17,7 @@ Demagog Tool is a Next.js application for searching and reviewing fact-checked S
 - TypeScript
 - Node.js 24.x
 - Supabase and `pgvector` for storage and vector search
-- Local Qwen3 2048d for semantic retrieval (migrating to Gemini embeddings)
+- Local Ollama Qwen3 2048d for semantic retrieval (migrating to Gemini embeddings)
 - Gemini 1.5 for duplicate-classification and query understanding
 - Vitest and Testing Library for test coverage
 
@@ -132,7 +132,6 @@ tests/
   integration/
 docs/
   README.md
-  ARCHITECTURE.md
 scripts/
   import-data.ts
   embed-statements.ts
