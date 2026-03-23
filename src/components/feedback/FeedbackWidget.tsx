@@ -19,7 +19,7 @@ import {
 } from "@/lib/feedback";
 
 const SUCCESS_CLOSE_DELAY_MS = 3000;
-const DEFAULT_CATEGORY: FeedbackCategory = "bug";
+const CLOSE_ANIMATION_MS = 240;
 
 type SubmissionStatus = "idle" | "submitting" | "success" | "error";
 
@@ -51,7 +51,8 @@ export default function FeedbackWidget() {
   const pageContext = useFeedbackPageContext();
   const { isOpen, closePanel } = useFeedbackWidgetControls();
   const widgetStore = useFeedbackWidgetStore();
-  const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY);
+  const [category, setCategory] = useState<FeedbackCategory | "">("");
+  const [isClosing, setIsClosing] = useState(false);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<SubmissionStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -71,7 +72,7 @@ export default function FeedbackWidget() {
   );
   const isSubmitting = status === "submitting";
   const trimmedMessage = message.trim();
-  const submitDisabled = trimmedMessage.length === 0 || isSubmitting;
+  const submitDisabled = category === "" || trimmedMessage.length === 0 || isSubmitting;
 
   useEffect(() => {
     return () => {
@@ -82,7 +83,7 @@ export default function FeedbackWidget() {
   }, []);
 
   const resetForm = useCallback(() => {
-    setCategory(DEFAULT_CATEGORY);
+    setCategory("");
     setMessage("");
     setStatus("idle");
     setErrorMessage(null);
@@ -97,25 +98,30 @@ export default function FeedbackWidget() {
 
   const handleClosePanel = useCallback(
     (resetAfterClose = false) => {
-      if (isSubmitting) {
+      if (isSubmitting || isClosing) {
         return;
       }
 
       clearCloseTimeout();
-      closePanel();
       setErrorMessage(null);
-
-      if (resetAfterClose) {
-        resetForm();
-      } else if (status === "success") {
-        setStatus("idle");
-      }
+      setIsClosing(true);
 
       window.setTimeout(() => {
-        document.getElementById(FEEDBACK_TRIGGER_ID)?.focus();
-      }, 0);
+        setIsClosing(false);
+        closePanel();
+
+        if (resetAfterClose) {
+          resetForm();
+        } else if (status === "success") {
+          setStatus("idle");
+        }
+
+        window.setTimeout(() => {
+          document.getElementById(FEEDBACK_TRIGGER_ID)?.focus();
+        }, 0);
+      }, CLOSE_ANIMATION_MS);
     },
-    [clearCloseTimeout, closePanel, isSubmitting, resetForm, status],
+    [clearCloseTimeout, closePanel, isClosing, isSubmitting, resetForm, status],
   );
 
   useEffect(() => {
@@ -176,7 +182,7 @@ export default function FeedbackWidget() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!trimmedMessage || isSubmitting) {
+    if (!category || !trimmedMessage || isSubmitting) {
       return;
     }
 
@@ -234,14 +240,14 @@ export default function FeedbackWidget() {
           : errorMessage ?? ""}
       </div>
 
-      {isOpen ? (
+      {isOpen || isClosing ? (
         <FooterHelperDock slot="feedback" side="right">
           <div
             ref={panelRef}
             id={FEEDBACK_PANEL_ID}
             role="dialog"
             aria-label="Napíšte nám"
-            className="pointer-events-auto mb-3 w-[min(24rem,calc(100vw-2rem))] animate-[feedbackPanelReveal_180ms_ease-out] rounded-[1.6rem] border border-slate-200/90 bg-white/96 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/94 dark:shadow-[0_32px_90px_-44px_rgba(2,6,23,0.92)]"
+            className={`pointer-events-auto mb-3 w-[min(24rem,calc(100vw-2rem))] rounded-[1.6rem] border border-slate-200/90 bg-white/96 p-5 shadow-[0_28px_80px_-42px_rgba(15,23,42,0.42)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/94 dark:shadow-[0_32px_90px_-44px_rgba(2,6,23,0.92)] ${isClosing ? "animate-feedback-hide" : "animate-feedback-reveal"}`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -290,6 +296,9 @@ export default function FeedbackWidget() {
                     disabled={isSubmitting}
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#d95830] focus:bg-white focus:ring-4 focus:ring-[#d95830]/15 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#f07850] dark:focus:bg-slate-950 dark:focus:ring-[#f07850]/20"
                   >
+                    <option value="" disabled>
+                      Vyberte kategóriu...
+                    </option>
                     {Object.entries(FEEDBACK_CATEGORY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
