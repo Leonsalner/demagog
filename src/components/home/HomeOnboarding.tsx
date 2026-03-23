@@ -583,7 +583,7 @@ export default function HomeOnboarding({
                   setShowScrollCue(false);
                 }
               }}
-              className="relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] sm:max-h-[calc(100dvh-3rem)] lg:grid lg:grid-cols-[420px_minmax(0,1.6fr)] lg:overflow-hidden"
+              className="relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-slate-200 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] sm:max-h-[calc(100dvh-3rem)] lg:grid lg:grid-cols-[420px_minmax(0,1.6fr)] lg:overflow-hidden"
             >
               {isMobile ? (
                 <div className="pointer-events-none sticky right-0 top-4 z-20 -mb-11 ml-auto mr-4 mt-4 flex justify-end">
