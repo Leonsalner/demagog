@@ -218,7 +218,7 @@ function SearchHistoryRow({
 
   return (
     <div
-      className={`group relative flex items-start gap-3 rounded-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
+      className={`group relative flex items-start gap-3 rounded-r-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
     >
       <div className="min-w-0 flex-1">
         <button
@@ -256,7 +256,7 @@ function SearchHistoryRow({
                 </div>
 
                 {shouldShowFilterDetail ? (
-                  <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-lg lg:group-hover:block lg:group-focus-within:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                  <div className="pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-xl lg:group-hover:block lg:group-focus-within:block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {detailText}
                   </div>
                 ) : null}

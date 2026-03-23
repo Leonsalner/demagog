@@ -78,7 +78,7 @@ function DetectHistoryRow({
 
   return (
     <div
-      className={`group relative flex items-start gap-3 rounded-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
+      className={`group relative flex items-start gap-3 rounded-r-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
     >
       <button
         type="button"
