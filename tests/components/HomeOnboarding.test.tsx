@@ -78,7 +78,7 @@ describe("HomeOnboarding", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Zavrieť návod",
+        name: "Preskočiť",
       }),
     );
 
@@ -196,7 +196,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -226,7 +226,7 @@ describe("HomeOnboarding", () => {
 
     renderOnboarding();
 
-    await screen.findByRole("button", { name: "Zavrieť návod" });
+    await screen.findByRole("button", { name: "Preskočiť" });
 
     expect(document.querySelector(".pointer-events-none.sticky")).not.toBeNull();
   });
@@ -300,7 +300,7 @@ describe("HomeOnboarding", () => {
   it("renders guide trigger dock with side=right after dismissal", async () => {
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -314,7 +314,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -332,7 +332,7 @@ describe("HomeOnboarding", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderOnboarding();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Zavrieť návod" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -346,5 +346,99 @@ describe("HomeOnboarding", () => {
     expect(
       screen.getByText("Našli ste chybu alebo máte nápad, čo by mohlo fungovať lepšie? Dajte nám vedieť cez tlačidlo v hlavičke."),
     ).toBeInTheDocument();
+  });
+
+  it("shows Preskočiť on the initial step", async () => {
+    renderOnboarding();
+
+    expect(await screen.findByRole("button", { name: "Preskočiť" })).toBeInTheDocument();
+  });
+
+  it("shows Preskočiť on intermediate steps", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+    expect(await screen.findByRole("button", { name: "Preskočiť" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ďalej" }));
+    expect(screen.getByRole("button", { name: "Preskočiť" })).toBeInTheDocument();
+  });
+
+  it("hides Preskočiť on the final step", async () => {
+    renderOnboarding();
+
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+    }
+
+    expect(screen.queryByRole("button", { name: "Preskočiť" })).not.toBeInTheDocument();
+  });
+
+  it("clicking Preskočiť closes the dialog and persists dismissed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).toBe("dismissed");
+
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
+  });
+
+  it("does not persist completed after skipping", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(window.localStorage.getItem(HOME_ONBOARDING_STORAGE_KEY)).not.toBe("completed");
+  });
+
+  it("supports manual reopen after skip dismissal", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Preskočiť" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(30000);
+    });
+    expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Otvoriť návod" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Rýchly návod k práci s Demagogom" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders DOM order with content before media on image-backed steps", async () => {
+    renderOnboarding();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ďalej" }));
+
+    const heading = await screen.findByRole("heading", {
+      level: 2,
+      name: "Pýtajte sa tak, ako by ste sa pýtali kolegu.",
+    });
+    const image = await screen.findByAltText(
+      "Vyhľadávacie rozhranie Demagogu s prirodzeným dopytom, automaticky doplnenými filtrami a výsledkami.",
+    );
+
+    expect(heading.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 });
