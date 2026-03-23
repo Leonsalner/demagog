@@ -292,7 +292,7 @@ function SearchHistoryRow({
           onClick={onSelect}
           onFocus={showDesktopDetail}
           onBlur={hideDesktopDetail}
-          className="min-w-0 w-full text-left"
+          className="min-w-0 w-full pr-10 text-left"
         >
           <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
             {entry.query || "(prázdny dopyt)"}

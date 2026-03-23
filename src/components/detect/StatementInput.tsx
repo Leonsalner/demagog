@@ -83,7 +83,7 @@ function DetectHistoryRow({
       <button
         type="button"
         onClick={onSelect}
-        className="min-w-0 flex-1 text-left"
+        className="min-w-0 flex-1 pr-10 text-left"
       >
         <p className="line-clamp-2 text-sm font-medium text-slate-900 dark:text-slate-100">
           {entry.query}
