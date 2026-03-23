@@ -33,6 +33,18 @@ const sampleEntry: SearchHistoryEntry = {
   },
 };
 
+const compactEntry: SearchHistoryEntry = {
+  ...sampleEntry,
+  id: "search-2",
+  filters: {
+    strana: null,
+    vyhodnotenie: ["Pravda"],
+    meno: ["Robert Fico"],
+    datum_od: null,
+    datum_do: null,
+  },
+};
+
 describe("SearchBar history filter summary", () => {
   beforeEach(() => {
     Object.defineProperty(window, "matchMedia", {
@@ -97,5 +109,35 @@ describe("SearchBar history filter summary", () => {
     expect(
       screen.getAllByText(/Hodnotenie: Pravda, Nepravda · Politik: Robert Fico/i).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("does not show filter detail affordances when all filters fit inline", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 1023px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+
+    render(
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={() => {}}
+        historyEntries={[compactEntry]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "História" }));
+
+    expect(screen.queryByRole("button", { name: "Detaily filtrov" })).not.toBeInTheDocument();
+    expect(screen.queryByText("+1")).not.toBeInTheDocument();
   });
 });

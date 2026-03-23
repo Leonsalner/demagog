@@ -172,6 +172,7 @@ function SearchHistoryRow({
   const visibleTokens = allTokens.slice(0, 2);
   const hiddenTokenCount = Math.max(0, allTokens.length - visibleTokens.length);
   const detailText = buildFilterDetailText(entry.filters);
+  const shouldShowFilterDetail = hiddenTokenCount > 0 && !!detailText;
   const resultCount = entry.response.results?.length ?? 0;
   const relatedResultCount = entry.response.related_results?.length ?? 0;
 
@@ -195,7 +196,7 @@ function SearchHistoryRow({
               <div className="relative min-w-0">
                 <div
                   className="flex min-w-0 flex-wrap items-center gap-1"
-                  title={detailText || undefined}
+                  title={shouldShowFilterDetail ? detailText : undefined}
                 >
                   {visibleTokens.map((token) => (
                     <span
@@ -212,7 +213,7 @@ function SearchHistoryRow({
                   ) : null}
                 </div>
 
-                {detailText ? (
+                {shouldShowFilterDetail ? (
                   <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-lg lg:group-hover:block lg:group-focus-within:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                     {detailText}
                   </div>
@@ -222,7 +223,7 @@ function SearchHistoryRow({
           </div>
         </button>
 
-        {detailText ? (
+        {shouldShowFilterDetail ? (
           <button
             type="button"
             onClick={() => {
@@ -234,7 +235,7 @@ function SearchHistoryRow({
             Detaily filtrov
           </button>
         ) : null}
-        {detailText && isTouchDetailOpen ? (
+        {shouldShowFilterDetail && isTouchDetailOpen ? (
           <p className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400 lg:hidden">
             {detailText}
           </p>

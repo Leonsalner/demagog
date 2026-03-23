@@ -7,6 +7,7 @@ import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
 import type { DetectHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
+const DETECT_TIMEOUT_MS = 12000;
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -30,6 +31,15 @@ async function extractDetectErrorMessage(response: Response): Promise<string> {
   }
 
   return "Detekcia zlyhala.";
+}
+
+function buildTimeoutFallbackResponse(statement: string): DetectResponse {
+  return {
+    input_statement: statement,
+    matches: [],
+    overall_status: "NEW_CLAIM",
+    query_time_ms: DETECT_TIMEOUT_MS,
+  };
 }
 
 function buildMatch(
@@ -147,10 +157,12 @@ export function useDetect() {
     }
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    let didTimeout = false;
 
     const timeoutId = setTimeout(() => {
+      didTimeout = true;
       controller.abort();
-    }, 25000);
+    }, DETECT_TIMEOUT_MS);
 
     setLoading(true);
     setError(null);
@@ -186,7 +198,12 @@ export function useDetect() {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         if (requestIdRef.current === requestId) {
-          setError("Detekcia trvala príliš dlho. Skúste to prosím znova.");
+          if (didTimeout) {
+            setResult(buildTimeoutFallbackResponse(statement));
+            setError(null);
+          } else {
+            setError(null);
+          }
         }
         return;
       }

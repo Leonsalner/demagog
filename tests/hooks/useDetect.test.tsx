@@ -200,4 +200,31 @@ describe("useDetect", () => {
 
     expect(result.current.loading).toBe(false);
   });
+
+  it("times out sooner and falls back to NEW_CLAIM instead of surfacing an error", async () => {
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((_, reject) => {
+          const abortError = new DOMException("Aborted", "AbortError");
+          setTimeout(() => reject(abortError), 12_000);
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(12_000);
+      await detectPromise;
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.result).toEqual({
+      input_statement: "Pošlú nás na vojnu",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+      query_time_ms: 12_000,
+    });
+    expect(result.current.loading).toBe(false);
+  });
 });
