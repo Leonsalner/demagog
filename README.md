@@ -46,6 +46,31 @@ Ak pri skúšaní narazíte na chybu, niečo nebude fungovať, alebo máte nápa
 
 This section outlines the technical implementation details of the application. For setup instructions and developer guides, please refer to [`docs/README.md`](docs/README.md).
 
+### Prerequisites & Database Requirements
+
+**Prerequisites:**
+- **Node.js**: 24.x
+- **Framework**: Next.js 16 (App Router)
+- **Library**: React 19
+- **Database**: Supabase (PostgreSQL + `pgvector`)
+- **AI**: Gemini API Key
+- **Embeddings**: Local Ollama (`qwen3-embedding:8b`)
+- **Package Manager**: npm
+
+**Required Database Fields:**
+- **`vyroky`**: `id`, `vyrok`, `vyhodnotenie`, `odovodnenie`, `oblast`, `datum`, `meno`, `strana`, `embedding`, `source_id`, `url`
+- **`clanky`**: `id`, `datum`, `autor`, `text_content`, `title`, `embedding`
+- **`statement_sources`**: `id`, `statement_id`, `url`, `title`, `position`, `label`
+
+**Required Database Functions (RPCs):**
+- `search_statements`
+- `match_statements`
+- `match_articles`
+- `match_articles_batch`
+- `create_statement_with_sources`
+- `statement_date_bounds`
+- `list_distinct_values`
+
 ### System Overview
 
 ```text
