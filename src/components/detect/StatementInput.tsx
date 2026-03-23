@@ -8,6 +8,7 @@ interface StatementInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (statement: string) => void;
+  isVisible?: boolean;
   loading: boolean;
   onReset?: () => void;
   historyEntries?: DetectHistoryEntry[];
@@ -123,6 +124,7 @@ export default function StatementInput({
   value,
   onChange,
   onSubmit,
+  isVisible = true,
   loading,
   onReset,
   historyEntries = [],
@@ -138,6 +140,13 @@ export default function StatementInput({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isVisible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: close hidden panel history when switching tabs
+      setIsHistoryOpen(false);
+    }
+  }, [isVisible]);
 
   const trimmedValue = value.trim();
   const isTooLong = value.length > MAX_LENGTH;

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import HomePageClient from "@/components/home/HomePageClient";
@@ -44,15 +44,6 @@ const availableFilters: FiltersResponse = {
     max: "2026-12-31",
   },
 };
-
-function deferredResponse() {
-  let resolve!: (value: Response) => void;
-  const promise = new Promise<Response>((innerResolve) => {
-    resolve = innerResolve;
-  });
-
-  return { promise, resolve };
-}
 
 function buildSearchResults(): SearchResponse {
   return {
@@ -405,7 +396,6 @@ describe("research workspace overlay", () => {
     await screen.findByRole("dialog", { name: "Research workspace" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
 
-    const dialog = screen.getByRole("dialog", { name: "Research workspace" });
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
     expect(startClose).toHaveBeenCalledTimes(1);
 

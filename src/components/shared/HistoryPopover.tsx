@@ -82,6 +82,32 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   }, [isOpen, onClose]);
 
   useEffect(() => {
+    if (!isOpen || isMobile) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (dialogRef.current?.contains(target)) {
+        return;
+      }
+
+      if (anchorRef?.current?.contains(target)) {
+        return;
+      }
+
+      onClose();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [anchorRef, isMobile, isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen && !isMobile && entries.length > 0) {
       const previouslyFocused = document.activeElement as HTMLElement | null;
       const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(

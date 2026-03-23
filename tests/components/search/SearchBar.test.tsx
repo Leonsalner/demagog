@@ -140,4 +140,54 @@ describe("SearchBar history filter summary", () => {
     expect(screen.queryByRole("button", { name: "Detaily filtrov" })).not.toBeInTheDocument();
     expect(screen.queryByText("+1")).not.toBeInTheDocument();
   });
+
+  it("uses the wider desktop history layout and closes on outside click", () => {
+    render(
+      <div>
+        <button type="button">Outside</button>
+        <SearchBar
+          value=""
+          onChange={() => {}}
+          onSearch={() => {}}
+          historyEntries={[sampleEntry]}
+        />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "História" }));
+
+    const dialog = screen.getByRole("dialog", { name: "História vyhľadávania" });
+    expect(dialog).toHaveStyle({ width: "420px" });
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
+
+    expect(screen.queryByRole("dialog", { name: "História vyhľadávania" })).not.toBeInTheDocument();
+  });
+
+  it("closes the history popover when the search panel becomes inactive", () => {
+    const view = render(
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={() => {}}
+        isVisible
+        historyEntries={[sampleEntry]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "História" }));
+    expect(screen.getByRole("dialog", { name: "História vyhľadávania" })).toBeInTheDocument();
+
+    view.rerender(
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={() => {}}
+        isVisible={false}
+        historyEntries={[sampleEntry]}
+      />,
+    );
+
+    expect(screen.queryByRole("dialog", { name: "História vyhľadávania" })).not.toBeInTheDocument();
+  });
 });

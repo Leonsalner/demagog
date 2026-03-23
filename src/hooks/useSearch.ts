@@ -414,7 +414,15 @@ export function useSearch() {
         setLoading(false);
       }
     },
-    [page, query, submittedQuery, submittedOwnership, filterOwnershipRef, submittedFiltersRef, filtersRef],
+    [
+      page,
+      query,
+      submittedQuery,
+      submittedOwnership,
+      syncFilterOwnership,
+      syncFilters,
+      syncSubmittedFilters,
+    ],
   );
 
   const setFilters = useCallback((nextState: SetStateAction<FilterState>) => {
@@ -489,7 +497,7 @@ export function useSearch() {
 
       return nextOwnership;
     });
-  }, []);
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
 
   const restore = useCallback((entry: SearchHistoryEntry) => {
     setIsDefaultBrowseView(false);
@@ -533,7 +541,7 @@ export function useSearch() {
     });
     requestSequenceRef.current += 1;
     setRestoreVersion((currentVersion) => currentVersion + 1);
-  }, []);
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
 
   const showNewest = useCallback(async () => {
     setLoading(true);

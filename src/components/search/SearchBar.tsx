@@ -10,6 +10,7 @@ interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onSearch: () => void;
+  isVisible?: boolean;
   loading?: boolean;
   historyEntries?: SearchHistoryEntry[];
   onHistorySelect?: (entry: SearchHistoryEntry) => void;
@@ -388,6 +389,7 @@ export default function SearchBar({
   value,
   onChange,
   onSearch,
+  isVisible = true,
   loading = false,
   historyEntries = [],
   onHistorySelect,
@@ -402,6 +404,13 @@ export default function SearchBar({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isVisible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: close hidden panel history when switching tabs
+      setIsHistoryOpen(false);
+    }
+  }, [isVisible]);
 
   const handleHistorySelect = (entry: SearchHistoryEntry) => {
     onHistorySelect?.(entry);
@@ -515,6 +524,7 @@ export default function SearchBar({
           headerLabel="História vyhľadávania"
           anchorRef={historyButtonRef}
           desktopAnchorAlign="center"
+          desktopWidth={420}
           desktopMaxHeight={440}
           emptyMessage="Žiadne uložené vyhľadávania"
           renderEntry={(entry, _index, isActive) => (

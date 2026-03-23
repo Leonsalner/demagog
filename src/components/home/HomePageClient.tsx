@@ -91,7 +91,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     query,
     submittedQuery,
     submittedFilters,
-    filterOwnership,
     filters,
     page,
     availableFilters,
@@ -776,6 +775,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 value={query}
                 onChange={setQuery}
                 onSearch={handleSearch}
+                isVisible={activeTab === "search"}
                 loading={loading}
                 historyEntries={searchHistoryEntries}
                 onHistorySelect={handleSearchHistorySelect}
@@ -950,6 +950,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               value={detectStatement}
               onChange={setDetectStatement}
               onSubmit={handleDetect}
+              isVisible={activeTab === "detect"}
               loading={isDetectPanelLoading}
               onReset={handleDetectReset}
               historyEntries={detectHistoryEntries}

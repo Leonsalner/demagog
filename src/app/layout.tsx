@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import localFont from "next/font/local";
+import Script from "next/script";
 import {
   FeedbackContextProvider,
 } from "@/components/feedback/FeedbackContext";
@@ -64,10 +65,12 @@ export default function RootLayout({
   return (
     <html lang="sk" suppressHydrationWarning>
       <head>
-        <script
+        <Script
           id="theme-init"
-          dangerouslySetInnerHTML={{ __html: getThemeInitScript() }}
-        />
+          strategy="beforeInteractive"
+        >
+          {getThemeInitScript()}
+        </Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}>
         <FooterHelperVisibilityProvider>
