@@ -786,6 +786,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 onSearch={handleSearch}
                 isVisible={activeTab === "search"}
                 loading={loading}
+                filters={filters}
                 historyEntries={searchHistoryEntries}
                 onHistorySelect={handleSearchHistorySelect}
                 onHistoryRemove={removeSearchEntry}
