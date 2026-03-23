@@ -264,6 +264,7 @@ export default function StatementInput({
           anchorRef={historyButtonRef}
           desktopAnchorAlign="end"
           desktopWidth={420}
+          desktopMaxHeight={500}
           emptyMessage="Žiadne uložené analýzy"
           renderEntry={(entry, _index, isActive) => (
             <DetectHistoryRow

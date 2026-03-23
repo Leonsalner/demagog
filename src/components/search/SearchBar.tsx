@@ -354,7 +354,7 @@ function SearchHistoryRow({
           <ViewportPortal>
             <div
               ref={filterTooltipRef}
-              className="pointer-events-none fixed z-[80] hidden rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-700 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 lg:block dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-white/10"
+              className="pointer-events-none fixed z-[35] hidden rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-700 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 lg:block dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-white/10"
               style={{
                 top: desktopDetailPosition?.top ?? 0,
                 left: desktopDetailPosition?.left ?? 0,
@@ -515,6 +515,7 @@ export default function SearchBar({
           headerLabel="História vyhľadávania"
           anchorRef={historyButtonRef}
           desktopAnchorAlign="center"
+          desktopMaxHeight={440}
           emptyMessage="Žiadne uložené vyhľadávania"
           renderEntry={(entry, _index, isActive) => (
             <SearchHistoryRow

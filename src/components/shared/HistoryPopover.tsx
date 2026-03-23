@@ -17,6 +17,7 @@ interface HistoryPopoverProps<T extends { id: string; createdAt: string }> {
   anchorRef?: React.RefObject<HTMLElement | null>;
   desktopAnchorAlign?: "center" | "end";
   desktopWidth?: number;
+  desktopMaxHeight?: number;
 }
 
 function getIsMobile(): boolean {
@@ -39,6 +40,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   anchorRef,
   desktopAnchorAlign = "end",
   desktopWidth = 320,
+  desktopMaxHeight = 460,
 }: HistoryPopoverProps<T>) {
   const [isMobile, setIsMobile] = useState(getIsMobile);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -151,7 +153,10 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         Math.max(viewportPadding, unclampedLeft),
         window.innerWidth - desktopWidth - viewportPadding,
       );
-      const maxHeight = Math.max(192, window.innerHeight - top - viewportPadding);
+      const maxHeight = Math.min(
+        Math.max(192, window.innerHeight - top - viewportPadding),
+        desktopMaxHeight,
+      );
 
       setDesktopPosition({ top, left, maxHeight });
     };
@@ -164,7 +169,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [anchorRef, desktopAnchorAlign, desktopWidth, isMobile, isOpen]);
+  }, [anchorRef, desktopAnchorAlign, desktopMaxHeight, desktopWidth, isMobile, isOpen]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent, entryId: string) => {
     touchStartX.current = e.touches[0].clientX;
@@ -300,7 +305,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
 
   const desktopContent = (
     <div
-      className={anchorRef ? "fixed z-50" : "absolute right-0 top-full z-50 mt-2"}
+      className={anchorRef ? "fixed z-30" : "absolute right-0 top-full z-30 mt-2"}
       style={
         anchorRef && desktopPosition
           ? {
