@@ -56,7 +56,7 @@ export default function ResearchMobileNavigator({
           role="dialog"
           aria-modal="true"
           aria-label={getSheetTitle(mode, activeTab)}
-          className="relative max-h-[78dvh] w-full overflow-hidden rounded-t-[1.75rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
+          className="relative flex max-h-[78dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
           onClick={(event) => event.stopPropagation()}
           style={{
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
@@ -86,7 +86,7 @@ export default function ResearchMobileNavigator({
             </button>
           </div>
 
-          <div className="overflow-y-auto px-2 pb-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
             {showingStatements ? (
               <div className="space-y-2 px-2 pb-2">
                 {detectMatches.map((match) => {
