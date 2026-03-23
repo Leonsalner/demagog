@@ -333,7 +333,7 @@ describe("useFakeProgress", () => {
     expect(result.current.progress).toBeGreaterThan(progressAtCompletionStart);
   });
 
-  it("hides and resets only after completion has finished", () => {
+  it("hides immediately when pending ends without a completion phase", () => {
     const { result, rerender } = renderHook(
       ({ pending, completing }: { pending: boolean; completing: boolean }) =>
         useFakeProgress({
@@ -362,7 +362,7 @@ describe("useFakeProgress", () => {
       rerender({ pending: false, completing: false });
     });
 
-    expect(result.current.isVisible).toBe(true);
-    expect(result.current.progress).toBeLessThanOrEqual(70.5);
+    expect(result.current.isVisible).toBe(false);
+    expect(result.current.progress).toBe(0);
   });
 });

@@ -99,6 +99,10 @@ export default function useFakeProgress({
       completionStartedAtRef.current = null;
       completingFromRef.current = progressRef.current;
       pausedProgressRef.current = progressRef.current;
+      setIsVisible(false);
+      setProgress(0);
+      progressRef.current = 0;
+      phaseStartedAtRef.current = null;
     }
   }, [pending, completing]);
 
