@@ -155,6 +155,7 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    retryUpgradeNotice: null,
     detect: vi.fn(),
     restore: vi.fn(),
     reset: vi.fn(),

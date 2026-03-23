@@ -117,6 +117,7 @@ describe("feedback context integration", () => {
       result: null,
       loading: false,
       error: null,
+      retryUpgradeNotice: null,
       detect: vi.fn(),
       restore: vi.fn(),
       reset: vi.fn(),

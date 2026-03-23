@@ -227,4 +227,70 @@ describe("useDetect", () => {
     });
     expect(result.current.loading).toBe(false);
   });
+
+  it("runs one background retry after timeout and upgrades the result if matches are found", async () => {
+    let callCount = 0;
+
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          callCount += 1;
+
+          if (callCount === 1) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Pošlú nás na vojnu",
+                    matches: [
+                      {
+                        classification: "RELATED",
+                        similarity: 0.77,
+                        statement: {
+                          id: 1,
+                          vyrok: "Pošlú nás do vojny",
+                          vyhodnotenie: "Pravda",
+                          odovodnenie: "Odôvodnenie",
+                          datum: "2026-01-01",
+                          meno: "Politik",
+                          strana: "Strana",
+                        },
+                      },
+                    ],
+                    overall_status: "RELATED_ONLY",
+                    query_time_ms: 620,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_000,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(11_000);
+      await detectPromise;
+    });
+
+    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.retryUpgradeNotice).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
+    expect(result.current.retryUpgradeNotice).toBe(
+      "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
+    );
+  });
 });

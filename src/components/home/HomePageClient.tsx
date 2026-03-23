@@ -112,6 +112,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     result: detectResult,
     loading: detectLoading,
     error: detectError,
+    retryUpgradeNotice: detectRetryUpgradeNotice,
     detect,
     restore: restoreDetect,
     reset: resetDetect,
@@ -1006,6 +1007,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               {!isDetectPanelLoading && detectResult ? (
                 <DetectionResults
                   result={detectResult}
+                  retryUpgradeNotice={detectRetryUpgradeNotice}
                   onOpenStatementResearch={(statementId) => {
                     void openStatementResearch(statementId, { revealWhenReady: false });
                   }}
