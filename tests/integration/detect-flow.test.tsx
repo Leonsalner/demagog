@@ -5,6 +5,7 @@ import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import type { DetectResponse } from "@/types";
+import type { DetectHistoryEntry } from "@/types/history";
 
 import {
   mockDetectDuplicate,
@@ -222,9 +223,29 @@ function buildWeakDetectResult(): DetectResponse {
   };
 }
 
+function buildDetectHistoryEntry(overrides?: Partial<DetectHistoryEntry>): DetectHistoryEntry {
+  return {
+    id: "detect-history-1",
+    createdAt: "2026-03-23T10:00:00.000Z",
+    kind: "detect",
+    query: "Ukrajina je Rusko.",
+    response: buildWeakDetectResult(),
+    preparedAggregate: {
+      statementIds: [201],
+      data: {
+        mode: "aggregate",
+        items: [],
+      },
+    },
+    openResearch: null,
+    ...overrides,
+  };
+}
+
 describe("detect page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -409,6 +430,35 @@ describe("detect page flow", () => {
           body: { statement_ids: [109, 111] },
         },
         preparedData,
+      );
+    });
+  });
+
+  it("reopens prepared research immediately from detect history when no open snapshot was saved", async () => {
+    const historyEntry = buildDetectHistoryEntry();
+    window.localStorage.setItem(
+      "demagog.history.detect.v2",
+      JSON.stringify({ version: 2, entries: [historyEntry] }),
+    );
+
+    mockUseDetectReturn();
+    const { hydrate } = mockUsePreparedAggregateResearchReturn();
+    const { openPreparedResearch } = mockUseResearchReturn();
+
+    await renderHome("detect");
+
+    fireEvent.click(screen.getByRole("button", { name: "História" }));
+    fireEvent.click(screen.getByRole("button", { name: /Ukrajina je Rusko/i }));
+
+    await waitFor(() => {
+      expect(hydrate).toHaveBeenCalledWith(historyEntry.preparedAggregate);
+      expect(openPreparedResearch).toHaveBeenCalledWith(
+        {
+          mode: "aggregate",
+          endpoint: "/api/research/detect",
+          body: { statement_ids: [201] },
+        },
+        historyEntry.preparedAggregate?.data,
       );
     });
   });

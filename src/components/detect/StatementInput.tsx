@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useState, useEffect } from "react";
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
 import type { DetectHistoryEntry } from "@/types/history";
 
@@ -102,6 +102,7 @@ export default function StatementInput({
 }: StatementInputProps) {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const historyButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -184,23 +185,6 @@ export default function StatementInput({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {isMounted && historyEntries.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsHistoryOpen(true)}
-              disabled={loading}
-              aria-label="História"
-              title="História"
-              className="inline-flex h-[52px] w-[52px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-                <path d="M12 7v5l4 2" />
-              </svg>
-            </button>
-          )}
-
           <button
             type="submit"
             disabled={isDisabled}
@@ -215,6 +199,26 @@ export default function StatementInput({
               "Analyzovať"
             )}
           </button>
+
+          {isMounted && historyEntries.length > 0 && (
+            <div className="relative ml-auto">
+              <button
+                ref={historyButtonRef}
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                disabled={loading}
+                aria-label="História"
+                title="História"
+                className="inline-flex h-[52px] w-[52px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M12 7v5l4 2" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </form>
 
@@ -225,6 +229,7 @@ export default function StatementInput({
           entries={historyEntries}
           onClearAll={handleHistoryClear}
           headerLabel="História analýz"
+          anchorRef={historyButtonRef}
           emptyMessage="Žiadne uložené analýzy"
           renderEntry={(entry) => (
             <DetectHistoryRow

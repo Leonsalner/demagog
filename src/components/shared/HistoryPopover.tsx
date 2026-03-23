@@ -12,6 +12,7 @@ interface HistoryPopoverProps<T extends { id: string; createdAt: string }> {
   emptyMessage?: string;
   headerLabel?: string;
   onClearAll?: () => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 function getIsMobile(): boolean {
@@ -27,9 +28,15 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   emptyMessage = "Žiadne položky",
   headerLabel = "História",
   onClearAll,
+  anchorRef,
 }: HistoryPopoverProps<T>) {
   const [isMobile, setIsMobile] = useState(getIsMobile);
   const dialogRef = useRef<HTMLElement | null>(null);
+  const [desktopPosition, setDesktopPosition] = useState<{
+    top: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1023px)");
@@ -68,6 +75,39 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   }, [isOpen, isMobile]);
 
   const groupedEntries = groupByDate(entries);
+
+  useLayoutEffect(() => {
+    if (!isOpen || isMobile || !anchorRef?.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      const rect = anchorRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+
+      const width = 320;
+      const viewportPadding = 16;
+      const top = rect.bottom + 8;
+      const left = Math.min(
+        Math.max(viewportPadding, rect.right - width),
+        window.innerWidth - width - viewportPadding,
+      );
+      const maxHeight = Math.max(192, window.innerHeight - top - viewportPadding);
+
+      setDesktopPosition({ top, left, maxHeight });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorRef, isMobile, isOpen]);
 
   if (!isOpen) return null;
 
@@ -145,13 +185,26 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
     );
   }
 
-  return (
-    <div className="absolute right-0 top-full z-50 mt-2">
+  const desktopContent = (
+    <div
+      className={anchorRef ? "fixed z-50" : "absolute right-0 top-full z-50 mt-2"}
+      style={
+        anchorRef && desktopPosition
+          ? {
+              top: desktopPosition.top,
+              left: desktopPosition.left,
+            }
+          : undefined
+      }
+    >
       <div
         ref={dialogRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-label={headerLabel}
-        className="flex max-h-96 min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)]"
+        className="flex min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)]"
+        style={{
+          maxHeight: desktopPosition?.maxHeight ?? 384,
+        }}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/95">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -206,4 +259,10 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
       </div>
     </div>
   );
+
+  if (anchorRef) {
+    return <ViewportPortal>{desktopContent}</ViewportPortal>;
+  }
+
+  return desktopContent;
 }

@@ -475,20 +475,37 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
       if (entry.preparedAggregate) {
         hydratePreparedAggregate(entry.preparedAggregate);
-        setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
       } else {
         resetPreparedAggregateResearch();
       }
 
       if (entry.openResearch) {
+        if (entry.preparedAggregate) {
+          setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
+        }
         restoreSnapshot(entry.openResearch);
+      } else if (entry.preparedAggregate) {
+        openPreparedResearch(
+          createAggregateResearchRequest(entry.preparedAggregate.statementIds),
+          entry.preparedAggregate.data,
+        );
+        setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
       } else {
         if (researchDisplayState !== "closed") {
           dismissResearch();
         }
       }
     },
-    [restoreDetect, touchDetectEntry, hydratePreparedAggregate, resetPreparedAggregateResearch, restoreSnapshot, dismissResearch, researchDisplayState]
+    [
+      restoreDetect,
+      touchDetectEntry,
+      hydratePreparedAggregate,
+      resetPreparedAggregateResearch,
+      restoreSnapshot,
+      openPreparedResearch,
+      dismissResearch,
+      researchDisplayState,
+    ]
   );
 
   const handleSearch = () => {
