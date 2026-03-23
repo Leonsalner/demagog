@@ -62,7 +62,7 @@ export function getThemeInitScript(): string {
     const theme =
       storedTheme === "light" || storedTheme === "dark"
         ? storedTheme
-        : window.matchMedia(${JSON.stringify(DARK_THEME_MEDIA_QUERY)}).matches
+        : window.matchMedia?.(${JSON.stringify(DARK_THEME_MEDIA_QUERY)}).matches
           ? "dark"
           : "light";
     const root = document.documentElement;
