@@ -94,6 +94,9 @@ function mockUseSearchReturn() {
       verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
       date_range: { min: null, max: null },
     },
+    completedSearchSnapshot: null,
+    restoreVersion: 0,
+    manualFilterVersion: 0,
     hasSearched: false,
     setQuery: vi.fn(),
     setFilters: vi.fn(),
@@ -343,7 +346,7 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("keeps the detect surface blocked while aggregate preparation is running", async () => {
+  it("shows inline aggregate preparation state without blocking rendered detect results", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -355,9 +358,11 @@ describe("detect page flow", () => {
     await renderHome("detect");
 
     expect(
-      screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
+      screen.getByText("Pripravujem súhrnný prieskum"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nájdené súvisiace výroky/i),
+    ).toBeInTheDocument();
   });
 
   it("does not block the detect surface while aggregate research is idle", async () => {

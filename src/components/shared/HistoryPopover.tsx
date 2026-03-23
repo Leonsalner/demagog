@@ -151,9 +151,9 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         ref={dialogRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-label={headerLabel}
-        className="max-h-96 min-w-80 overflow-y-auto rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)]"
+        className="flex max-h-96 min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)]"
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/95">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/95">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {headerLabel}
           </h2>
@@ -169,7 +169,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
           </button>
         </div>
 
-        <div className="p-2">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {entries.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
               {emptyMessage}
@@ -193,7 +193,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         </div>
 
         {onClearAll && entries.length > 0 && (
-          <div className="border-t border-slate-100 px-2 py-2 dark:border-slate-700/50">
+          <div className="shrink-0 border-t border-slate-100 px-2 py-2 dark:border-slate-700/50">
             <button
               type="button"
               onClick={onClearAll}

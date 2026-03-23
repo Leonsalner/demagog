@@ -32,6 +32,17 @@ const extractedFilterKeys = [
 type ExtractedFilters =
   NonNullable<SearchResponse["query_understanding"]>["extracted_filters"];
 
+type SearchCompletionSource = "submit" | "auto-filter-refine" | "restore";
+
+type CompletedSearchSnapshot = {
+  requestKey: string;
+  query: string;
+  filters: FilterState;
+  filterOwnership: SearchFilterOwnershipState;
+  response: SearchResponse;
+  source: SearchCompletionSource;
+};
+
 function emptyFilterOwnership(): SearchFilterOwnershipState {
   return {
     strana: "none",
@@ -221,10 +232,14 @@ export function useSearch() {
   const [availableFilters, setAvailableFilters] =
     useState<FiltersResponse | null>(null);
   const [filterLoadError, setFilterLoadError] = useState(false);
+  const [completedSearchSnapshot, setCompletedSearchSnapshot] = useState<CompletedSearchSnapshot | null>(null);
+  const [restoreVersion, setRestoreVersion] = useState(0);
+  const [manualFilterVersion, setManualFilterVersion] = useState(0);
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const filterOwnershipRef = useRef<SearchFilterOwnershipState>(emptyFilterOwnership());
   const filtersRef = useRef<FilterState>(emptyFilters);
   const submittedFiltersRef = useRef<FilterState>(emptyFilters);
+  const requestSequenceRef = useRef(0);
 
   const syncFilterOwnership = useCallback((ownership: SearchFilterOwnershipState) => {
     filterOwnershipRef.current = ownership;
@@ -277,10 +292,12 @@ export function useSearch() {
       nextPage = page,
       submit = false,
       overrideOwnership,
+      source = "submit",
     }: {
       nextPage?: number;
       submit?: boolean;
       overrideOwnership?: SearchFilterOwnershipState;
+      source?: SearchCompletionSource;
     } = {}) => {
       setLoading(true);
       setError(null);
@@ -291,11 +308,25 @@ export function useSearch() {
       const activeOwnership = overrideOwnership ?? (submit ? filterOwnershipRef.current : submittedOwnership);
 
       const cleanedFilters = clearModelOwnedFilters(activeFilters, activeOwnership);
+      const cleanedOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+        (ownership, key) => {
+          ownership[key] =
+            cleanedFilters[key] === null
+              ? "none"
+              : activeOwnership[key] === "model"
+                ? "user"
+                : activeOwnership[key];
+          return ownership;
+        },
+        emptyFilterOwnership(),
+      );
       const request = buildRequestBody(activeQuery, cleanedFilters, nextPage);
+      const requestKey = `${source}:${requestSequenceRef.current + 1}`;
+      requestSequenceRef.current += 1;
 
       setSubmittedQuery(activeQuery);
       syncSubmittedFilters(cleanedFilters);
-      setSubmittedOwnership(activeOwnership);
+      setSubmittedOwnership(cleanedOwnership);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -303,7 +334,7 @@ export function useSearch() {
       try {
         let responseData: SearchResponse | null = null;
         let resolvedFinalFilters = cleanedFilters;
-        let resolvedFinalOwnership = activeOwnership;
+        let resolvedFinalOwnership = cleanedOwnership;
 
         if (USE_MOCK) {
           const mockResult = runMockSearch(request);
@@ -330,7 +361,7 @@ export function useSearch() {
           const extractedFilters = responseData.query_understanding.extracted_filters;
           const nextState = applyExtractedFilters(
             cleanedFilters,
-            activeOwnership,
+            cleanedOwnership,
             extractedFilters,
           );
           resolvedFinalFilters = nextState.filters;
@@ -338,10 +369,32 @@ export function useSearch() {
         }
 
         if (submit) {
+          if (responseData === null) {
+            throw new Error("Nepodarilo sa zostaviť výsledky vyhľadávania.");
+          }
+
           syncFilters(resolvedFinalFilters);
           syncSubmittedFilters(resolvedFinalFilters);
           syncFilterOwnership(resolvedFinalOwnership);
           setSubmittedOwnership(resolvedFinalOwnership);
+          setCompletedSearchSnapshot({
+            requestKey,
+            query: activeQuery,
+            filters: resolvedFinalFilters,
+            filterOwnership: resolvedFinalOwnership,
+            response: {
+              results: responseData.results,
+              related_results: responseData.related_results,
+              related_articles: responseData.related_articles,
+              total_count: responseData.total_count,
+              page: responseData.page,
+              page_size: responseData.page_size,
+              query_time_ms: responseData.query_time_ms,
+              has_more: responseData.has_more,
+              query_understanding: responseData.query_understanding,
+            },
+            source,
+          });
         }
       } catch (caughtError) {
         if (caughtError instanceof Error && caughtError.name === "AbortError") {
@@ -383,6 +436,7 @@ export function useSearch() {
 
           filterOwnershipRef.current = nextOwnership;
           filtersRef.current = nextFilters;
+          setManualFilterVersion((currentVersion) => currentVersion + 1);
           return nextOwnership;
         });
       } else {
@@ -454,6 +508,26 @@ export function useSearch() {
       has_more: entry.response.has_more,
       query_understanding: entry.response.query_understanding,
     });
+    setCompletedSearchSnapshot({
+      requestKey: `restore:${requestSequenceRef.current + 1}`,
+      query: entry.query,
+      filters: entry.filters,
+      filterOwnership: entry.filterOwnership,
+      response: {
+        results: entry.response.results,
+        related_results: entry.response.related_results,
+        related_articles: entry.response.related_articles,
+        total_count: entry.response.total_count,
+        page: entry.response.page,
+        page_size: entry.response.page_size,
+        query_time_ms: entry.response.query_time_ms,
+        has_more: entry.response.has_more,
+        query_understanding: entry.response.query_understanding,
+      },
+      source: "restore",
+    });
+    requestSequenceRef.current += 1;
+    setRestoreVersion((currentVersion) => currentVersion + 1);
   }, []);
 
   return {
@@ -468,6 +542,9 @@ export function useSearch() {
     page,
     availableFilters,
     filterLoadError,
+    completedSearchSnapshot,
+    restoreVersion,
+    manualFilterVersion,
     hasSearched,
     setQuery,
     setFilters,

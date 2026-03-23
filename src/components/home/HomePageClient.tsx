@@ -29,12 +29,45 @@ import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
 import { useSearchHistory, useDetectHistory, generateHistoryId } from "@/hooks/useLocalHistory";
+import type { FilterState } from "@/types";
 import type { SearchHistoryEntry, DetectHistoryEntry, ResearchPaneSelection } from "@/types/history";
 
 export type HomeTab = "search" | "detect";
 
 interface HomePageClientProps {
   activeTab: HomeTab;
+}
+
+function normalizeHistoryQuery(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function areFiltersEqual(left: FilterState, right: FilterState): boolean {
+  return (
+    left.strana === right.strana &&
+    left.vyhodnotenie === right.vyhodnotenie &&
+    left.meno === right.meno &&
+    left.datum_od === right.datum_od &&
+    left.datum_do === right.datum_do
+  );
+}
+
+function findRecentHistoryEntryId(
+  entries: Array<SearchHistoryEntry | DetectHistoryEntry>,
+  query: string,
+): string | null {
+  const normalizedQuery = normalizeHistoryQuery(query);
+  const matchingEntry = entries.find((entry) => {
+    if (normalizeHistoryQuery(entry.query) !== normalizedQuery) {
+      return false;
+    }
+
+    const ageInDays =
+      (Date.now() - new Date(entry.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return ageInDays < 7;
+  });
+
+  return matchingEntry?.id ?? null;
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
@@ -57,11 +90,15 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     error,
     query,
     submittedQuery,
+    submittedFilters,
     filterOwnership,
     filters,
     page,
     availableFilters,
     filterLoadError,
+    completedSearchSnapshot,
+    restoreVersion,
+    manualFilterVersion,
     hasSearched,
     setQuery,
     setFilters,
@@ -111,6 +148,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
+  const lastSavedSearchRequestKeyRef = useRef<string | null>(null);
+  const lastSavedDetectSnapshotKeyRef = useRef<string | null>(null);
+  const lastHandledSearchRestoreVersionRef = useRef(0);
+  const lastHandledManualFilterVersionRef = useRef(0);
+  const [isHydratingSearchRestore, setIsHydratingSearchRestore] = useState(false);
+  const [isHydratingDetectRestore, setIsHydratingDetectRestore] = useState(false);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
     () => ({
@@ -128,18 +171,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setAutoOpenedPreparedResearchKey(key);
   });
 
-  const initialSearchDoneRef = useRef(false);
-
   useEffect(() => {
     void loadFilters();
   }, [loadFilters]);
-
-  useEffect(() => {
-    if (!initialSearchDoneRef.current) {
-      initialSearchDoneRef.current = true;
-      void search({ nextPage: 1 });
-    }
-  }, [search]);
 
   const handleOpenStatementResearch = useCallback(
     (statementId: number) => {
@@ -265,52 +299,66 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     [],
   );
 
-  const lastSavedSearchRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!results || !submittedQuery.trim()) {
+    if (restoreVersion <= lastHandledSearchRestoreVersionRef.current) {
       return;
     }
 
-    const entryId = `${submittedQuery}::${results.query_time_ms}::${results.total_count}::${results.results.length}`;
-    if (lastSavedSearchRef.current === entryId) {
+    lastHandledSearchRestoreVersionRef.current = restoreVersion;
+    setIsHydratingSearchRestore(true);
+  }, [restoreVersion]);
+
+  useEffect(() => {
+    if (!isHydratingSearchRestore) {
       return;
     }
-    lastSavedSearchRef.current = entryId;
+
+    const timeoutId = window.setTimeout(() => {
+      setIsHydratingSearchRestore(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isHydratingSearchRestore]);
+
+  useEffect(() => {
+    if (!completedSearchSnapshot || completedSearchSnapshot.source === "restore") {
+      return;
+    }
+
+    if (lastSavedSearchRequestKeyRef.current === completedSearchSnapshot.requestKey) {
+      return;
+    }
+    lastSavedSearchRequestKeyRef.current = completedSearchSnapshot.requestKey;
 
     const entry: SearchHistoryEntry = {
       id: generateHistoryId(),
       createdAt: new Date().toISOString(),
       kind: "search",
-      query: submittedQuery,
-      filters: filters,
-      filterOwnership: filterOwnership,
+      query: completedSearchSnapshot.query,
+      filters: completedSearchSnapshot.filters,
+      filterOwnership: completedSearchSnapshot.filterOwnership,
       response: {
-        results: results.results,
-        related_results: results.related_results,
-        related_articles: results.related_articles,
-        total_count: results.total_count,
-        page: results.page,
-        page_size: results.page_size,
-        query_time_ms: results.query_time_ms,
-        has_more: results.has_more,
-        query_understanding: results.query_understanding,
+        results: completedSearchSnapshot.response.results,
+        related_results: completedSearchSnapshot.response.related_results,
+        related_articles: completedSearchSnapshot.response.related_articles,
+        total_count: completedSearchSnapshot.response.total_count,
+        page: completedSearchSnapshot.response.page,
+        page_size: completedSearchSnapshot.response.page_size,
+        query_time_ms: completedSearchSnapshot.response.query_time_ms,
+        has_more: completedSearchSnapshot.response.has_more,
+        query_understanding: completedSearchSnapshot.response.query_understanding,
       },
     };
 
     saveSearchEntry(entry);
-  }, [results, submittedQuery, filters, filterOwnership, saveSearchEntry]);
+  }, [completedSearchSnapshot, saveSearchEntry]);
 
-  const lastSavedDetectRef = useRef<string | null>(null);
   useEffect(() => {
     if (!detectResult) {
       return;
     }
-
-    const entryId = detectResult.input_statement;
-    if (lastSavedDetectRef.current === entryId) {
-      return;
-    }
-    lastSavedDetectRef.current = entryId;
 
     const compactResearchData = (): DetectHistoryEntry["openResearch"] => {
       if (!researchData || researchDisplayState === "closed" || !researchLastRequest) {
@@ -324,26 +372,60 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       };
     };
 
-    const entry: DetectHistoryEntry = {
-      id: generateHistoryId(),
-      createdAt: new Date().toISOString(),
-      kind: "detect",
-      query: detectResult.input_statement,
-      response: detectResult,
-      preparedAggregate: preparedAggregateResearchData && preparedAggregateStatementIds.length > 0
+    const preparedAggregate =
+      preparedAggregateResearchData && preparedAggregateStatementIds.length > 0
         ? {
             data: preparedAggregateResearchData,
             statementIds: preparedAggregateStatementIds,
           }
-        : null,
-      openResearch: compactResearchData(),
+        : null;
+    const openResearch = compactResearchData();
+    const snapshotKey = JSON.stringify({
+      query: detectResult.input_statement,
+      status: detectResult.overall_status,
+      matchCount: detectResult.matches.length,
+      preparedAggregateKey: preparedAggregate?.statementIds.join(",") ?? null,
+      researchDisplayState,
+      researchMode,
+      activeTab: researchUiState.activeTab,
+      selection: researchUiState.selection,
+      requestMode: openResearch?.request.mode ?? null,
+      itemCount: openResearch?.data.items.length ?? 0,
+    });
+
+    if (lastSavedDetectSnapshotKeyRef.current === snapshotKey) {
+      return;
+    }
+    lastSavedDetectSnapshotKeyRef.current = snapshotKey;
+    const existingEntryId = findRecentHistoryEntryId(detectHistoryEntries, detectResult.input_statement);
+
+    const entry: DetectHistoryEntry = {
+      id: existingEntryId ?? generateHistoryId(),
+      createdAt: new Date().toISOString(),
+      kind: "detect",
+      query: detectResult.input_statement,
+      response: detectResult,
+      preparedAggregate,
+      openResearch,
     };
 
     saveDetectEntry(entry);
-  }, [detectResult, researchData, researchDisplayState, researchUiState, researchLastRequest, preparedAggregateResearchData, preparedAggregateStatementIds, saveDetectEntry]);
+  }, [
+    detectHistoryEntries,
+    detectResult,
+    preparedAggregateResearchData,
+    preparedAggregateStatementIds,
+    researchData,
+    researchDisplayState,
+    researchLastRequest,
+    researchMode,
+    researchUiState,
+    saveDetectEntry,
+  ]);
 
   const handleSearchHistorySelect = useCallback(
     (entry: SearchHistoryEntry) => {
+      setIsHydratingSearchRestore(true);
       touchSearchEntry(entry.id);
       restoreSearch(entry);
     },
@@ -352,6 +434,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const handleDetectHistorySelect = useCallback(
     (entry: DetectHistoryEntry) => {
+      setIsHydratingDetectRestore(true);
       touchDetectEntry(entry.id);
       setDetectStatement(entry.query);
       setAutoOpenedPreparedResearchKey(null);
@@ -376,10 +459,40 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   );
 
   const handleSearch = () => {
-    lastSavedSearchRef.current = null;
     setPage(1);
-    void search({ nextPage: 1, submit: true });
+    void search({ nextPage: 1, submit: true, source: "submit" });
   };
+
+  useEffect(() => {
+    if (manualFilterVersion <= lastHandledManualFilterVersionRef.current) {
+      return;
+    }
+
+    lastHandledManualFilterVersionRef.current = manualFilterVersion;
+
+    if (
+      activeTab !== "search" ||
+      isHydratingSearchRestore ||
+      loading ||
+      !hasSearched ||
+      areFiltersEqual(filters, submittedFilters)
+    ) {
+      return;
+    }
+
+    setPage(1);
+    void search({ nextPage: 1, submit: true, source: "auto-filter-refine" });
+  }, [
+    activeTab,
+    filters,
+    hasSearched,
+    isHydratingSearchRestore,
+    loading,
+    manualFilterVersion,
+    search,
+    setPage,
+    submittedFilters,
+  ]);
 
   useEffect(() => {
     if (!isMobileFilterOpen) {
@@ -427,12 +540,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     preparedAggregateResearchData !== null &&
     preparedAggregateStatementIds.length > 0 &&
     autoOpenedPreparedResearchKey !== preparedAggregateResearchKey;
-  const isAggregatePreparationBlocking =
-    activeTab === "detect" &&
-    !!detectResult &&
-    shouldPrepareAggregateResearch &&
-    researchDisplayState === "closed" &&
-    preparedAggregateResearchStatus === "preparing";
+  const isAggregatePreparationBlocking = false;
 
   useEffect(() => {
     const previousTab = previousTabForResearchRef.current;
@@ -458,7 +566,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   }, [activeTab, dismissResearch, isResearchPendingReveal, preparedAggregateResearchKey, preparedAggregateStatementIds.length, researchDisplayState]);
 
   useEffect(() => {
-    if (!shouldPrepareAggregateResearch || preparedAggregateResearchStatus !== "idle") {
+    if (
+      isHydratingDetectRestore ||
+      !shouldPrepareAggregateResearch ||
+      preparedAggregateResearchStatus !== "idle"
+    ) {
       return;
     }
 
@@ -468,10 +580,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     prepareAggregateResearch,
     preparedAggregateResearchStatus,
     shouldPrepareAggregateResearch,
+    isHydratingDetectRestore,
   ]);
 
   useEffect(() => {
-    if (!shouldAutoOpenPreparedResearch) {
+    if (isHydratingDetectRestore || !shouldAutoOpenPreparedResearch) {
       return;
     }
 
@@ -486,7 +599,22 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     preparedAggregateResearchKey,
     preparedAggregateStatementIds,
     shouldAutoOpenPreparedResearch,
+    isHydratingDetectRestore,
   ]);
+
+  useEffect(() => {
+    if (!isHydratingDetectRestore) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsHydratingDetectRestore(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isHydratingDetectRestore]);
 
   const handleDetectReset = () => {
     setIsAddModalOpen(false);

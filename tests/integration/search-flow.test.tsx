@@ -114,6 +114,9 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     page: 1,
     availableFilters,
     filterLoadError: false,
+    completedSearchSnapshot: null,
+    restoreVersion: 0,
+    manualFilterVersion: 0,
     hasSearched: false,
     setQuery,
     setFilters,
@@ -187,7 +190,7 @@ describe("search page flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hľadať" }));
 
     expect(setPage).toHaveBeenCalledWith(1);
-    expect(search).toHaveBeenCalledWith({ nextPage: 1, submit: true });
+    expect(search).toHaveBeenCalledWith({ nextPage: 1, submit: true, source: "submit" });
   }, 40_000);
 
   it("passes filter changes to the hook", async () => {
@@ -232,10 +235,9 @@ describe("search page flow", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not auto-search when only the query changes and search is recreated", async () => {
+  it("does not auto-search on the initial render", async () => {
     vi.useFakeTimers();
 
-    const setPage = vi.fn();
     const stableSearch = vi.fn();
 
     vi.mocked(useSearch).mockReturnValue({
@@ -250,41 +252,23 @@ describe("search page flow", () => {
       page: 1,
       availableFilters,
       filterLoadError: false,
+      completedSearchSnapshot: null,
+      restoreVersion: 0,
+      manualFilterVersion: 0,
       hasSearched: false,
       setQuery: vi.fn(),
       setFilters: vi.fn(),
-      setPage,
+      setPage: vi.fn(),
       setError: vi.fn(),
       loadFilters: vi.fn().mockResolvedValue(availableFilters),
       search: stableSearch,
       restore: vi.fn(),    });
 
-    const view = await renderHome();
-    vi.mocked(useSearch).mockReturnValue({
-      results: null,
-      loading: false,
-      error: null,
-      query: "",
-      submittedQuery: "",
-      submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
-      filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
-      filters: emptyFilters,
-      page: 1,
-      availableFilters,
-      filterLoadError: false,
-      hasSearched: false,
-      setQuery: vi.fn(),
-      setFilters: vi.fn(),
-      setPage,
-      setError: vi.fn(),
-      loadFilters: vi.fn().mockResolvedValue(availableFilters),
-      search: stableSearch,
-      restore: vi.fn(),    });
-    view.rerender(await renderHomeTree());
+    await renderHome();
 
     vi.advanceTimersByTime(600);
 
-    expect(stableSearch).toHaveBeenCalledTimes(1);
+    expect(stableSearch).not.toHaveBeenCalled();
   });
 
   it("skips the auto-search effect when filters were updated by the model", async () => {
@@ -305,6 +289,9 @@ describe("search page flow", () => {
         filters: emptyFilters,
         page: 1,
         availableFilters,
+        completedSearchSnapshot: null,
+        restoreVersion: 0,
+        manualFilterVersion: 0,
         hasSearched: true,
         setQuery: vi.fn(),
         setFilters: vi.fn(),
@@ -350,6 +337,9 @@ describe("search page flow", () => {
         },
         page: 1,
         availableFilters,
+        completedSearchSnapshot: null,
+        restoreVersion: 0,
+        manualFilterVersion: 0,
         hasSearched: true,
         setQuery: vi.fn(),
         setFilters: vi.fn(),
