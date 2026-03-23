@@ -25,11 +25,14 @@ function SearchHistoryRow({
   onRemove: () => void;
 }) {
   const hasFilters =
-    entry.filters.strana !== null ||
-    entry.filters.vyhodnotenie !== null ||
-    entry.filters.meno !== null ||
-    entry.filters.datum_od !== null ||
-    entry.filters.datum_do !== null;
+    entry.filterOwnership.strana !== "none" ||
+    entry.filterOwnership.vyhodnotenie !== "none" ||
+    entry.filterOwnership.meno !== "none" ||
+    entry.filterOwnership.datum_od !== "none" ||
+    entry.filterOwnership.datum_do !== "none";
+
+  const resultCount = entry.response.results?.length ?? 0;
+  const relatedResultCount = entry.response.related_results?.length ?? 0;
 
   return (
     <div className="group relative flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -42,9 +45,9 @@ function SearchHistoryRow({
           {entry.query || "(prázdny dopyt)"}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span>{entry.summary.resultCount} výsledkov</span>
-          {entry.summary.relatedResultCount > 0 && (
-            <span>+ {entry.summary.relatedResultCount} súvisiacich</span>
+          <span>{resultCount} výsledkov</span>
+          {relatedResultCount > 0 && (
+            <span>+ {relatedResultCount} súvisiacich</span>
           )}
           {hasFilters && <span className="text-amber-600 dark:text-amber-400">s filtrami</span>}
         </div>

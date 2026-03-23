@@ -86,7 +86,7 @@ describe("useSearch", () => {
       result.current.setQuery("Fico Ukrajina");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -99,7 +99,7 @@ describe("useSearch", () => {
       result.current.setQuery("zdravotnictvo");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     const firstRequest = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
@@ -148,7 +148,7 @@ describe("useSearch", () => {
       result.current.setQuery("Fico Ukrajina");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -167,7 +167,7 @@ describe("useSearch", () => {
       result.current.setQuery("zdravotnictvo");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     const secondRequest = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
@@ -203,7 +203,7 @@ describe("useSearch", () => {
       result.current.setQuery("Fico Ukrajina");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -249,7 +249,7 @@ describe("useSearch", () => {
       result.current.setQuery("fico pravda");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -267,7 +267,7 @@ describe("useSearch", () => {
       result.current.setQuery("ine tvrdenie");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     const secondRequest = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
@@ -306,7 +306,7 @@ describe("useSearch", () => {
       result.current.setQuery("fico pravda");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -326,7 +326,7 @@ describe("useSearch", () => {
     let pendingSearch!: Promise<void>;
 
     act(() => {
-      pendingSearch = result.current.search(1);
+      pendingSearch = result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -374,7 +374,7 @@ describe("useSearch", () => {
       result.current.setQuery("koalícia nepravdivé alebo zavádzajúce výroky");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     await waitFor(() => {
@@ -403,7 +403,7 @@ describe("useSearch", () => {
       result.current.setQuery("zdravotnictvo");
     });
     await act(async () => {
-      await result.current.search(1);
+      await result.current.search({ nextPage: 1, submit: true });
     });
 
     expect(result.current.results).toBeNull();

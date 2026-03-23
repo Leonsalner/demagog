@@ -8,6 +8,7 @@ import {
   type ResearchRequest,
 } from "@/lib/research-client";
 import type { ResearchWorkspaceResponse } from "@/types";
+import type { PreparedAggregateHistorySnapshot } from "@/types/history";
 
 export type PreparedAggregateResearchStatus = "idle" | "preparing" | "ready" | "error";
 
@@ -19,6 +20,17 @@ export function usePreparedAggregateResearch() {
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastRequestRef = useRef<ResearchRequest | null>(null);
+
+  const hydrate = useCallback((snapshot: PreparedAggregateHistorySnapshot) => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    lastRequestRef.current = createAggregateResearchRequest(snapshot.statementIds);
+    setData(snapshot.data);
+    setStatementIds(snapshot.statementIds);
+    setStatus("ready");
+    setError(null);
+  }, []);
 
   const reset = useCallback(() => {
     requestIdRef.current += 1;
@@ -96,6 +108,7 @@ export function usePreparedAggregateResearch() {
     data,
     error,
     statementIds,
+    hydrate,
     prepare,
     retry,
     reset,

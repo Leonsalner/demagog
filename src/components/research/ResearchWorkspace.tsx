@@ -11,6 +11,7 @@ import type {
 } from "@/types";
 import { APP_NAVBAR_ID } from "@/lib/layout";
 import type { WorkspaceDisplayState } from "@/hooks/useResearch";
+import type { ResearchPaneSelection } from "@/types/history";
 
 import DetectStatusBar from "./DetectStatusBar";
 import ResearchPane from "./ResearchPane";
@@ -40,6 +41,9 @@ interface ResearchWorkspaceProps {
   onExited?: () => void;
   onClose: () => void;
   onRetry?: () => void;
+  restoreActiveTab?: "articles" | "statements" | null;
+  restoreSelection?: ResearchPaneSelection | null;
+  onUiStateChange?: (activeTab: SidebarTab, selection: ResearchPaneSelection) => void;
 }
 
 type WorkspaceSelection =
@@ -104,6 +108,9 @@ export default function ResearchWorkspace({
   onExited,
   onClose,
   onRetry,
+  restoreActiveTab,
+  restoreSelection,
+  onUiStateChange,
 }: ResearchWorkspaceProps) {
   const [selection, setSelection] = useState<WorkspaceSelection>(null);
   const [isRendered, setIsRendered] = useState(false);
@@ -120,6 +127,7 @@ export default function ResearchWorkspace({
   const didFinishRef = useRef(false);
   const transitionTargetRef = useRef<HTMLDivElement | null>(null);
   const clearTransitionListenerRef = useRef<(() => void) | null>(null);
+  const isRestoringRef = useRef(false);
 
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
@@ -133,6 +141,23 @@ export default function ResearchWorkspace({
     () => getVisibleArticleItems(workspaceMode, data?.items ?? [], detectMatches),
     [data, detectMatches, workspaceMode],
   );
+
+  /* eslint-disable react-hooks/set-state-in-effect -- restore from snapshot state */
+  useLayoutEffect(() => {
+    if (restoreActiveTab != null) {
+      isRestoringRef.current = true;
+      setSidebarTab(restoreActiveTab);
+    }
+  }, [restoreActiveTab]);
+
+  useLayoutEffect(() => {
+    if (restoreSelection !== undefined) {
+      isRestoringRef.current = true;
+      setSelection(restoreSelection);
+    }
+  }, [restoreSelection]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const resolvedSelection = useMemo<WorkspaceSelection>(() => {
     const items = data?.items ?? [];
 
@@ -191,6 +216,14 @@ export default function ResearchWorkspace({
     },
     [data, detectMatches, visibleArticleItems, workspaceMode],
   );
+
+  useEffect(() => {
+    if (!isRestoringRef.current && onUiStateChange) {
+      onUiStateChange(sidebarTab, resolvedSelection);
+    }
+    isRestoringRef.current = false;
+  }, [sidebarTab, resolvedSelection, onUiStateChange]);
+
   const handleClose = useCallback(() => {
     setSidebarTab("articles");
     onClose();

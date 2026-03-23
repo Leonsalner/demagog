@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { AnchorHTMLAttributes, MutableRefObject, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
@@ -101,15 +101,15 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const setPage = vi.fn();
   const search = vi.fn();
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
-  const isModelFilterUpdateRef = {
-    current: false,
-  } as MutableRefObject<boolean>;
 
   vi.mocked(useSearch).mockReturnValue({
     results: null,
     loading: false,
     error: null,
     query: "",
+    submittedQuery: "",
+    submittedFilters: emptyFilters,
+    filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
     filters: emptyFilters,
     page: 1,
     availableFilters,
@@ -120,8 +120,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setPage,
     setError: vi.fn(),
     search,
+    restore: vi.fn(),
     loadFilters,
-    isModelFilterUpdateRef,
     ...overrides,
   });
 
@@ -130,8 +130,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setFilters,
     setPage,
     search,
+    restore: vi.fn(),
     loadFilters,
-    isModelFilterUpdateRef,
   };
 }
 
@@ -141,6 +141,7 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     loading: false,
     error: null,
     detect: vi.fn(),
+    restore: vi.fn(),
     reset: vi.fn(),
     ...overrides,
   });
@@ -186,7 +187,7 @@ describe("search page flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Hľadať" }));
 
     expect(setPage).toHaveBeenCalledWith(1);
-    expect(search).toHaveBeenCalledWith(1);
+    expect(search).toHaveBeenCalledWith({ nextPage: 1, submit: true });
   }, 40_000);
 
   it("passes filter changes to the hook", async () => {
@@ -236,13 +237,15 @@ describe("search page flow", () => {
 
     const setPage = vi.fn();
     const stableSearch = vi.fn();
-    const isModelFilterUpdateRef = { current: false } as MutableRefObject<boolean>;
 
     vi.mocked(useSearch).mockReturnValue({
       results: null,
       loading: false,
       error: null,
       query: "",
+      submittedQuery: "",
+      submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+      filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
       filters: emptyFilters,
       page: 1,
       availableFilters,
@@ -253,16 +256,18 @@ describe("search page flow", () => {
       setPage,
       setError: vi.fn(),
       loadFilters: vi.fn().mockResolvedValue(availableFilters),
-      isModelFilterUpdateRef,
       search: stableSearch,
-    });
+      restore: vi.fn(),    });
 
     const view = await renderHome();
     vi.mocked(useSearch).mockReturnValue({
       results: null,
       loading: false,
       error: null,
-      query: "konsolidácia",
+      query: "",
+      submittedQuery: "",
+      submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+      filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
       filters: emptyFilters,
       page: 1,
       availableFilters,
@@ -273,9 +278,8 @@ describe("search page flow", () => {
       setPage,
       setError: vi.fn(),
       loadFilters: vi.fn().mockResolvedValue(availableFilters),
-      isModelFilterUpdateRef,
       search: stableSearch,
-    });
+      restore: vi.fn(),    });
     view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
@@ -288,16 +292,16 @@ describe("search page flow", () => {
 
     const setPage = vi.fn();
     const search = vi.fn();
-    const isModelFilterUpdateRef = {
-      current: false,
-    } as MutableRefObject<boolean>;
 
     vi.mocked(useSearch)
       .mockReturnValueOnce({
         results: null,
         loading: false,
         error: null,
-        query: "konsolidácia",
+        query: "",
+        submittedQuery: "",
+        submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+        filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
         filters: emptyFilters,
         page: 1,
         availableFilters,
@@ -307,11 +311,10 @@ describe("search page flow", () => {
         setPage,
         setError: vi.fn(),
         search,
+    restore: vi.fn(),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
-        isModelFilterUpdateRef,
-      })
-      .mockReturnValueOnce({
+        })      .mockReturnValueOnce({
         results: buildResults({
           query_understanding: {
             extracted_filters: {
@@ -327,6 +330,19 @@ describe("search page flow", () => {
         loading: false,
         error: null,
         query: "konsolidácia",
+        submittedQuery: "konsolidácia",
+        submittedFilters: {
+          ...emptyFilters,
+          meno: ["Milan Majerský"],
+          datum_od: "2022-01-01",
+        },
+        filterOwnership: {
+          strana: "none",
+          vyhodnotenie: "none",
+          meno: "model",
+          datum_od: "model",
+          datum_do: "none",
+        },
         filters: {
           ...emptyFilters,
           meno: ["Milan Majerský"],
@@ -340,15 +356,13 @@ describe("search page flow", () => {
         setPage,
         setError: vi.fn(),
         search,
+    restore: vi.fn(),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
-        isModelFilterUpdateRef,
-      });
-
+        });
     const view = await renderHome();
     setPage.mockClear();
     search.mockClear();
-    isModelFilterUpdateRef.current = true;
     view.rerender(await renderHomeTree());
 
     vi.advanceTimersByTime(600);
@@ -381,7 +395,7 @@ describe("search page flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "2" }));
 
     expect(setPage).toHaveBeenCalledWith(2);
-    expect(search).toHaveBeenCalledWith(2);
+    expect(search).toHaveBeenCalledWith({ nextPage: 2 });
     expect(window.scrollTo).toHaveBeenCalled();
   }, 20_000);
 });

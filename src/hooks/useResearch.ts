@@ -10,6 +10,7 @@ import {
   type ResearchRequest,
 } from "@/lib/research-client";
 import type { ResearchWorkspaceMode, ResearchWorkspaceResponse } from "@/types";
+import type { OpenResearchHistorySnapshot, ResearchPaneSelection } from "@/types/history";
 
 export type WorkspaceDisplayState = "closed" | "entering" | "open" | "closing";
 
@@ -19,6 +20,8 @@ export function useResearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<ResearchWorkspaceMode | null>(null);
+  const [activeTab, setActiveTab] = useState<"articles" | "statements">("articles");
+  const [selection, setSelection] = useState<ResearchPaneSelection>(null);
   const [lastRequest, setLastRequest] = useState<ResearchRequest | null>(null);
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -37,6 +40,8 @@ export function useResearch() {
 
     setLastRequest(request);
     setActiveMode(request.mode);
+    setActiveTab("articles");
+    setSelection(null);
     setDisplayState(revealWhenReady ? "entering" : "closed");
     setLoading(true);
     setError(null);
@@ -98,6 +103,20 @@ export function useResearch() {
     [],
   );
 
+  const restoreSnapshot = useCallback((snapshot: OpenResearchHistorySnapshot) => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setLastRequest(snapshot.request);
+    setActiveMode(snapshot.data.mode);
+    setActiveTab(snapshot.activeTab);
+    setSelection(snapshot.selection);
+    setData(snapshot.data);
+    setError(null);
+    setLoading(false);
+    setDisplayState("entering");
+  }, []);
+
   const retry = useCallback(async () => {
     if (!lastRequest) {
       return;
@@ -122,6 +141,8 @@ export function useResearch() {
     setError(null);
     setLoading(false);
     setActiveMode(null);
+    setActiveTab("articles");
+    setSelection(null);
   }, []);
 
   const dismiss = useCallback(() => {
@@ -132,10 +153,14 @@ export function useResearch() {
     setError(null);
     setLoading(false);
     setActiveMode(null);
+    setActiveTab("articles");
+    setSelection(null);
   }, []);
 
   return {
     activeMode,
+    activeTab,
+    selection,
     data,
     displayState,
     isOpen,
@@ -144,13 +169,17 @@ export function useResearch() {
     isPendingReveal: loading && !isOpen,
     loading,
     error,
+    lastRequest,
     openStatementResearch,
     openAggregateResearch,
     openPreparedResearch,
+    restoreSnapshot,
     retry,
     finishEnter,
     startClose,
     finishClose,
     dismiss,
+    setActiveTab,
+    setSelection,
   };
 }

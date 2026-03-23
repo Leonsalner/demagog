@@ -27,19 +27,26 @@ function DetectHistoryRow({
   onSelect: () => void;
   onRemove: () => void;
 }) {
+  const overallStatus = entry.response.overall_status;
+  const matches = entry.response.matches ?? [];
+  const duplicateCount = matches.filter((m) => m.classification === "DUPLICATE").length;
+  const relatedCount = matches.filter((m) => m.classification === "RELATED").length;
+
   const statusLabel =
-    entry.result.overallStatus === "DUPLICATE_FOUND"
+    overallStatus === "DUPLICATE_FOUND"
       ? "Duplikát"
-      : entry.result.overallStatus === "RELATED_ONLY"
+      : overallStatus === "RELATED_ONLY"
         ? "Súvisiace"
         : "Nový výrok";
 
   const statusColor =
-    entry.result.overallStatus === "DUPLICATE_FOUND"
+    overallStatus === "DUPLICATE_FOUND"
       ? "text-red-600 dark:text-red-400"
-      : entry.result.overallStatus === "RELATED_ONLY"
+      : overallStatus === "RELATED_ONLY"
         ? "text-amber-600 dark:text-amber-400"
         : "text-green-600 dark:text-green-400";
+
+  const itemCount = entry.preparedAggregate?.data.items.length ?? entry.openResearch?.data.items.length ?? 0;
 
   return (
     <div className="group relative flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -53,15 +60,15 @@ function DetectHistoryRow({
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
           <span className={statusColor}>{statusLabel}</span>
-          {entry.result.matchCount > 0 && (
+          {matches.length > 0 && (
             <span>
-              {entry.result.duplicateCount > 0 && `${entry.result.duplicateCount} duplikátov`}
-              {entry.result.duplicateCount > 0 && entry.result.relatedCount > 0 && ", "}
-              {entry.result.relatedCount > 0 && `${entry.result.relatedCount} súvisiacich`}
+              {duplicateCount > 0 && `${duplicateCount} duplikátov`}
+              {duplicateCount > 0 && relatedCount > 0 && ", "}
+              {relatedCount > 0 && `${relatedCount} súvisiacich`}
             </span>
           )}
-          {entry.research && entry.research.itemCount > 0 && (
-            <span>+ {entry.research.itemCount} výskumov</span>
+          {itemCount > 0 && (
+            <span>+ {itemCount} výskumov</span>
           )}
         </div>
       </button>

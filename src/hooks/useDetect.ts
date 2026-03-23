@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { mockStatements } from "@/lib/mock-data";
 import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
+import type { DetectHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
 
@@ -129,6 +130,10 @@ export function useDetect() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 25000);
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -162,6 +167,9 @@ export function useDetect() {
       setResult(data);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
+        if (requestIdRef.current === requestId) {
+          setError("Detekcia trvala príliš dlho. Skúste to prosím znova.");
+        }
         return;
       }
       if (requestIdRef.current !== requestId) {
@@ -170,6 +178,7 @@ export function useDetect() {
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
+      clearTimeout(timeoutId);
       if (requestIdRef.current === requestId) {
         setLoading(false);
       }
@@ -187,5 +196,17 @@ export function useDetect() {
     setLoading(false);
   }, []);
 
-  return { result, loading, error, detect, reset };
+  const restore = useCallback((entry: DetectHistoryEntry) => {
+    requestIdRef.current += 1;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setLoading(false);
+    setError(null);
+    setResult(entry.response);
+  }, []);
+
+  return { result, loading, error, detect, restore, reset };
 }

@@ -77,6 +77,9 @@ function mockUseSearchReturn() {
     loading: false,
     error: null,
     query: "",
+    submittedQuery: "",
+    submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+    filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
     filters: {
       strana: null,
       vyhodnotenie: null,
@@ -97,9 +100,9 @@ function mockUseSearchReturn() {
     setPage: vi.fn(),
     setError: vi.fn(),
     search: vi.fn(),
+    restore: vi.fn(),
     loadFilters: vi.fn().mockResolvedValue(null),
     filterLoadError: false,
-    isModelFilterUpdateRef: { current: false },
   });
 }
 
@@ -112,6 +115,7 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     loading: false,
     error: null,
     detect,
+    restore: vi.fn(),
     reset,
     ...overrides,
   });
@@ -123,6 +127,7 @@ function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unkno
   const prepare = vi.fn().mockResolvedValue(undefined);
   const retry = vi.fn().mockResolvedValue(undefined);
   const reset = vi.fn();
+  const hydrate = vi.fn();
 
   vi.mocked(usePreparedAggregateResearch).mockReturnValue({
     status: "idle",
@@ -132,10 +137,11 @@ function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unkno
     prepare,
     retry,
     reset,
+    hydrate,
     ...overrides,
   });
 
-  return { prepare, retry, reset };
+  return { prepare, retry, reset, hydrate };
 }
 
 function mockUseResearchReturn(overrides?: Record<string, unknown>) {
@@ -150,6 +156,8 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
 
   vi.mocked(useResearch).mockReturnValue({
     activeMode: null,
+    activeTab: "articles",
+    selection: null,
     data: null,
     displayState: "closed" as const,
     isOpen: false,
@@ -158,14 +166,18 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     isPendingReveal: false,
     loading: false,
     error: null,
+    lastRequest: null,
     openStatementResearch,
     openAggregateResearch,
     openPreparedResearch,
+    restoreSnapshot: vi.fn(),
     retry,
     finishEnter,
     startClose,
     finishClose,
     dismiss,
+    setActiveTab: vi.fn(),
+    setSelection: vi.fn(),
     ...overrides,
   });
 
@@ -348,7 +360,7 @@ describe("detect page flow", () => {
     expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
   });
 
-  it("keeps the detect surface blocked during the idle-to-prepare aggregate handoff", async () => {
+  it("does not block the detect surface while aggregate research is idle", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -359,11 +371,9 @@ describe("detect page flow", () => {
 
     await renderHome("detect");
 
-    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Priebeh detekcie" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Porovnávam výrok s databázou overených tvrdení/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {

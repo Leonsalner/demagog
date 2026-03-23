@@ -28,6 +28,8 @@ import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResear
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
+import { useSearchHistory, useDetectHistory, generateHistoryId } from "@/hooks/useLocalHistory";
+import type { SearchHistoryEntry, DetectHistoryEntry, ResearchPaneSelection } from "@/types/history";
 
 export type HomeTab = "search" | "detect";
 
@@ -45,12 +47,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   });
   const [lockedPanelHeight, setLockedPanelHeight] = useState<number | null>(null);
   const [autoOpenedPreparedResearchKey, setAutoOpenedPreparedResearchKey] = useState<string | null>(null);
+  const [researchUiState, setResearchUiState] = useState<{
+    activeTab: "articles" | "statements";
+    selection: ResearchPaneSelection;
+  }>({ activeTab: "articles", selection: null });
   const {
     results,
     loading,
     error,
     query,
     submittedQuery,
+    filterOwnership,
     filters,
     page,
     availableFilters,
@@ -60,6 +67,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setFilters,
     setPage,
     search,
+    restore: restoreSearch,
     loadFilters,
   } = useSearch();
   const {
@@ -67,12 +75,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     loading: detectLoading,
     error: detectError,
     detect,
+    restore: restoreDetect,
     reset: resetDetect,
   } = useDetect();
   const {
     status: preparedAggregateResearchStatus,
     data: preparedAggregateResearchData,
     statementIds: preparedAggregateStatementIds,
+    hydrate: hydratePreparedAggregate,
     prepare: prepareAggregateResearch,
     retry: retryPreparedAggregateResearch,
     reset: resetPreparedAggregateResearch,
@@ -84,14 +94,18 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     error: researchError,
     displayState: researchDisplayState,
     isPendingReveal: isResearchPendingReveal,
+    lastRequest: researchLastRequest,
     openStatementResearch,
     openPreparedResearch,
+    restoreSnapshot,
     retry: retryResearch,
     finishEnter: finishEnterResearch,
     startClose: startCloseResearch,
     finishClose: finishCloseResearch,
     dismiss: dismissResearch,
   } = useResearch();
+  const { entries: searchHistoryEntries, saveSearchEntry, removeEntry: removeSearchEntry, clearAll: clearSearchHistory, touchEntry: touchSearchEntry } = useSearchHistory();
+  const { entries: detectHistoryEntries, saveDetectEntry, removeEntry: removeDetectEntry, clearAll: clearDetectHistory, touchEntry: touchDetectEntry } = useDetectHistory();
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
@@ -121,7 +135,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   }, [loadFilters]);
 
   useEffect(() => {
-    // Initial fetch to populate with latest statements
     if (!initialSearchDoneRef.current) {
       initialSearchDoneRef.current = true;
       void search({ nextPage: 1 });
@@ -252,7 +265,118 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     [],
   );
 
+  const lastSavedSearchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!results || !submittedQuery.trim()) {
+      return;
+    }
+
+    const entryId = `${submittedQuery}::${results.query_time_ms}::${results.total_count}::${results.results.length}`;
+    if (lastSavedSearchRef.current === entryId) {
+      return;
+    }
+    lastSavedSearchRef.current = entryId;
+
+    const entry: SearchHistoryEntry = {
+      id: generateHistoryId(),
+      createdAt: new Date().toISOString(),
+      kind: "search",
+      query: submittedQuery,
+      filters: filters,
+      filterOwnership: filterOwnership,
+      response: {
+        results: results.results,
+        related_results: results.related_results,
+        related_articles: results.related_articles,
+        total_count: results.total_count,
+        page: results.page,
+        page_size: results.page_size,
+        query_time_ms: results.query_time_ms,
+        has_more: results.has_more,
+        query_understanding: results.query_understanding,
+      },
+    };
+
+    saveSearchEntry(entry);
+  }, [results, submittedQuery, filters, filterOwnership, saveSearchEntry]);
+
+  const lastSavedDetectRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detectResult) {
+      return;
+    }
+
+    const entryId = detectResult.input_statement;
+    if (lastSavedDetectRef.current === entryId) {
+      return;
+    }
+    lastSavedDetectRef.current = entryId;
+
+    const compactResearchData = (): DetectHistoryEntry["openResearch"] => {
+      if (!researchData || researchDisplayState === "closed" || !researchLastRequest) {
+        return null;
+      }
+      return {
+        request: researchLastRequest,
+        data: researchData,
+        activeTab: researchUiState.activeTab,
+        selection: researchUiState.selection,
+      };
+    };
+
+    const entry: DetectHistoryEntry = {
+      id: generateHistoryId(),
+      createdAt: new Date().toISOString(),
+      kind: "detect",
+      query: detectResult.input_statement,
+      response: detectResult,
+      preparedAggregate: preparedAggregateResearchData && preparedAggregateStatementIds.length > 0
+        ? {
+            data: preparedAggregateResearchData,
+            statementIds: preparedAggregateStatementIds,
+          }
+        : null,
+      openResearch: compactResearchData(),
+    };
+
+    saveDetectEntry(entry);
+  }, [detectResult, researchData, researchDisplayState, researchUiState, researchLastRequest, preparedAggregateResearchData, preparedAggregateStatementIds, saveDetectEntry]);
+
+  const handleSearchHistorySelect = useCallback(
+    (entry: SearchHistoryEntry) => {
+      touchSearchEntry(entry.id);
+      restoreSearch(entry);
+    },
+    [restoreSearch, touchSearchEntry]
+  );
+
+  const handleDetectHistorySelect = useCallback(
+    (entry: DetectHistoryEntry) => {
+      touchDetectEntry(entry.id);
+      setDetectStatement(entry.query);
+      setAutoOpenedPreparedResearchKey(null);
+      restoreDetect(entry);
+
+      if (entry.preparedAggregate) {
+        hydratePreparedAggregate(entry.preparedAggregate);
+        setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
+      } else {
+        resetPreparedAggregateResearch();
+      }
+
+      if (entry.openResearch) {
+        restoreSnapshot(entry.openResearch);
+      } else {
+        if (researchDisplayState !== "closed") {
+          dismissResearch();
+        }
+      }
+    },
+    [restoreDetect, touchDetectEntry, hydratePreparedAggregate, resetPreparedAggregateResearch, restoreSnapshot, dismissResearch, researchDisplayState]
+  );
+
   const handleSearch = () => {
+    lastSavedSearchRef.current = null;
     setPage(1);
     void search({ nextPage: 1, submit: true });
   };
@@ -308,7 +432,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     !!detectResult &&
     shouldPrepareAggregateResearch &&
     researchDisplayState === "closed" &&
-    (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
+    preparedAggregateResearchStatus === "preparing";
 
   useEffect(() => {
     const previousTab = previousTabForResearchRef.current;
@@ -391,7 +515,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const hasDetectPanelLoading =
     detectLoading ||
     isAggregatePreparationBlocking ||
-    (shouldPrepareAggregateResearch && preparedAggregateResearchStatus === "idle") ||
     (activeTab === "detect" && isStatementResearchPending);
   const detectLoadingPhase = isStatementResearchPending
     ? "statement-research"
@@ -441,6 +564,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     );
   };
 
+  const handleResearchUiStateChange = useCallback((activeTab: "articles" | "statements", selection: ResearchPaneSelection) => {
+    setResearchUiState({ activeTab, selection });
+  }, []);
+
   return (
     <div className="relative min-h-[400px]">
       <div
@@ -466,6 +593,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 onChange={setQuery}
                 onSearch={handleSearch}
                 loading={loading}
+                historyEntries={searchHistoryEntries}
+                onHistorySelect={handleSearchHistorySelect}
+                onHistoryRemove={removeSearchEntry}
+                onHistoryClear={clearSearchHistory}
               />
             </div>
 
@@ -518,7 +649,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   <ActiveFilters filters={filters} onChange={setFilters} />
                 </div>
                 <div className="lg:hidden">
-                  {/* On mobile, filters are shown in the drawer, but chips can still be useful to see. */}
                   <ActiveFilters filters={filters} onChange={setFilters} />
                 </div>
 
@@ -638,6 +768,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               onSubmit={handleDetect}
               loading={isDetectPanelLoading}
               onReset={handleDetectReset}
+              historyEntries={detectHistoryEntries}
+              onHistorySelect={handleDetectHistorySelect}
+              onHistoryRemove={removeDetectEntry}
+              onHistoryClear={clearDetectHistory}
             />
 
             <div className="min-h-[320px]">
@@ -718,6 +852,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         onRetry={() => {
           void retryResearch();
         }}
+        restoreActiveTab={researchUiState.activeTab}
+        restoreSelection={researchUiState.selection}
+        onUiStateChange={handleResearchUiStateChange}
       />
 
       <AddStatementModal

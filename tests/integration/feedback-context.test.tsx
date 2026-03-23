@@ -81,6 +81,9 @@ describe("feedback context integration", () => {
       loading: false,
       error: null,
       query: "konsolidácia",
+      submittedQuery: "konsolidácia",
+      submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+      filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
       filters: {
         strana: null,
         vyhodnotenie: null,
@@ -102,18 +105,21 @@ describe("feedback context integration", () => {
       setPage: vi.fn(),
       setError: vi.fn(),
       search: vi.fn(),
+      restore: vi.fn(),
       loadFilters: vi.fn().mockResolvedValue(null),
-      isModelFilterUpdateRef: { current: false },
     });
     vi.mocked(useDetect).mockReturnValue({
       result: null,
       loading: false,
       error: null,
       detect: vi.fn(),
+      restore: vi.fn(),
       reset: vi.fn(),
     });
     vi.mocked(useResearch).mockReturnValue({
       activeMode: null,
+      activeTab: "articles",
+      selection: null,
       data: null,
       displayState: "closed" as const,
       isOpen: false,
@@ -122,14 +128,18 @@ describe("feedback context integration", () => {
       loading: false,
       error: null,
       isPendingReveal: false,
+      lastRequest: null,
       openStatementResearch: vi.fn().mockResolvedValue(undefined),
       openAggregateResearch: vi.fn().mockResolvedValue(undefined),
       openPreparedResearch: vi.fn(),
+      restoreSnapshot: vi.fn(),
       retry: vi.fn().mockResolvedValue(undefined),
       finishEnter: vi.fn(),
       startClose: vi.fn(),
       finishClose: vi.fn(),
       dismiss: vi.fn(),
+      setActiveTab: vi.fn(),
+      setSelection: vi.fn(),
     });
   });
 
