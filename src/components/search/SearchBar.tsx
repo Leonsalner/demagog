@@ -157,14 +157,51 @@ function filterChipClassName(tone: FilterToken["tone"]): string {
   return "border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300";
 }
 
+type AccentTone = "green" | "red" | "amber" | "slate";
+
+function getVerdictAccentTone(filters: FilterState): AccentTone {
+  const verdicts = filters.vyhodnotenie ?? [];
+  if (verdicts.includes("Pravda") && !verdicts.includes("Nepravda") && !verdicts.includes("Zavádzajúce")) {
+    return "green";
+  }
+  if (verdicts.includes("Nepravda") && !verdicts.includes("Pravda") && !verdicts.includes("Zavádzajúce")) {
+    return "red";
+  }
+  if (verdicts.includes("Zavádzajúce") && !verdicts.includes("Pravda") && !verdicts.includes("Nepravda")) {
+    return "amber";
+  }
+  return "slate";
+}
+
+const ACCENT_CLASSES: Record<AccentTone, { bar: string; bg: string }> = {
+  green: {
+    bar: "border-l-emerald-400/70 dark:border-l-emerald-500/50",
+    bg: "bg-emerald-50/40 dark:bg-emerald-950/20",
+  },
+  red: {
+    bar: "border-l-rose-400/70 dark:border-l-rose-500/50",
+    bg: "bg-rose-50/40 dark:bg-rose-950/20",
+  },
+  amber: {
+    bar: "border-l-amber-400/70 dark:border-l-amber-500/50",
+    bg: "bg-amber-50/40 dark:bg-amber-950/20",
+  },
+  slate: {
+    bar: "border-l-slate-300 dark:border-l-slate-600",
+    bg: "bg-slate-50/40 dark:bg-slate-800/20",
+  },
+};
+
 function SearchHistoryRow({
   entry,
   onSelect,
   onRemove,
+  isActive,
 }: {
   entry: SearchHistoryEntry;
   onSelect: () => void;
   onRemove: () => void;
+  isActive: boolean;
 }) {
   const [isTouchDetailOpen, setIsTouchDetailOpen] = useState(false);
   const hasFilters = hasAnyFilters(entry.filters);
@@ -176,8 +213,13 @@ function SearchHistoryRow({
   const resultCount = entry.response.results?.length ?? 0;
   const relatedResultCount = entry.response.related_results?.length ?? 0;
 
+  const accentTone = getVerdictAccentTone(entry.filters);
+  const accent = ACCENT_CLASSES[accentTone];
+
   return (
-    <div className="group relative flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+    <div
+      className={`group relative flex items-start gap-3 rounded-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
+    >
       <div className="min-w-0 flex-1">
         <button
           type="button"
@@ -381,14 +423,17 @@ export default function SearchBar({
           isOpen={isHistoryOpen}
           onClose={() => setIsHistoryOpen(false)}
           entries={historyEntries}
+          onEntrySelect={handleHistorySelect}
+          onEntryRemove={handleHistoryRemove}
           onClearAll={handleHistoryClear}
           headerLabel="História vyhľadávania"
           emptyMessage="Žiadne uložené vyhľadávania"
-          renderEntry={(entry) => (
+          renderEntry={(entry, _index, isActive) => (
             <SearchHistoryRow
               entry={entry}
               onSelect={() => handleHistorySelect(entry)}
               onRemove={() => handleHistoryRemove(entry.id)}
+              isActive={isActive}
             />
           )}
         />

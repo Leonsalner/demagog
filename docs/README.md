@@ -8,6 +8,7 @@ Demagog Tool is a Next.js application for searching and reviewing fact-checked S
 - Multi-criteria filtering by political party, topic area, verdict, politician, and date.
 - Duplicate and related-claim detection for newly submitted statements.
 - Full context research workspaces and direct insertion to the database.
+- Local history for both search queries and analyzed statements.
 
 ## Tech Stack
 

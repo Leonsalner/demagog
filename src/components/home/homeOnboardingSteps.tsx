@@ -112,6 +112,7 @@ export const HOME_ONBOARDING_STEPS: HomeOnboardingStep[] = [
     title: "Všetko pre plynulú prácu.",
     body: [
       "Celý proces od vloženia tvrdenia až po nový záznam na seba prirodzene nadväzuje. Namiesto preklikávania sa medzi stránkami máte všetko potrebné vždy poruke.",
+      "Vďaka histórii sa kedykoľvek rýchlo vrátite k predchádzajúcim vyhľadávaniam a analýzam.",
       "K tomuto návodu sa kedykoľvek vrátite cez tlačidlo vpravo dole. Pripomienky a nápady nám môžete kedykoľvek napísať cez hlavičku.",
     ],
     media: {

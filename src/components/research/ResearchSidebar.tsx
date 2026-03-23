@@ -36,12 +36,6 @@ function buildSections(items: ResearchItem[]): SidebarSection[] {
   ].filter((section) => section.items.length > 0);
 }
 
-const classificationLabels = {
-  DUPLICATE: "Duplicitný",
-  RELATED: "Súvisiaci",
-  UNRELATED: "Nesúvisiaci",
-} as const;
-
 export default function ResearchSidebar({
   mode,
   items,

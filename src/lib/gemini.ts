@@ -54,41 +54,49 @@ async function generateJsonText(options: {
   model: string;
   systemInstruction?: string;
 }): Promise<string> {
-  const response = await fetch(getGeminiUrl(options.model), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": getGeminiApiKey(),
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: options.prompt }] }],
-      ...(options.systemInstruction
-        ? {
-            systemInstruction: {
-              parts: [{ text: options.systemInstruction }],
-            },
-          }
-        : {}),
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: "application/json",
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(getGeminiUrl(options.model), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": getGeminiApiKey(),
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: options.prompt }] }],
+        ...(options.systemInstruction
+          ? {
+              systemInstruction: {
+                parts: [{ text: options.systemInstruction }],
+              },
+            }
+          : {}),
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${body}`);
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Gemini API error (${response.status}): ${body}`);
+    }
+
+    const payload = (await response.json()) as GeminiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      throw new Error("Gemini API returned no content");
+    }
+
+    return text;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const payload = (await response.json()) as GeminiResponse;
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini API returned no content");
-  }
-
-  return text;
 }
 
 function parseJsonWithRetry<T>(

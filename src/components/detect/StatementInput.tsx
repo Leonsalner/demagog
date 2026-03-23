@@ -18,14 +18,39 @@ interface StatementInputProps {
 
 const MAX_LENGTH = 2000;
 
+type AccentTone = "green" | "red" | "amber";
+
+function getDetectAccentTone(overallStatus: string): AccentTone {
+  if (overallStatus === "DUPLICATE_FOUND") return "red";
+  if (overallStatus === "RELATED_ONLY") return "amber";
+  return "green";
+}
+
+const DETECT_ACCENT_CLASSES: Record<AccentTone, { bar: string; bg: string }> = {
+  green: {
+    bar: "border-l-emerald-400/70 dark:border-l-emerald-500/50",
+    bg: "bg-emerald-50/40 dark:bg-emerald-950/20",
+  },
+  red: {
+    bar: "border-l-rose-400/70 dark:border-l-rose-500/50",
+    bg: "bg-rose-50/40 dark:bg-rose-950/20",
+  },
+  amber: {
+    bar: "border-l-amber-400/70 dark:border-l-amber-500/50",
+    bg: "bg-amber-50/40 dark:bg-amber-950/20",
+  },
+};
+
 function DetectHistoryRow({
   entry,
   onSelect,
   onRemove,
+  isActive,
 }: {
   entry: DetectHistoryEntry;
   onSelect: () => void;
   onRemove: () => void;
+  isActive: boolean;
 }) {
   const overallStatus = entry.response.overall_status;
   const matches = entry.response.matches ?? [];
@@ -48,8 +73,13 @@ function DetectHistoryRow({
 
   const itemCount = entry.preparedAggregate?.data.items.length ?? entry.openResearch?.data.items.length ?? 0;
 
+  const accentTone = getDetectAccentTone(overallStatus);
+  const accent = DETECT_ACCENT_CLASSES[accentTone];
+
   return (
-    <div className="group relative flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+    <div
+      className={`group relative flex items-start gap-3 rounded-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
+    >
       <button
         type="button"
         onClick={onSelect}
@@ -227,15 +257,18 @@ export default function StatementInput({
           isOpen={isHistoryOpen}
           onClose={() => setIsHistoryOpen(false)}
           entries={historyEntries}
+          onEntrySelect={handleHistorySelect}
+          onEntryRemove={handleHistoryRemove}
           onClearAll={handleHistoryClear}
           headerLabel="História analýz"
           anchorRef={historyButtonRef}
           emptyMessage="Žiadne uložené analýzy"
-          renderEntry={(entry) => (
+          renderEntry={(entry, _index, isActive) => (
             <DetectHistoryRow
               entry={entry}
               onSelect={() => handleHistorySelect(entry)}
               onRemove={() => handleHistoryRemove(entry.id)}
+              isActive={isActive}
             />
           )}
         />

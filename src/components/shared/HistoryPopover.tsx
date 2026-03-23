@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 import { groupByDate } from "@/hooks/useLocalHistory";
 
@@ -8,7 +8,9 @@ interface HistoryPopoverProps<T extends { id: string; createdAt: string }> {
   isOpen: boolean;
   onClose: () => void;
   entries: T[];
-  renderEntry: (entry: T) => ReactNode;
+  renderEntry: (entry: T, index: number, isActive: boolean) => ReactNode;
+  onEntrySelect?: (entry: T) => void;
+  onEntryRemove?: (id: string) => void;
   emptyMessage?: string;
   headerLabel?: string;
   onClearAll?: () => void;
@@ -20,11 +22,15 @@ function getIsMobile(): boolean {
   return window.matchMedia("(max-width: 1023px)").matches;
 }
 
+const SWIPE_THRESHOLD = 80;
+
 export default function HistoryPopover<T extends { id: string; createdAt: string }>({
   isOpen,
   onClose,
   entries,
   renderEntry,
+  onEntrySelect,
+  onEntryRemove,
   emptyMessage = "Žiadne položky",
   headerLabel = "História",
   onClearAll,
@@ -37,6 +43,15 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
     left: number;
     maxHeight: number;
   } | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [swipingEntryId, setSwipingEntryId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const touchStartX = useRef(0);
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const entryRefs = useRef<Map<number, HTMLLIElement>>(new Map());
+
+  const groupedEntries = groupByDate(entries);
+  const flatEntries = groupedEntries.flatMap((g) => g.entries);
 
   useLayoutEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1023px)");
@@ -61,7 +76,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (isOpen && !isMobile) {
+    if (isOpen && !isMobile && entries.length > 0) {
       const previouslyFocused = document.activeElement as HTMLElement | null;
       const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -72,9 +87,44 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         previouslyFocused?.focus();
       };
     }
-  }, [isOpen, isMobile]);
+  }, [isOpen, isMobile, entries.length]);
 
-  const groupedEntries = groupByDate(entries);
+  useEffect(() => {
+    if (!isOpen || isMobile) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((prev) => {
+          const next = prev < flatEntries.length - 1 ? prev + 1 : 0;
+          return next;
+        });
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : flatEntries.length - 1;
+          return next;
+        });
+      } else if (event.key === "Enter" && activeIndex >= 0) {
+        event.preventDefault();
+        const entry = flatEntries[activeIndex];
+        if (entry) {
+          onEntrySelect?.(entry);
+          onClose();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isMobile, activeIndex, flatEntries, onEntrySelect, onClose]);
+
+  useEffect(() => {
+    if (activeIndex >= 0 && entryRefs.current.has(activeIndex)) {
+      const el = entryRefs.current.get(activeIndex);
+      el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeIndex]);
 
   useLayoutEffect(() => {
     if (!isOpen || isMobile || !anchorRef?.current) {
@@ -109,13 +159,36 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
     };
   }, [anchorRef, isMobile, isOpen]);
 
+  const handleTouchStart = useCallback((e: React.TouchEvent, entryId: string) => {
+    touchStartX.current = e.touches[0].clientX;
+    setSwipingEntryId(entryId);
+    setSwipeOffset(0);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!swipingEntryId) return;
+    const diff = touchStartX.current - e.touches[0].clientX;
+    if (diff > 0) {
+      setSwipeOffset(Math.min(diff, SWIPE_THRESHOLD + 20));
+    }
+  }, [swipingEntryId]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!swipingEntryId) return;
+    if (swipeOffset >= SWIPE_THRESHOLD) {
+      onEntryRemove?.(swipingEntryId);
+    }
+    setSwipingEntryId(null);
+    setSwipeOffset(0);
+  }, [swipingEntryId, swipeOffset, onEntryRemove]);
+
   if (!isOpen) return null;
 
   if (isMobile) {
     return (
       <ViewportPortal>
         <div
-          className="fixed inset-0 z-50 flex items-end bg-slate-950/45 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end bg-slate-950/45 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={onClose}
         >
           <section
@@ -123,7 +196,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
             role="dialog"
             aria-modal="true"
             aria-label={headerLabel}
-            className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] border-x border-t border-slate-200 bg-white/98 p-3 pt-16 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] overscroll-contain [-webkit-overflow-scrolling:touch] dark:border-slate-700/80 dark:bg-slate-950/98"
+            className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] overscroll-contain [-webkit-overflow-scrolling:touch] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
             style={{
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
@@ -132,6 +205,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
             }}
           >
             <div className="mb-4 flex items-center justify-between">
+              <div className="h-1 w-12 mx-auto -mt-2 mb-2 rounded-full bg-slate-300 dark:bg-slate-600" />
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {headerLabel}
               </h2>
@@ -147,26 +221,58 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
               </button>
             </div>
 
-            {entries.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                {emptyMessage}
-              </p>
-            ) : (
-              <div className="space-y-6">
-                {groupedEntries.map(({ label, entries: groupEntries }) => (
-                  <div key={label}>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                      {label}
-                    </h3>
-                    <ul className="space-y-2">
-                      {groupEntries.map((entry) => (
-                        <li key={entry.id}>{renderEntry(entry)}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div
+              className="min-h-0 flex-1 overflow-y-auto p-2"
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {entries.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  {emptyMessage}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {groupedEntries.map(({ label, entries: groupEntries }) => (
+                    <div key={label}>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {label}
+                      </h3>
+                      <ul className="space-y-2" ref={listRef}>
+                        {groupEntries.map((entry) => {
+                          const globalIndex = flatEntries.indexOf(entry);
+                          const isSwiping = swipingEntryId === entry.id;
+                          return (
+                            <li
+                              key={entry.id}
+                              ref={(el) => {
+                                if (el) entryRefs.current.set(globalIndex, el);
+                              }}
+                              className="relative overflow-hidden rounded-lg"
+                              onTouchStart={(e) => handleTouchStart(e, entry.id)}
+                            >
+                              <div
+                                className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center"
+                                style={{ opacity: isSwiping ? Math.min(swipeOffset / SWIPE_THRESHOLD, 1) : 0 }}
+                              >
+                                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-5 w-5 text-white">
+                                  <path fillRule="evenodd" d="M8 1a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 1Z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                              <div
+                                className="relative transition-transform duration-150"
+                                style={{ transform: isSwiping ? `translateX(-${swipeOffset}px)` : "translateX(0)" }}
+                              >
+                                {renderEntry(entry, globalIndex, false)}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {onClearAll && entries.length > 0 && (
               <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
@@ -201,7 +307,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         ref={dialogRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-label={headerLabel}
-        className="flex min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)]"
+        className="flex min-w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white/98 shadow-[0_8px_30px_-8px_rgba(15,23,42,0.25)] dark:border-slate-700/80 dark:bg-slate-950/98 dark:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-150"
         style={{
           maxHeight: desktopPosition?.maxHeight ?? 384,
         }}
@@ -234,10 +340,22 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
                   <h3 className="mb-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                     {label}
                   </h3>
-                  <ul className="space-y-0.5">
-                    {groupEntries.map((entry) => (
-                      <li key={entry.id}>{renderEntry(entry)}</li>
-                    ))}
+                  <ul className="space-y-0.5" ref={listRef}>
+                    {groupEntries.map((entry) => {
+                      const globalIndex = flatEntries.indexOf(entry);
+                      const isActive = activeIndex === globalIndex;
+                      return (
+                        <li
+                          key={entry.id}
+                          ref={(el) => {
+                            if (el) entryRefs.current.set(globalIndex, el);
+                          }}
+                          className={isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950 rounded-lg" : ""}
+                        >
+                          {renderEntry(entry, globalIndex, isActive)}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}

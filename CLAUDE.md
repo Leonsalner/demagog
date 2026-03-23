@@ -60,6 +60,7 @@ Local app default: `http://localhost:3000`
 - `src/hooks/useSearch.ts`: search requests, model-owned filters, mock fallback
 - `src/hooks/useDetect.ts`: detect requests, fast/thorough mode handling, mock fallback
 - `src/hooks/useResearch.ts`: statement and aggregate research state
+- `src/hooks/useLocalHistory.ts`: search and detect history management via localStorage
 
 ## Database Tables (runtime)
 
