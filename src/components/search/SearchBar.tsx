@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
 import type { SearchHistoryEntry } from "@/types/history";
 import type { FilterState, Verdict } from "@/types";
@@ -204,6 +204,10 @@ function SearchHistoryRow({
   isActive: boolean;
 }) {
   const [isTouchDetailOpen, setIsTouchDetailOpen] = useState(false);
+  const [isDesktopDetailOpen, setIsDesktopDetailOpen] = useState(false);
+  const [detailPlacement, setDetailPlacement] = useState<"above" | "below">("above");
+  const filterDetailRef = useRef<HTMLDivElement | null>(null);
+  const filterTooltipRef = useRef<HTMLDivElement | null>(null);
   const hasFilters = hasAnyFilters(entry.filters);
   const allTokens = buildFilterTokens(entry.filters);
   const visibleTokens = allTokens.slice(0, 2);
@@ -216,6 +220,50 @@ function SearchHistoryRow({
   const accentTone = getVerdictAccentTone(entry.filters);
   const accent = ACCENT_CLASSES[accentTone];
 
+  useLayoutEffect(() => {
+    if (!isDesktopDetailOpen || !shouldShowFilterDetail) {
+      return;
+    }
+
+    const updatePlacement = () => {
+      const triggerRect = filterDetailRef.current?.getBoundingClientRect();
+      const tooltipRect = filterTooltipRef.current?.getBoundingClientRect();
+      if (!triggerRect || !tooltipRect) {
+        return;
+      }
+
+      const historyDialog = filterDetailRef.current?.closest('[role="dialog"]');
+      const headerRect = historyDialog
+        ?.querySelector<HTMLElement>("[data-history-popover-header]")
+        ?.getBoundingClientRect();
+      const footerRect = historyDialog
+        ?.querySelector<HTMLElement>("[data-history-popover-footer]")
+        ?.getBoundingClientRect();
+
+      const safeTop = (headerRect?.bottom ?? 0) + 8;
+      const safeBottom = (footerRect?.top ?? historyDialog?.getBoundingClientRect().bottom ?? window.innerHeight) - 8;
+      const requiredHeight = tooltipRect.height + 8;
+      const spaceAbove = triggerRect.top - safeTop;
+      const spaceBelow = safeBottom - triggerRect.bottom;
+
+      setDetailPlacement(spaceAbove >= requiredHeight || spaceAbove >= spaceBelow ? "above" : "below");
+    };
+
+    updatePlacement();
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [isDesktopDetailOpen, shouldShowFilterDetail]);
+
+  const showDesktopDetail = shouldShowFilterDetail
+    ? () => setIsDesktopDetailOpen(true)
+    : undefined;
+  const hideDesktopDetail = () => setIsDesktopDetailOpen(false);
+
   return (
     <div
       className={`group relative flex items-start gap-3 rounded-r-lg border-l-4 p-3 transition-all ${accent.bar} ${accent.bg} ${isActive ? "ring-2 ring-[var(--brand-accent)] ring-offset-1 dark:ring-offset-slate-950" : "hover:brightness-95 dark:hover:brightness-110"}`}
@@ -224,6 +272,8 @@ function SearchHistoryRow({
         <button
           type="button"
           onClick={onSelect}
+          onFocus={showDesktopDetail}
+          onBlur={hideDesktopDetail}
           className="min-w-0 w-full text-left"
         >
           <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -235,7 +285,12 @@ function SearchHistoryRow({
               <span>+ {relatedResultCount} súvisiacich</span>
             )}
             {hasFilters && (
-              <div className="relative min-w-0">
+              <div
+                ref={filterDetailRef}
+                className="relative min-w-0"
+                onMouseEnter={showDesktopDetail}
+                onMouseLeave={hideDesktopDetail}
+              >
                 <div
                   className="flex min-w-0 flex-wrap items-center gap-1"
                   title={shouldShowFilterDetail ? detailText : undefined}
@@ -255,8 +310,13 @@ function SearchHistoryRow({
                   ) : null}
                 </div>
 
-                {shouldShowFilterDetail ? (
-                  <div className="pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-xl lg:group-hover:block lg:group-focus-within:block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                {shouldShowFilterDetail && isDesktopDetailOpen ? (
+                  <div
+                    ref={filterTooltipRef}
+                    className={`pointer-events-none absolute left-0 z-50 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-xl lg:block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${
+                      detailPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
+                    }`}
+                  >
                     {detailText}
                   </div>
                 ) : null}

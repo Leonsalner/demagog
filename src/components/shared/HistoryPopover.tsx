@@ -204,7 +204,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
               paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
             }}
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div data-history-popover-header className="mb-4 flex items-center justify-between">
               <div className="h-1 w-12 mx-auto -mt-2 mb-2 rounded-full bg-slate-300 dark:bg-slate-600" />
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {headerLabel}
@@ -275,7 +275,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
             </div>
 
             {onClearAll && entries.length > 0 && (
-              <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
+              <div data-history-popover-footer className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={onClearAll}
@@ -312,7 +312,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
           maxHeight: desktopPosition?.maxHeight ?? 384,
         }}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/95">
+        <div data-history-popover-header className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/95">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             {headerLabel}
           </h2>
@@ -364,7 +364,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
         </div>
 
         {onClearAll && entries.length > 0 && (
-          <div className="shrink-0 border-t border-slate-100 px-2 py-2 dark:border-slate-700/50">
+          <div data-history-popover-footer className="shrink-0 border-t border-slate-100 px-2 py-2 dark:border-slate-700/50">
             <button
               type="button"
               onClick={onClearAll}
