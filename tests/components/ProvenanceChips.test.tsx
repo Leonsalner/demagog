@@ -75,6 +75,9 @@ describe("ProvenanceChips", () => {
     expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0].closest("div.absolute")?.className).toContain(
       "lg:w-[min(36rem,calc(100vw-4rem))]",
     );
+    expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0].closest("div.absolute")?.className).toContain(
+      "left-1/2",
+    );
     fireEvent.click(screen.getAllByRole("button", { name: "Preskúmať" })[1]);
 
     expect(onNavigateToStatement).toHaveBeenCalledWith(2);

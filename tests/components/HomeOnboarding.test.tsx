@@ -209,6 +209,14 @@ describe("HomeOnboarding", () => {
     expect(screen.getByText("Pomôžte nám vylepšiť aplikáciu")).toBeInTheDocument();
   });
 
+  it("keeps the close button as a sticky floating control inside the card", async () => {
+    renderOnboarding();
+
+    expect(
+      (await screen.findByRole("button", { name: "Zavrieť návod" })).parentElement?.className,
+    ).toContain("sticky");
+  });
+
   it("shows and hides the mobile scroll cue on the first step", async () => {
     renderOnboarding();
 
