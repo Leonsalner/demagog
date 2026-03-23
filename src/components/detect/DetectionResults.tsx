@@ -18,7 +18,6 @@ interface DetectionResultsProps {
 export const detectStatusConfig = {
   DUPLICATE_FOUND: {
     container: "border-green-200 bg-green-50 dark:border-green-800/60 dark:bg-green-950/40",
-    icon: "✓",
     title: "Nájdený duplicitný výrok",
     description: "Tento nárok bol pravdepodobne už overený.",
     detail: "Nižšie nájdete existujúce overenia s hodnotením.",
@@ -29,7 +28,6 @@ export const detectStatusConfig = {
   },
   RELATED_ONLY: {
     container: "border-amber-200 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/40",
-    icon: "◔",
     title: "Nájdené súvisiace výroky",
     description: "Odporúčame kontrolu existujúcich overení.",
     detail: "Nižšie nájdete výroky na podobnú tému.",
@@ -41,7 +39,6 @@ export const detectStatusConfig = {
   NEW_CLAIM: {
     container:
       "border-[var(--brand-border-soft)] bg-[var(--brand-surface-soft)] dark:border-[#7a3a28]/70 dark:bg-[#2a1510]/80",
-    icon: "+",
     title: "Nový výrok",
     description: "Tento výrok vyzerá byť nový. Chcete ho pridať do databázy?",
     detail: "Tento výrok vyžaduje úplné overenie.",
@@ -51,6 +48,39 @@ export const detectStatusConfig = {
       "bg-[var(--brand-accent)] text-white shadow-[0_14px_30px_-18px_rgba(217,88,48,0.95)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]",
   },
 } as const;
+
+function renderStatusIcon(status: DetectResponse["overall_status"]) {
+  if (status === "NEW_CLAIM") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+        <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
+      </svg>
+    );
+  }
+
+  if (status === "RELATED_ONLY") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+        <circle cx="8" cy="8" r="5.25" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M8 8V3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M8 8h3.15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+      <circle cx="8" cy="8" r="6" fill="currentColor" fillOpacity="0.12" />
+      <path
+        d="M5 8.1 7.1 10.2 11.2 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function sortMatches(matches: DetectionMatch[]) {
   const order = {
@@ -193,8 +223,8 @@ export default function DetectionResults({
     <section className="space-y-5">
       <div className={`rounded-2xl border p-5 ${status.container}`}>
         <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-base font-semibold text-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-            {status.icon}
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+            {renderStatusIcon(result.overall_status)}
           </div>
           <div className="flex-1">
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">

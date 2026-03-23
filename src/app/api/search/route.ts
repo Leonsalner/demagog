@@ -230,6 +230,16 @@ function buildFilterParams(body: SearchRequest) {
   };
 }
 
+function hasAnySearchFilters(body: SearchRequest): boolean {
+  return Boolean(
+    body.strana ||
+      body.vyhodnotenie ||
+      body.meno ||
+      body.datum_od ||
+      body.datum_do
+  );
+}
+
 function mergeQueryFilters(
   body: SearchRequest,
   extractedFilters: QueryUnderstanding["filters"]
@@ -861,6 +871,22 @@ function buildRelatedFilterParams(body: SearchRequest, meno: string) {
   };
 }
 
+async function fetchNewestStatements(
+  supabase: ReturnType<typeof supabasePublic>,
+): Promise<Statement[]> {
+  const { data, error } = await supabase
+    .from("vyroky")
+    .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url")
+    .order("datum", { ascending: false, nullsFirst: false })
+    .limit(10);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as SearchRow[]).map(toStatement);
+}
+
 async function fetchRelatedResults(
   supabase: ReturnType<typeof supabasePublic>,
   queryEmbedding: number[],
@@ -975,6 +1001,7 @@ export async function POST(request: NextRequest) {
   const pageSize = body.page_size ?? 10;
   const offset = (page - 1) * pageSize;
   const timings: SearchStageTimings = {};
+  const isDefaultBrowseQuery = !body.query && !hasAnySearchFilters(body);
 
   try {
     let results: Statement[] = [];
@@ -984,7 +1011,11 @@ export async function POST(request: NextRequest) {
     let relatedArticles: Article[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
-    if (body.query) {
+    if (isDefaultBrowseQuery) {
+      results = await fetchNewestStatements(supabase);
+      totalCount = results.length;
+      hasMore = false;
+    } else if (body.query) {
       const distinctValuesStartedAt = performance.now();
       const {
         meno: allNames,
@@ -1161,42 +1192,45 @@ export async function POST(request: NextRequest) {
         };
       }
 
-      const query = applyStatementFilters(
-        supabase
-          .from("vyroky")
-          .select(
-            "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
-            { count: "planned" }
-          ),
-        filterBody
-      );
+      {
+        const query = applyStatementFilters(
+          supabase
+            .from("vyroky")
+            .select(
+              "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
+              { count: "planned" }
+            ),
+          filterBody
+        );
 
-      const { data, error, count } = await query
-        .order("datum", { ascending: false, nullsFirst: false })
-        .range(offset, offset + pageSize);
+        const { data, error, count } = await query
+          .order("datum", { ascending: false, nullsFirst: false })
+          .range(offset, offset + pageSize);
 
-      if (error) {
-        return NextResponse.json({ error: "Database error" }, { status: 502 });
+        if (error) {
+          return NextResponse.json({ error: "Database error" }, { status: 502 });
+        }
+
+        const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
+        results = pageRows.map(toStatement);
+        hasMore = (data?.length ?? 0) > pageSize;
+        totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
       }
-
-      const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
-      results = pageRows.map(toStatement);
-      hasMore = (data?.length ?? 0) > pageSize;
-      totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
     }
 
-    // Fetch and attach statement sources for all result IDs.
     const sourcesStartedAt = performance.now();
     const allIds = [
       ...results.map((s) => s.id),
       ...(relatedResults ?? []).map((s) => s.id),
     ];
-    const sourcesMap = await fetchSourcesForIds(supabase, allIds);
-    recordStageTiming(timings, "sources_ms", sourcesStartedAt);
+    if (allIds.length > 0) {
+      const sourcesMap = await fetchSourcesForIds(supabase, allIds);
+      recordStageTiming(timings, "sources_ms", sourcesStartedAt);
 
-    results = attachSources(results, sourcesMap);
-    if (relatedResults) {
-      relatedResults = attachSources(relatedResults, sourcesMap);
+      results = attachSources(results, sourcesMap);
+      if (relatedResults) {
+        relatedResults = attachSources(relatedResults, sourcesMap);
+      }
     }
 
     const response: SearchResponse = {

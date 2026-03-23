@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import localFont from "next/font/local";
+import Script from "next/script";
 import {
   FeedbackContextProvider,
 } from "@/components/feedback/FeedbackContext";
@@ -11,23 +12,8 @@ import {
 } from "@/components/shared/FooterHelperVisibility";
 import Navbar from "@/components/shared/Navbar";
 import { APP_NAVBAR_ID } from "@/lib/layout";
-import { DARK_THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from "@/lib/theme";
+import { getThemeInitScript } from "@/lib/theme";
 import "./globals.css";
-
-const themeInitScript = `
-  (() => {
-    const storedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    const theme =
-      storedTheme === "light" || storedTheme === "dark"
-        ? storedTheme
-        : window.matchMedia(${JSON.stringify(DARK_THEME_MEDIA_QUERY)}).matches
-          ? "dark"
-          : "light";
-    const root = document.documentElement;
-    root.dataset.theme = theme;
-    root.classList.toggle("dark", theme === "dark");
-  })();
-`;
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff2",
@@ -79,7 +65,12 @@ export default function RootLayout({
   return (
     <html lang="sk" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+        >
+          {getThemeInitScript()}
+        </Script>
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground font-sans antialiased`}>
         <FooterHelperVisibilityProvider>

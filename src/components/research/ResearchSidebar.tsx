@@ -1,46 +1,20 @@
 "use client";
 
-import type { DetectionMatch, ResearchItem, ResearchWorkspaceMode } from "@/types";
+import type { DetectionMatch, ResearchItem, ResearchWorkspaceMode, SidebarTab } from "@/types";
+
+import { buildResearchSections } from "./research-sidebar-sections";
 
 interface ResearchSidebarProps {
   mode: ResearchWorkspaceMode;
   items: ResearchItem[];
-  activeTab?: "articles" | "statements";
-  onTabChange?: (tab: "articles" | "statements") => void;
+  activeTab?: SidebarTab;
+  onTabChange?: (tab: SidebarTab) => void;
   selectedId: string | null;
   onSelect: (itemId: string) => void;
   detectMatches?: DetectionMatch[];
   selectedMatchId?: number | null;
   onSelectMatch?: (statementId: number) => void;
 }
-
-type SidebarSection = {
-  heading: string;
-  items: ResearchItem[];
-};
-
-function buildSections(items: ResearchItem[]): SidebarSection[] {
-  return [
-    {
-      heading: "Analýza výroku",
-      items: items.filter((item) => item.kind === "analysis"),
-    },
-    {
-      heading: "Demagog Články",
-      items: items.filter((item) => item.kind === "clanky_article"),
-    },
-    {
-      heading: "Externé zdroje",
-      items: items.filter((item) => item.kind === "external_source"),
-    },
-  ].filter((section) => section.items.length > 0);
-}
-
-const classificationLabels = {
-  DUPLICATE: "Duplicitný",
-  RELATED: "Súvisiaci",
-  UNRELATED: "Nesúvisiaci",
-} as const;
 
 export default function ResearchSidebar({
   mode,
@@ -53,7 +27,7 @@ export default function ResearchSidebar({
   selectedMatchId = null,
   onSelectMatch,
 }: ResearchSidebarProps) {
-  const sections = buildSections(items);
+  const sections = buildResearchSections(items);
   const articleSections = sections.filter((section) => section.heading !== "Analýza výroku");
   const showTabs = mode === "aggregate" && detectMatches.length > 0;
   const visibleSections = showTabs ? articleSections : sections;

@@ -5,6 +5,7 @@ import Home from "@/app/page";
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import { FooterHelperVisibilityProvider } from "@/components/shared/FooterHelperVisibility";
 import type { DetectResponse } from "@/types";
+import type { DetectHistoryEntry } from "@/types/history";
 
 import {
   mockDetectDuplicate,
@@ -72,11 +73,15 @@ async function renderHome(mode?: string) {
 }
 
 function mockUseSearchReturn() {
+  const showNewest = vi.fn().mockResolvedValue(undefined);
   vi.mocked(useSearch).mockReturnValue({
     results: null,
     loading: false,
     error: null,
     query: "",
+    submittedQuery: "",
+    submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+    filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
     filters: {
       strana: null,
       vyhodnotenie: null,
@@ -91,15 +96,20 @@ function mockUseSearchReturn() {
       verdicts: ["Pravda", "Nepravda", "Zavádzajúce", "Neoveriteľné"],
       date_range: { min: null, max: null },
     },
+    completedSearchSnapshot: null,
+    restoreVersion: 0,
+    manualFilterVersion: 0,
+    isDefaultBrowseView: false,
     hasSearched: false,
     setQuery: vi.fn(),
     setFilters: vi.fn(),
     setPage: vi.fn(),
     setError: vi.fn(),
     search: vi.fn(),
+    restore: vi.fn(),
+    showNewest,
     loadFilters: vi.fn().mockResolvedValue(null),
     filterLoadError: false,
-    isModelFilterUpdateRef: { current: false },
   });
 }
 
@@ -111,7 +121,11 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    lateMatchNotice: null,
+    dismissLateMatchNotice: vi.fn(),
+    applyLateMatchResult: vi.fn(),
     detect,
+    restore: vi.fn(),
     reset,
     ...overrides,
   });
@@ -123,6 +137,7 @@ function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unkno
   const prepare = vi.fn().mockResolvedValue(undefined);
   const retry = vi.fn().mockResolvedValue(undefined);
   const reset = vi.fn();
+  const hydrate = vi.fn();
 
   vi.mocked(usePreparedAggregateResearch).mockReturnValue({
     status: "idle",
@@ -132,10 +147,11 @@ function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unkno
     prepare,
     retry,
     reset,
+    hydrate,
     ...overrides,
   });
 
-  return { prepare, retry, reset };
+  return { prepare, retry, reset, hydrate };
 }
 
 function mockUseResearchReturn(overrides?: Record<string, unknown>) {
@@ -150,6 +166,8 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
 
   vi.mocked(useResearch).mockReturnValue({
     activeMode: null,
+    activeTab: "articles",
+    selection: null,
     data: null,
     displayState: "closed" as const,
     isOpen: false,
@@ -158,14 +176,18 @@ function mockUseResearchReturn(overrides?: Record<string, unknown>) {
     isPendingReveal: false,
     loading: false,
     error: null,
+    lastRequest: null,
     openStatementResearch,
     openAggregateResearch,
     openPreparedResearch,
+    restoreSnapshot: vi.fn(),
     retry,
     finishEnter,
     startClose,
     finishClose,
     dismiss,
+    setActiveTab: vi.fn(),
+    setSelection: vi.fn(),
     ...overrides,
   });
 
@@ -204,9 +226,29 @@ function buildWeakDetectResult(): DetectResponse {
   };
 }
 
+function buildDetectHistoryEntry(overrides?: Partial<DetectHistoryEntry>): DetectHistoryEntry {
+  return {
+    id: "detect-history-1",
+    createdAt: "2026-03-23T10:00:00.000Z",
+    kind: "detect",
+    query: "Ukrajina je Rusko.",
+    response: buildWeakDetectResult(),
+    preparedAggregate: {
+      statementIds: [201],
+      data: {
+        mode: "aggregate",
+        items: [],
+      },
+    },
+    openResearch: null,
+    ...overrides,
+  };
+}
+
 describe("detect page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -331,7 +373,7 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("keeps the detect surface blocked while aggregate preparation is running", async () => {
+  it("blocks detect surface while aggregate preparation is in progress", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -339,16 +381,20 @@ describe("detect page flow", () => {
       status: "preparing",
       statementIds: [201],
     });
+    mockUseResearchReturn({ displayState: "closed" as const });
 
     await renderHome("detect");
 
     expect(
-      screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
+      screen.getByRole("progressbar", { name: "Priebeh detekcie" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Pripravujem súhrnný prieskum a súvisiace zdroje/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
-  it("keeps the detect surface blocked during the idle-to-prepare aggregate handoff", async () => {
+  it("does not block the detect surface while aggregate research is idle", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -359,11 +405,9 @@ describe("detect page flow", () => {
 
     await renderHome("detect");
 
-    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Priebeh detekcie" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Porovnávam výrok s databázou overených tvrdení/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {
@@ -391,6 +435,35 @@ describe("detect page flow", () => {
           body: { statement_ids: [109, 111] },
         },
         preparedData,
+      );
+    });
+  });
+
+  it("reopens prepared research immediately from detect history when no open snapshot was saved", async () => {
+    const historyEntry = buildDetectHistoryEntry();
+    window.localStorage.setItem(
+      "demagog.history.detect.v2",
+      JSON.stringify({ version: 2, entries: [historyEntry] }),
+    );
+
+    mockUseDetectReturn();
+    const { hydrate } = mockUsePreparedAggregateResearchReturn();
+    const { openPreparedResearch } = mockUseResearchReturn();
+
+    await renderHome("detect");
+
+    fireEvent.click(screen.getByRole("button", { name: "História" }));
+    fireEvent.click(screen.getByRole("button", { name: /Ukrajina je Rusko/i }));
+
+    await waitFor(() => {
+      expect(hydrate).toHaveBeenCalledWith(historyEntry.preparedAggregate);
+      expect(openPreparedResearch).toHaveBeenCalledWith(
+        {
+          mode: "aggregate",
+          endpoint: "/api/research/detect",
+          body: { statement_ids: [201] },
+        },
+        historyEntry.preparedAggregate?.data,
       );
     });
   });

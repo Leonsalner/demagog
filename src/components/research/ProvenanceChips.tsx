@@ -30,11 +30,20 @@ function ExternalArrowIcon() {
   );
 }
 
+function getIsMobile(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
 export default function ProvenanceChips({
   refs,
   onNavigateToStatement,
 }: ProvenanceChipsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(getIsMobile);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +72,24 @@ export default function ProvenanceChips({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
   if (refs.length === 0) {
     return null;
   }
@@ -75,29 +102,45 @@ export default function ProvenanceChips({
           label: `${ref.meno} (${ref.strana})`,
           title: ref.vyrok,
         }));
+  const mobileSummaryLabel = `Súvisiace výroky (${refs.length})`;
 
   return (
     <div ref={popoverRef} className="relative">
-      <p className="text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-        Súvisiace výroky
-      </p>
-      <div className="mt-2 flex flex-wrap justify-end gap-2">
-        {visibleChips.map((chip) => (
+      {isMobile ? (
+        <div className="flex justify-end">
           <button
-            key={chip.key}
             type="button"
-            title={chip.title}
             aria-expanded={isOpen}
             onClick={() => setIsOpen((open) => !open)}
             className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
           >
-            {chip.label}
+            {mobileSummaryLabel}
           </button>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          <p className="text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+            Súvisiace výroky
+          </p>
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
+            {visibleChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                title={chip.title}
+                aria-expanded={isOpen}
+                onClick={() => setIsOpen((open) => !open)}
+                className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {isOpen ? (
-        <div className="absolute right-0 top-full z-20 mt-3 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute left-1/2 top-full z-20 mt-3 w-[min(26rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] sm:w-[min(30rem,calc(100vw-3rem))] sm:max-w-[calc(100vw-3rem)] md:left-auto md:right-0 md:translate-x-0 lg:w-[min(36rem,calc(100vw-4rem))] lg:max-w-[calc(100vw-4rem)] dark:border-slate-700 dark:bg-slate-900">
           <div className="space-y-2">
             {refs.map((ref) => (
               <div

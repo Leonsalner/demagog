@@ -41,6 +41,7 @@ Supabase Postgres + pgvector
 4. Supabase RPC `search_statements` performs a similarity search over the `vyroky` table using `pgvector`, applying the extracted filters.
 5. Related articles (`clanky`) and external sources (`statement_sources`) are fetched for the top matches.
 6. The frontend renders the results.
+7. The search query, active filters, and a compact result summary are saved to localStorage.
 
 ### 2. Detect Flow (Duplicate Detection)
 1. The user submits a specific political statement to check if Demagog has already verified it.
@@ -49,6 +50,7 @@ Supabase Postgres + pgvector
 4. **Gemini** classifies each candidate as `DUPLICATE`, `RELATED`, or `UNRELATED`, providing a brief reasoning. (A lexical fallback exists if Gemini fails).
 5. The API determines the overall status (`DUPLICATE_FOUND`, `RELATED_ONLY`, or `NEW_CLAIM`).
 6. Based on the status, the frontend automatically prepares an aggregate **Research Workspace** (`Prieskum`), fetching relevant articles and sources for all related claims via `match_articles_batch`.
+7. The analyzed statement and a compact snapshot of the research workspace are saved to localStorage.
 
 ### 3. Add Flow
 1. Evaluators can seamlessly transition from the Research Workspace to adding a new statement.

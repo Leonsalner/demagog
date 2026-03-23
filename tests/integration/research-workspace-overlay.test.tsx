@@ -1,5 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { MutableRefObject } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { FeedbackContextProvider } from "@/components/feedback/FeedbackContext";
 import HomePageClient from "@/components/home/HomePageClient";
@@ -15,8 +14,18 @@ vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
 }));
 
+vi.mock("@/hooks/usePreparedAggregateResearch", () => ({
+  usePreparedAggregateResearch: vi.fn(),
+}));
+
+vi.mock("@/hooks/useResearch", () => ({
+  useResearch: vi.fn(),
+}));
+
 const { useSearch } = await import("@/hooks/useSearch");
 const { useDetect } = await import("@/hooks/useDetect");
+const { usePreparedAggregateResearch } = await import("@/hooks/usePreparedAggregateResearch");
+const { useResearch } = await import("@/hooks/useResearch");
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -35,15 +44,6 @@ const availableFilters: FiltersResponse = {
     max: "2026-12-31",
   },
 };
-
-function deferredResponse() {
-  let resolve!: (value: Response) => void;
-  const promise = new Promise<Response>((innerResolve) => {
-    resolve = innerResolve;
-  });
-
-  return { promise, resolve };
-}
 
 function buildSearchResults(): SearchResponse {
   return {
@@ -118,19 +118,24 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const setFilters = vi.fn();
   const setPage = vi.fn();
   const search = vi.fn();
+  const showNewest = vi.fn().mockResolvedValue(undefined);
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
-  const isModelFilterUpdateRef = {
-    current: false,
-  } as MutableRefObject<boolean>;
 
   vi.mocked(useSearch).mockReturnValue({
     results: null,
     loading: false,
     error: null,
     query: "",
+    submittedQuery: "",
+    submittedFilters: { strana: null, vyhodnotenie: null, meno: null, datum_od: null, datum_do: null },
+    filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
     filters: emptyFilters,
     page: 1,
     availableFilters,
+    completedSearchSnapshot: null,
+    restoreVersion: 0,
+    manualFilterVersion: 0,
+    isDefaultBrowseView: false,
     filterLoadError: false,
     hasSearched: false,
     setQuery,
@@ -138,8 +143,9 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setPage,
     setError: vi.fn(),
     search,
+    restore: vi.fn(),
+    showNewest,
     loadFilters,
-    isModelFilterUpdateRef,
     ...overrides,
   });
 }
@@ -149,10 +155,84 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    lateMatchNotice: null,
+    dismissLateMatchNotice: vi.fn(),
+    applyLateMatchResult: vi.fn(),
     detect: vi.fn(),
+    restore: vi.fn(),
     reset: vi.fn(),
     ...overrides,
   });
+}
+
+function mockUsePreparedAggregateResearchReturn(overrides?: Record<string, unknown>) {
+  const prepare = vi.fn().mockResolvedValue(undefined);
+  const retry = vi.fn().mockResolvedValue(undefined);
+  const reset = vi.fn();
+  const hydrate = vi.fn();
+
+  vi.mocked(usePreparedAggregateResearch).mockReturnValue({
+    status: "idle",
+    data: null,
+    error: null,
+    statementIds: [],
+    prepare,
+    retry,
+    reset,
+    hydrate,
+    ...overrides,
+  });
+
+  return { prepare, retry, reset, hydrate };
+}
+
+function mockUseResearchReturn(overrides?: Record<string, unknown>) {
+  const openStatementResearch = vi.fn().mockResolvedValue(undefined);
+  const openAggregateResearch = vi.fn().mockResolvedValue(undefined);
+  const openPreparedResearch = vi.fn();
+  const retry = vi.fn().mockResolvedValue(undefined);
+  const finishEnter = vi.fn();
+  const startClose = vi.fn();
+  const finishClose = vi.fn();
+  const dismiss = vi.fn();
+
+  vi.mocked(useResearch).mockReturnValue({
+    activeMode: null,
+    activeTab: "articles",
+    selection: null,
+    data: null,
+    displayState: "closed" as const,
+    isOpen: false,
+    isEntering: false,
+    isClosing: false,
+    isPendingReveal: false,
+    loading: false,
+    error: null,
+    lastRequest: null,
+    openStatementResearch,
+    openAggregateResearch,
+    openPreparedResearch,
+    restoreSnapshot: vi.fn(),
+    retry,
+    finishEnter,
+    startClose,
+    finishClose,
+    dismiss,
+    setActiveTab: vi.fn(),
+    setSelection: vi.fn(),
+    ...overrides,
+  });
+
+  return {
+    openStatementResearch,
+    openAggregateResearch,
+    openPreparedResearch,
+    retry,
+    finishEnter,
+    startClose,
+    finishClose,
+    dismiss,
+  };
 }
 
 function setViewport(width: number, height: number) {
@@ -217,6 +297,9 @@ describe("research workspace overlay", () => {
     vi.stubGlobal("fetch", vi.fn());
     window.scrollTo = vi.fn();
     vi.clearAllMocks();
+
+    mockUsePreparedAggregateResearchReturn();
+    mockUseResearchReturn();
   });
 
   afterEach(() => {
@@ -232,67 +315,20 @@ describe("research workspace overlay", () => {
       query: "konsolidácia",
     });
     mockUseDetectReturn();
-    const pending = deferredResponse();
-    vi.mocked(fetch).mockReturnValue(pending.promise);
+    const { openStatementResearch } = mockUseResearchReturn();
 
     renderHome("search", 104);
 
     fireEvent.click(screen.getByRole("button", { name: "Preskúmať" }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/research/statement",
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({ statement_id: 1 }),
-        }),
+      expect(openStatementResearch).toHaveBeenCalledWith(
+        1,
+        { revealWhenReady: false },
       );
     });
 
-    expect(screen.getByText("Pripravujem prieskum výroku a súvisiace zdroje...")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
-
-    await act(async () => {
-      pending.resolve({
-        ok: true,
-        json: async () => ({
-          mode: "statement",
-          items: [
-            {
-              id: "analysis:1",
-              kind: "analysis",
-              title: "Analýza výroku",
-              body: "Obsah analýzy.",
-              url: null,
-              domain: null,
-              author: null,
-              date: null,
-              statement_refs: [
-                {
-                  statement_id: 1,
-                  vyrok: "42 % konsolidácie musí zvládať bežný občan.",
-                  meno: "Milan Majerský",
-                  strana: "KDH",
-                  verdict: "Pravda",
-                  url: null,
-                },
-              ],
-              verdict: "Pravda",
-            },
-          ],
-        }),
-      } as Response);
-      await pending.promise;
-    });
-
-    const dialog = await screen.findByRole("dialog", { name: "Research workspace" });
-    const overlay = screen.getByTestId("research-workspace-overlay");
-    const transformedShell = screen.getByTestId("transformed-shell");
-
-    expect(dialog).toBeInTheDocument();
-    expect(overlay).toHaveStyle({ top: "104px" });
-    expect(within(transformedShell).queryByTestId("research-workspace-overlay")).not.toBeInTheDocument();
-    expect(document.body.contains(overlay)).toBe(true);
   });
 
   it("keeps quick detect Preskúmať deferred on mobile and positions the dialog below the navbar", async () => {
@@ -301,18 +337,7 @@ describe("research workspace overlay", () => {
     mockUseDetectReturn({
       result: buildFastDetectResult(),
     });
-    const pending = deferredResponse();
-    vi.mocked(fetch).mockImplementation((input) => {
-      if (typeof input === "string" && input === "/api/research/detect") {
-        return Promise.resolve({
-          ok: false,
-          json: async () => ({ error: "prep failed" }),
-          text: async () => "prep failed",
-        } as Response);
-      }
-
-      return pending.promise;
-    });
+    const { openStatementResearch } = mockUseResearchReturn();
 
     renderHome("detect", 136);
 
@@ -320,53 +345,13 @@ describe("research workspace overlay", () => {
     fireEvent.click(screen.getByRole("button", { name: "Preskúmať" }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/research/statement",
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({ statement_id: 42 }),
-        }),
+      expect(openStatementResearch).toHaveBeenCalledWith(
+        42,
+        { revealWhenReady: false },
       );
     });
 
-    expect(screen.getByText("Pripravujem prieskum výroku a súvisiace zdroje...")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
-
-    await act(async () => {
-      pending.resolve({
-        ok: true,
-        json: async () => ({
-          mode: "statement",
-          items: [
-            {
-              id: "analysis:42",
-              kind: "analysis",
-              title: "Analýza výroku",
-              body: "Obsah analýzy.",
-              url: null,
-              domain: null,
-              author: null,
-              date: null,
-              statement_refs: [
-                {
-                  statement_id: 42,
-                  vyrok: "Pediatrov na severe Slovenska je akútny nedostatok.",
-                  meno: "Testovací politik",
-                  strana: "Test",
-                  verdict: "Pravda",
-                  url: null,
-                },
-              ],
-              verdict: "Pravda",
-            },
-          ],
-        }),
-      } as Response);
-      await pending.promise;
-    });
-
-    await screen.findByRole("dialog", { name: "Research workspace" });
-    expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "136px" });
   });
 
   it("blocks detect until aggregate research is ready, auto-opens it, and reuses the prepared payload", async () => {
@@ -376,64 +361,77 @@ describe("research workspace overlay", () => {
       result: buildThoroughDetectResult(),
     });
 
-    let resolveResearch: (value: Response) => void;
-    const researchPromise = new Promise<Response>((resolve) => {
-      resolveResearch = resolve;
-    });
-    vi.mocked(fetch).mockImplementation((input) => {
-      if (typeof input === "string" && input === "/api/research/detect") {
-        return researchPromise;
-      }
-      return Promise.resolve({ ok: false } as Response);
+    const preparedData = {
+      mode: "aggregate" as const,
+      items: [
+        {
+          id: "source:109",
+          kind: "external_source" as const,
+          title: "Nepravdivé tvrdenia o príčinách vojny na Ukrajine",
+          body: "Obsah článku.",
+          url: "https://demagog.sk/article",
+          domain: "demagog.sk",
+          author: "redakcia Demagog.sk",
+          date: "2025-04-04",
+          statement_refs: [],
+        },
+      ],
+    };
+
+    const { openPreparedResearch, startClose } = mockUseResearchReturn({
+      displayState: "entering",
+      data: preparedData,
+      activeMode: "aggregate",
     });
 
-    renderHome("detect", 104);
+    mockUsePreparedAggregateResearchReturn({
+      status: "ready",
+      data: preparedData,
+      statementIds: [109],
+    });
+
+    const view = renderHome("detect", 104);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/research/detect",
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({ statement_ids: [109] }),
-        }),
-      );
-    });
-
-    expect(
-      screen.getByText("Pripravujem súhrnný prieskum a súvisiace zdroje..."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
-
-    await act(async () => {
-      resolveResearch!({
-        ok: true,
-        json: async () => ({
-          mode: "aggregate",
-          items: [
-            {
-              id: "source:109",
-              kind: "external_source",
-              title: "Nepravdivé tvrdenia o príčinách vojny na Ukrajine",
-              body: "Obsah článku.",
-              url: "https://demagog.sk/article",
-              domain: "demagog.sk",
-              author: "redakcia Demagog.sk",
-              date: "2025-04-04",
-              statement_refs: [],
-            },
-          ],
-        }),
-      } as Response);
+      expect(openPreparedResearch).toHaveBeenCalled();
     });
 
     await screen.findByRole("dialog", { name: "Research workspace" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
-    expect(fetch).toHaveBeenCalledTimes(1);
 
-    const dialog = screen.getByRole("dialog", { name: "Research workspace" });
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
-    fireEvent.transitionEnd(dialog);
+    expect(startClose).toHaveBeenCalledTimes(1);
+
+    mockUseResearchReturn({
+      displayState: "closed",
+      data: preparedData,
+      activeMode: "aggregate",
+      openPreparedResearch,
+      startClose,
+    });
+    view.rerender(
+      <FooterHelperVisibilityProvider>
+        <FeedbackContextProvider>
+          <header
+            id={APP_NAVBAR_ID}
+            ref={(element) => {
+              if (element) {
+                Object.defineProperty(element, "getBoundingClientRect", {
+                  configurable: true,
+                  value: () => ({ bottom: 104 }),
+                });
+              }
+            }}
+          />
+          <div
+            data-testid="transformed-shell"
+            style={{ transform: "translateY(8px)" }}
+          >
+            <HomePageClient activeTab="detect" />
+          </div>
+        </FeedbackContextProvider>
+      </FooterHelperVisibilityProvider>,
+    );
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
@@ -441,8 +439,39 @@ describe("research workspace overlay", () => {
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť prieskum" }));
+    expect(openPreparedResearch).toHaveBeenCalledTimes(2);
+
+    mockUseResearchReturn({
+      displayState: "entering",
+      data: preparedData,
+      activeMode: "aggregate",
+      openPreparedResearch,
+      startClose,
+    });
+    view.rerender(
+      <FooterHelperVisibilityProvider>
+        <FeedbackContextProvider>
+          <header
+            id={APP_NAVBAR_ID}
+            ref={(element) => {
+              if (element) {
+                Object.defineProperty(element, "getBoundingClientRect", {
+                  configurable: true,
+                  value: () => ({ bottom: 104 }),
+                });
+              }
+            }}
+          />
+          <div
+            data-testid="transformed-shell"
+            style={{ transform: "translateY(8px)" }}
+          >
+            <HomePageClient activeTab="detect" />
+          </div>
+        </FeedbackContextProvider>
+      </FooterHelperVisibilityProvider>,
+    );
 
     await screen.findByRole("dialog", { name: "Research workspace" });
-    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

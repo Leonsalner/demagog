@@ -28,11 +28,46 @@ import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResear
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
+import { useSearchHistory, useDetectHistory, generateHistoryId } from "@/hooks/useLocalHistory";
+import type { FilterState } from "@/types";
+import type { SearchHistoryEntry, DetectHistoryEntry, ResearchPaneSelection } from "@/types/history";
 
 export type HomeTab = "search" | "detect";
 
 interface HomePageClientProps {
   activeTab: HomeTab;
+}
+
+function normalizeHistoryQuery(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function areFiltersEqual(left: FilterState, right: FilterState): boolean {
+  return (
+    left.strana === right.strana &&
+    left.vyhodnotenie === right.vyhodnotenie &&
+    left.meno === right.meno &&
+    left.datum_od === right.datum_od &&
+    left.datum_do === right.datum_do
+  );
+}
+
+function findRecentHistoryEntryId(
+  entries: Array<SearchHistoryEntry | DetectHistoryEntry>,
+  query: string,
+): string | null {
+  const normalizedQuery = normalizeHistoryQuery(query);
+  const matchingEntry = entries.find((entry) => {
+    if (normalizeHistoryQuery(entry.query) !== normalizedQuery) {
+      return false;
+    }
+
+    const ageInDays =
+      (Date.now() - new Date(entry.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return ageInDays < 7;
+  });
+
+  return matchingEntry?.id ?? null;
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
@@ -45,34 +80,49 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   });
   const [lockedPanelHeight, setLockedPanelHeight] = useState<number | null>(null);
   const [autoOpenedPreparedResearchKey, setAutoOpenedPreparedResearchKey] = useState<string | null>(null);
+  const [researchUiState, setResearchUiState] = useState<{
+    activeTab: "articles" | "statements";
+    selection: ResearchPaneSelection;
+  }>({ activeTab: "articles", selection: null });
   const {
     results,
     loading,
     error,
     query,
     submittedQuery,
+    submittedFilters,
     filters,
     page,
     availableFilters,
     filterLoadError,
+    completedSearchSnapshot,
+    restoreVersion,
+    manualFilterVersion,
+    isDefaultBrowseView,
     hasSearched,
     setQuery,
     setFilters,
     setPage,
     search,
+    restore: restoreSearch,
+    showNewest,
     loadFilters,
   } = useSearch();
   const {
     result: detectResult,
     loading: detectLoading,
     error: detectError,
+    lateMatchNotice,
+    dismissLateMatchNotice,
     detect,
+    restore: restoreDetect,
     reset: resetDetect,
   } = useDetect();
   const {
     status: preparedAggregateResearchStatus,
     data: preparedAggregateResearchData,
     statementIds: preparedAggregateStatementIds,
+    hydrate: hydratePreparedAggregate,
     prepare: prepareAggregateResearch,
     retry: retryPreparedAggregateResearch,
     reset: resetPreparedAggregateResearch,
@@ -84,19 +134,29 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     error: researchError,
     displayState: researchDisplayState,
     isPendingReveal: isResearchPendingReveal,
+    lastRequest: researchLastRequest,
     openStatementResearch,
     openPreparedResearch,
+    restoreSnapshot,
     retry: retryResearch,
     finishEnter: finishEnterResearch,
     startClose: startCloseResearch,
     finishClose: finishCloseResearch,
     dismiss: dismissResearch,
   } = useResearch();
+  const { entries: searchHistoryEntries, saveSearchEntry, removeEntry: removeSearchEntry, clearAll: clearSearchHistory, touchEntry: touchSearchEntry } = useSearchHistory();
+  const { entries: detectHistoryEntries, saveDetectEntry, removeEntry: removeDetectEntry, clearAll: clearDetectHistory, touchEntry: touchDetectEntry } = useDetectHistory();
   const searchPanelRef = useRef<HTMLElement | null>(null);
   const detectPanelRef = useRef<HTMLElement | null>(null);
   const previousActiveTabRef = useRef<HomeTab>(activeTab);
   const panelHeightReleaseRef = useRef<number | null>(null);
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
+  const lastSavedSearchRequestKeyRef = useRef<string | null>(null);
+  const lastSavedDetectSnapshotKeyRef = useRef<string | null>(null);
+  const lastHandledSearchRestoreVersionRef = useRef(0);
+  const lastHandledManualFilterVersionRef = useRef(0);
+  const [isHydratingSearchRestore, setIsHydratingSearchRestore] = useState(false);
+  const [isHydratingDetectRestore, setIsHydratingDetectRestore] = useState(false);
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
   const feedbackContext = useMemo(
     () => ({
@@ -114,19 +174,36 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setAutoOpenedPreparedResearchKey(key);
   });
 
-  const initialSearchDoneRef = useRef(false);
-
   useEffect(() => {
     void loadFilters();
   }, [loadFilters]);
 
   useEffect(() => {
-    // Initial fetch to populate with latest statements
-    if (!initialSearchDoneRef.current) {
-      initialSearchDoneRef.current = true;
-      void search({ nextPage: 1 });
+    if (
+      activeTab !== "search" ||
+      availableFilters === null ||
+      loading ||
+      isHydratingSearchRestore ||
+      query.trim() !== "" ||
+      hasSearched ||
+      results !== null ||
+      error !== null
+    ) {
+      return;
     }
-  }, [search]);
+
+    void showNewest();
+  }, [
+    activeTab,
+    availableFilters,
+    hasSearched,
+    isHydratingSearchRestore,
+    loading,
+    error,
+    query,
+    results,
+    showNewest,
+  ]);
 
   const handleOpenStatementResearch = useCallback(
     (statementId: number) => {
@@ -252,10 +329,222 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     [],
   );
 
+  useEffect(() => {
+    if (restoreVersion <= lastHandledSearchRestoreVersionRef.current) {
+      return;
+    }
+
+    lastHandledSearchRestoreVersionRef.current = restoreVersion;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mark restore hydration for the next render cycle
+    setIsHydratingSearchRestore(true);
+  }, [restoreVersion]);
+
+  useEffect(() => {
+    if (!isHydratingSearchRestore) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsHydratingSearchRestore(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isHydratingSearchRestore]);
+
+  useEffect(() => {
+    if (
+      !completedSearchSnapshot ||
+      completedSearchSnapshot.source === "restore" ||
+      isDefaultBrowseView
+    ) {
+      return;
+    }
+
+    if (lastSavedSearchRequestKeyRef.current === completedSearchSnapshot.requestKey) {
+      return;
+    }
+    lastSavedSearchRequestKeyRef.current = completedSearchSnapshot.requestKey;
+
+    const entry: SearchHistoryEntry = {
+      id: generateHistoryId(),
+      createdAt: new Date().toISOString(),
+      kind: "search",
+      query: completedSearchSnapshot.query,
+      filters: completedSearchSnapshot.filters,
+      filterOwnership: completedSearchSnapshot.filterOwnership,
+      response: {
+        results: completedSearchSnapshot.response.results,
+        related_results: completedSearchSnapshot.response.related_results,
+        related_articles: completedSearchSnapshot.response.related_articles,
+        total_count: completedSearchSnapshot.response.total_count,
+        page: completedSearchSnapshot.response.page,
+        page_size: completedSearchSnapshot.response.page_size,
+        query_time_ms: completedSearchSnapshot.response.query_time_ms,
+        has_more: completedSearchSnapshot.response.has_more,
+        query_understanding: completedSearchSnapshot.response.query_understanding,
+      },
+    };
+
+    saveSearchEntry(entry);
+  }, [completedSearchSnapshot, isDefaultBrowseView, saveSearchEntry]);
+
+  useEffect(() => {
+    if (!detectResult) {
+      return;
+    }
+
+    const compactResearchData = (): DetectHistoryEntry["openResearch"] => {
+      if (!researchData || researchDisplayState === "closed" || !researchLastRequest) {
+        return null;
+      }
+      return {
+        request: researchLastRequest,
+        data: researchData,
+        activeTab: researchUiState.activeTab,
+        selection: researchUiState.selection,
+      };
+    };
+
+    const preparedAggregate =
+      preparedAggregateResearchData && preparedAggregateStatementIds.length > 0
+        ? {
+            data: preparedAggregateResearchData,
+            statementIds: preparedAggregateStatementIds,
+          }
+        : null;
+    const openResearch = compactResearchData();
+    const snapshotKey = JSON.stringify({
+      query: detectResult.input_statement,
+      status: detectResult.overall_status,
+      matchCount: detectResult.matches.length,
+      preparedAggregateKey: preparedAggregate?.statementIds.join(",") ?? null,
+      researchDisplayState,
+      researchMode,
+      activeTab: researchUiState.activeTab,
+      selection: researchUiState.selection,
+      requestMode: openResearch?.request.mode ?? null,
+      itemCount: openResearch?.data.items.length ?? 0,
+    });
+
+    if (lastSavedDetectSnapshotKeyRef.current === snapshotKey) {
+      return;
+    }
+    lastSavedDetectSnapshotKeyRef.current = snapshotKey;
+    const existingEntryId = findRecentHistoryEntryId(detectHistoryEntries, detectResult.input_statement);
+
+    const entry: DetectHistoryEntry = {
+      id: existingEntryId ?? generateHistoryId(),
+      createdAt: new Date().toISOString(),
+      kind: "detect",
+      query: detectResult.input_statement,
+      response: detectResult,
+      preparedAggregate,
+      openResearch,
+    };
+
+    saveDetectEntry(entry);
+  }, [
+    detectHistoryEntries,
+    detectResult,
+    preparedAggregateResearchData,
+    preparedAggregateStatementIds,
+    researchData,
+    researchDisplayState,
+    researchLastRequest,
+    researchMode,
+    researchUiState,
+    saveDetectEntry,
+  ]);
+
+  const handleSearchHistorySelect = useCallback(
+    (entry: SearchHistoryEntry) => {
+      setIsHydratingSearchRestore(true);
+      touchSearchEntry(entry.id);
+      restoreSearch(entry);
+    },
+    [restoreSearch, touchSearchEntry]
+  );
+
+  const handleDetectHistorySelect = useCallback(
+    (entry: DetectHistoryEntry) => {
+      setIsHydratingDetectRestore(true);
+      touchDetectEntry(entry.id);
+      setDetectStatement(entry.query);
+      setAutoOpenedPreparedResearchKey(null);
+      restoreDetect(entry);
+
+      if (entry.preparedAggregate) {
+        hydratePreparedAggregate(entry.preparedAggregate);
+      } else {
+        resetPreparedAggregateResearch();
+      }
+
+      if (entry.openResearch) {
+        if (entry.preparedAggregate) {
+          setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
+        }
+        restoreSnapshot(entry.openResearch);
+      } else if (entry.preparedAggregate) {
+        openPreparedResearch(
+          createAggregateResearchRequest(entry.preparedAggregate.statementIds),
+          entry.preparedAggregate.data,
+        );
+        setAutoOpenedPreparedResearchKey(entry.preparedAggregate.statementIds.join(","));
+      } else {
+        if (researchDisplayState !== "closed") {
+          dismissResearch();
+        }
+      }
+    },
+    [
+      restoreDetect,
+      touchDetectEntry,
+      hydratePreparedAggregate,
+      resetPreparedAggregateResearch,
+      restoreSnapshot,
+      openPreparedResearch,
+      dismissResearch,
+      researchDisplayState,
+    ]
+  );
+
   const handleSearch = () => {
     setPage(1);
-    void search({ nextPage: 1, submit: true });
+    void search({ nextPage: 1, submit: true, source: "submit" });
   };
+
+  useEffect(() => {
+    if (manualFilterVersion <= lastHandledManualFilterVersionRef.current) {
+      return;
+    }
+
+    lastHandledManualFilterVersionRef.current = manualFilterVersion;
+
+    if (
+      activeTab !== "search" ||
+      isHydratingSearchRestore ||
+      loading ||
+      !hasSearched ||
+      areFiltersEqual(filters, submittedFilters)
+    ) {
+      return;
+    }
+
+    setPage(1);
+    void search({ nextPage: 1, submit: true, source: "auto-filter-refine" });
+  }, [
+    activeTab,
+    filters,
+    hasSearched,
+    isHydratingSearchRestore,
+    loading,
+    manualFilterVersion,
+    search,
+    setPage,
+    submittedFilters,
+  ]);
 
   useEffect(() => {
     if (!isMobileFilterOpen) {
@@ -334,7 +623,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   }, [activeTab, dismissResearch, isResearchPendingReveal, preparedAggregateResearchKey, preparedAggregateStatementIds.length, researchDisplayState]);
 
   useEffect(() => {
-    if (!shouldPrepareAggregateResearch || preparedAggregateResearchStatus !== "idle") {
+    if (
+      isHydratingDetectRestore ||
+      !shouldPrepareAggregateResearch ||
+      preparedAggregateResearchStatus !== "idle"
+    ) {
       return;
     }
 
@@ -344,10 +637,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     prepareAggregateResearch,
     preparedAggregateResearchStatus,
     shouldPrepareAggregateResearch,
+    isHydratingDetectRestore,
   ]);
 
   useEffect(() => {
-    if (!shouldAutoOpenPreparedResearch) {
+    if (isHydratingDetectRestore || !shouldAutoOpenPreparedResearch) {
       return;
     }
 
@@ -362,7 +656,22 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     preparedAggregateResearchKey,
     preparedAggregateStatementIds,
     shouldAutoOpenPreparedResearch,
+    isHydratingDetectRestore,
   ]);
+
+  useEffect(() => {
+    if (!isHydratingDetectRestore) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsHydratingDetectRestore(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isHydratingDetectRestore]);
 
   const handleDetectReset = () => {
     setIsAddModalOpen(false);
@@ -391,7 +700,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const hasDetectPanelLoading =
     detectLoading ||
     isAggregatePreparationBlocking ||
-    (shouldPrepareAggregateResearch && preparedAggregateResearchStatus === "idle") ||
     (activeTab === "detect" && isStatementResearchPending);
   const detectLoadingPhase = isStatementResearchPending
     ? "statement-research"
@@ -441,6 +749,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     );
   };
 
+  const handleResearchUiStateChange = useCallback((activeTab: "articles" | "statements", selection: ResearchPaneSelection) => {
+    setResearchUiState({ activeTab, selection });
+  }, []);
+
+  const handleLateMatchToastAction = useCallback(() => {
+    if (isAddModalOpen) {
+      setIsAddModalOpen(false);
+    }
+    dismissLateMatchNotice();
+  }, [isAddModalOpen, dismissLateMatchNotice]);
+
   return (
     <div className="relative min-h-[400px]">
       <div
@@ -465,7 +784,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 value={query}
                 onChange={setQuery}
                 onSearch={handleSearch}
+                isVisible={activeTab === "search"}
                 loading={loading}
+                historyEntries={searchHistoryEntries}
+                onHistorySelect={handleSearchHistorySelect}
+                onHistoryRemove={removeSearchEntry}
+                onHistoryClear={clearSearchHistory}
               />
             </div>
 
@@ -518,7 +842,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                   <ActiveFilters filters={filters} onChange={setFilters} />
                 </div>
                 <div className="lg:hidden">
-                  {/* On mobile, filters are shown in the drawer, but chips can still be useful to see. */}
                   <ActiveFilters filters={filters} onChange={setFilters} />
                 </div>
 
@@ -636,8 +959,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               value={detectStatement}
               onChange={setDetectStatement}
               onSubmit={handleDetect}
+              isVisible={activeTab === "detect"}
               loading={isDetectPanelLoading}
               onReset={handleDetectReset}
+              historyEntries={detectHistoryEntries}
+              onHistorySelect={handleDetectHistorySelect}
+              onHistoryRemove={removeDetectEntry}
+              onHistoryClear={clearDetectHistory}
             />
 
             <div className="min-h-[320px]">
@@ -718,6 +1046,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         onRetry={() => {
           void retryResearch();
         }}
+        restoreActiveTab={researchUiState.activeTab}
+        restoreSelection={researchUiState.selection}
+        onUiStateChange={handleResearchUiStateChange}
       />
 
       <AddStatementModal
@@ -725,6 +1056,55 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         initialStatement={addModalInitialStatement}
         onClose={() => setIsAddModalOpen(false)}
       />
+
+      {lateMatchNotice ? (
+        <ViewportPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-4 backdrop-blur-[2px]">
+            <div
+              className="w-full max-w-md rounded-[1.75rem] border border-emerald-200 bg-white px-6 py-5 shadow-[0_32px_80px_-28px_rgba(15,23,42,0.45)] dark:border-emerald-800/60 dark:bg-slate-950"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)",
+                paddingLeft: "calc(env(safe-area-inset-left, 0px) + 1.5rem)",
+                paddingRight: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                  !
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    Dodatočne sa našli podobné výroky
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    {lateMatchNotice.status === "DUPLICATE_FOUND"
+                      ? "Po oneskorenom overení sa našli pravdepodobné duplicitné zhody a výsledky sa aktualizovali."
+                      : "Po oneskorenom overení sa našli súvisiace výroky a výsledky sa aktualizovali."}
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    {isAddModalOpen ? (
+                      <button
+                        type="button"
+                        onClick={handleLateMatchToastAction}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(217,88,48,0.55)] transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
+                      >
+                        Prejsť na zhody
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={dismissLateMatchNotice}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Zavrieť
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ViewportPortal>
+      ) : null}
     </div>
   );
 }

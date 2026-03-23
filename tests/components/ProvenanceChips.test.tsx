@@ -3,6 +3,22 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import ProvenanceChips from "@/components/research/ProvenanceChips";
 
 describe("ProvenanceChips", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 767px") ? false : false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+  });
+
   it("renders a single statement as a clickable chip", () => {
     render(
       <ProvenanceChips
@@ -56,6 +72,12 @@ describe("ProvenanceChips", () => {
       "href",
       "https://demagog.sk/vyrok/1",
     );
+    expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0].closest("div.absolute")?.className).toContain(
+      "lg:w-[min(36rem,calc(100vw-4rem))]",
+    );
+    expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0].closest("div.absolute")?.className).toContain(
+      "left-1/2",
+    );
     fireEvent.click(screen.getAllByRole("button", { name: "Preskúmať" })[1]);
 
     expect(onNavigateToStatement).toHaveBeenCalledWith(2);
@@ -74,5 +96,34 @@ describe("ProvenanceChips", () => {
     );
 
     expect(screen.getByText("Z 4 výrokov")).toBeInTheDocument();
+  });
+
+  it("uses a single summary trigger on mobile", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 767px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+
+    render(
+      <ProvenanceChips
+        refs={[
+          { statement_id: 1, vyrok: "A", meno: "A", strana: "A" },
+          { statement_id: 2, vyrok: "B", meno: "B", strana: "B" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Súvisiace výroky (2)" })).toBeInTheDocument();
+    expect(screen.queryByText("Súvisiace výroky")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "A (A)" })).not.toBeInTheDocument();
   });
 });

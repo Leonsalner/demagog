@@ -181,7 +181,7 @@ describe("POST /api/detect logic", () => {
     );
   });
 
-  it("uses similarity-based fallback classes when classification fails", async () => {
+  it("returns NEW_CLAIM when classification fails", async () => {
     const rows = [
       buildRow(1, 0.91),
       buildRow(2, 0.71),
@@ -201,10 +201,13 @@ describe("POST /api/detect logic", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.matches.map((match: { classification: string }) => match.classification)).toEqual(
-      ["DUPLICATE", "RELATED", "UNRELATED"],
-    );
-    expect(data.overall_status).toBe("DUPLICATE_FOUND");
+    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBe("no-match");
+    expect(data).toMatchObject({
+      input_statement: "Nova formulacia tvrdenia",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+    });
+    expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
   });
 
   it("adds related articles when duplicate or related matches are found", async () => {
@@ -477,5 +480,85 @@ describe("POST /api/detect logic", () => {
     expect(data.overall_status).toBe("NEW_CLAIM");
     expect(data.related_articles).toBeUndefined();
     expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
+  });
+
+  it("degrades query-specific post-validation failures to NEW_CLAIM", async () => {
+    const rows = [buildRow(1, 0.92)];
+    const sourcesQuery = {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn(() => {
+        throw new Error("sources query failed");
+      }),
+      order: vi.fn(),
+    };
+    const supabase = {
+      from: vi.fn(() => sourcesQuery),
+      rpc: vi.fn(async (fn: string) => {
+        if (fn === "match_statements") {
+          return { data: rows, error: null };
+        }
+
+        if (fn === "match_articles") {
+          return { data: [], error: null };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+    vi.mocked(classifyMatches).mockResolvedValue([
+      { id: 1, classification: "RELATED" },
+    ]);
+
+    const response = await POST(
+      createRequest({
+        statement: "Pošlú nás na vojnu",
+        top_k: 3,
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBe("no-match");
+    expect(data).toMatchObject({
+      input_statement: "Pošlú nás na vojnu",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+    });
+  });
+
+  it("keeps infrastructure retrieval failures explicit", async () => {
+    const supabase = {
+      from: vi.fn(),
+      rpc: vi.fn(async (fn: string) => {
+        if (fn === "match_statements") {
+          return {
+            data: null,
+            error: {
+              code: "57014",
+              message: "statement timeout",
+              details: "canceling statement due to statement timeout",
+            },
+          };
+        }
+
+        throw new Error(`Unexpected RPC ${fn}`);
+      }),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(
+      createRequest({
+        statement: "Pošlú nás na vojnu",
+        top_k: 3,
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Database error",
+    });
   });
 });

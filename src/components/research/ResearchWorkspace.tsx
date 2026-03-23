@@ -6,19 +6,20 @@ import type {
   DetectResponse,
   DetectionMatch,
   ResearchItem,
+  SidebarTab,
   ResearchWorkspaceMode,
   ResearchWorkspaceResponse,
 } from "@/types";
 import { APP_NAVBAR_ID } from "@/lib/layout";
 import type { WorkspaceDisplayState } from "@/hooks/useResearch";
+import type { ResearchPaneSelection } from "@/types/history";
 
 import DetectStatusBar from "./DetectStatusBar";
+import ResearchMobileNavigator from "./ResearchMobileNavigator";
 import ResearchPane from "./ResearchPane";
 import ResearchSidebar from "./ResearchSidebar";
 import LoadingSpinner from "../shared/LoadingSpinner";
 import ViewportPortal from "../shared/ViewportPortal";
-
-type SidebarTab = "articles" | "statements";
 
 const PANEL_ENTER_DELAY_MS = 60;
 const PANEL_ENTER_DURATION_MS = 500;
@@ -40,6 +41,9 @@ interface ResearchWorkspaceProps {
   onExited?: () => void;
   onClose: () => void;
   onRetry?: () => void;
+  restoreActiveTab?: "articles" | "statements" | null;
+  restoreSelection?: ResearchPaneSelection | null;
+  onUiStateChange?: (activeTab: SidebarTab, selection: ResearchPaneSelection) => void;
 }
 
 type WorkspaceSelection =
@@ -104,12 +108,17 @@ export default function ResearchWorkspace({
   onExited,
   onClose,
   onRetry,
+  restoreActiveTab,
+  restoreSelection,
+  onUiStateChange,
 }: ResearchWorkspaceProps) {
   const [selection, setSelection] = useState<WorkspaceSelection>(null);
   const [isRendered, setIsRendered] = useState(false);
   const [isOverlayShown, setIsOverlayShown] = useState(false);
   const [isPanelShown, setIsPanelShown] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("articles");
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isMobileNavigatorOpen, setIsMobileNavigatorOpen] = useState(false);
   const [navbarOffset, setNavbarOffset] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousDisplayStateRef = useRef<WorkspaceDisplayState>(displayState);
@@ -120,6 +129,7 @@ export default function ResearchWorkspace({
   const didFinishRef = useRef(false);
   const transitionTargetRef = useRef<HTMLDivElement | null>(null);
   const clearTransitionListenerRef = useRef<(() => void) | null>(null);
+  const isRestoringRef = useRef(false);
 
   const workspaceMode = data?.mode ?? activeMode ?? "statement";
   const detectMatches = useMemo(
@@ -133,6 +143,23 @@ export default function ResearchWorkspace({
     () => getVisibleArticleItems(workspaceMode, data?.items ?? [], detectMatches),
     [data, detectMatches, workspaceMode],
   );
+
+  /* eslint-disable react-hooks/set-state-in-effect -- restore from snapshot state */
+  useLayoutEffect(() => {
+    if (restoreActiveTab != null) {
+      isRestoringRef.current = true;
+      setSidebarTab(restoreActiveTab);
+    }
+  }, [restoreActiveTab]);
+
+  useLayoutEffect(() => {
+    if (restoreSelection !== undefined) {
+      isRestoringRef.current = true;
+      setSelection(restoreSelection);
+    }
+  }, [restoreSelection]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const resolvedSelection = useMemo<WorkspaceSelection>(() => {
     const items = data?.items ?? [];
 
@@ -191,8 +218,17 @@ export default function ResearchWorkspace({
     },
     [data, detectMatches, visibleArticleItems, workspaceMode],
   );
+
+  useEffect(() => {
+    if (!isRestoringRef.current && onUiStateChange) {
+      onUiStateChange(sidebarTab, resolvedSelection);
+    }
+    isRestoringRef.current = false;
+  }, [sidebarTab, resolvedSelection, onUiStateChange]);
+
   const handleClose = useCallback(() => {
     setSidebarTab("articles");
+    setIsMobileNavigatorOpen(false);
     onClose();
   }, [onClose]);
 
@@ -386,12 +422,42 @@ export default function ResearchWorkspace({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleClose, isAddModalOpen, isRendered]);
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = (matches: boolean) => {
+      setIsMobileViewport((current) => (current === matches ? current : matches));
+      if (!matches) {
+        setIsMobileNavigatorOpen(false);
+      }
+    };
+
+    updateViewport(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      updateViewport(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
   if (!isRendered) {
     return null;
   }
 
   const isEntering = displayState === "entering";
   const isClosing = displayState === "closing";
+  const workspaceTitle = workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku";
+  const mobileNavigatorLabel =
+    workspaceMode === "aggregate"
+      ? sidebarTab === "articles"
+        ? "Zdroje"
+        : "Výroky"
+      : "Zdroje";
   const panelTimingClass = isClosing
     ? "duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
     : "duration-[500ms] ease-[cubic-bezier(0.16,1,0.3,1)]";
@@ -426,12 +492,12 @@ export default function ResearchWorkspace({
                 : "translate-y-[18px] scale-[0.975] opacity-0"
           }`}
         >
-          {workspaceMode === "statement" || !detectResult ? (
+          {!isMobileViewport && (workspaceMode === "statement" || !detectResult) ? (
             <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
                 <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku"}
+                  {workspaceTitle}
                 </h1>
               </div>
               <button
@@ -447,7 +513,7 @@ export default function ResearchWorkspace({
             </header>
           ) : null}
 
-          {workspaceMode === "aggregate" && detectResult ? (
+          {!isMobileViewport && workspaceMode === "aggregate" && detectResult ? (
             <DetectStatusBar
               inputStatement={detectResult.input_statement}
               overallStatus={detectResult.overall_status}
@@ -456,66 +522,209 @@ export default function ResearchWorkspace({
             />
           ) : null}
 
-          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
-            <div className="min-h-[180px] lg:min-h-0">
-              <ResearchSidebar
+          {isMobileViewport ? (
+            <>
+              <header className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                      {workspaceMode === "aggregate" ? "Kontrolovaný výrok" : "Research Workspace"}
+                    </p>
+                    <h1 className="mt-1 line-clamp-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                      {workspaceMode === "aggregate" && detectResult
+                        ? detectResult.input_statement
+                        : workspaceTitle}
+                    </h1>
+                    {workspaceMode === "aggregate" && detectResult ? (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {detectResult.overall_status === "DUPLICATE_FOUND"
+                          ? "Nájdený duplikát"
+                          : detectResult.overall_status === "RELATED_ONLY"
+                            ? "Súvisiace výroky"
+                            : "Nový výrok"}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                    aria-label="Zavrieť prieskum"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+                      <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  {workspaceMode === "aggregate" ? (
+                    <div className="relative grid flex-1 grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80">
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-y-1 left-1 z-0 w-1/2 rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
+                        style={{
+                          transform:
+                            sidebarTab === "articles" ? "translateX(0)" : "translateX(100%)",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange("articles")}
+                        className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                          sidebarTab === "articles"
+                            ? "text-slate-900 dark:text-slate-100"
+                            : "text-slate-500 dark:text-slate-400"
+                        }`}
+                      >
+                        Články
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange("statements")}
+                        className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                          sidebarTab === "statements"
+                            ? "text-slate-900 dark:text-slate-100"
+                            : "text-slate-500 dark:text-slate-400"
+                        }`}
+                      >
+                        Výroky
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex-1" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileNavigatorOpen(true)}
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+                  >
+                    {mobileNavigatorLabel}
+                  </button>
+                </div>
+              </header>
+
+              <div className="min-h-0 flex-1 overflow-hidden bg-slate-100/80 p-2 dark:bg-slate-950">
+                <main className="h-full overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+                  {loading ? (
+                    <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
+                      <LoadingSpinner size="lg" />
+                      <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                        Načítavam prieskum…
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {!loading && error ? (
+                    <div className="rounded-3xl bg-white p-6 dark:bg-slate-950/70">
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        Prieskum sa nepodarilo načítať
+                      </h2>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{error}</p>
+                      {onRetry ? (
+                        <button
+                          type="button"
+                          onClick={onRetry}
+                          className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)]"
+                        >
+                          Skúsiť znova
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {!loading && !error ? (
+                    <ResearchPane
+                      item={selectedItem}
+                      onNavigateToStatement={(statementId) => {
+                        setSidebarTab("statements");
+                        setSelection({ type: "statement-match", statementId });
+                      }}
+                    />
+                  ) : null}
+                </main>
+              </div>
+
+              <ResearchMobileNavigator
+                isOpen={isMobileNavigatorOpen}
+                onClose={() => setIsMobileNavigatorOpen(false)}
                 mode={data?.mode ?? "statement"}
-                items={data?.items ?? []}
                 activeTab={sidebarTab}
-                onTabChange={handleTabChange}
+                items={visibleArticleItems}
+                detectMatches={detectMatches}
                 selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
+                selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
                 onSelect={(itemId) => {
                   setSidebarTab("articles");
                   setSelection({ type: "research-item", id: itemId });
                 }}
-                detectMatches={detectMatches}
-                selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
                 onSelectMatch={(statementId) => {
                   setSidebarTab("statements");
                   setSelection({ type: "statement-match", statementId });
                 }}
               />
-            </div>
-
-            <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              {loading ? (
-                <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
-                  <LoadingSpinner size="lg" />
-                  <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                    Načítavam prieskum…
-                  </p>
-                </div>
-              ) : null}
-
-              {!loading && error ? (
-                <div className="rounded-3xl bg-white p-8 dark:bg-slate-950/70">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Prieskum sa nepodarilo načítať
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{error}</p>
-                  {onRetry ? (
-                    <button
-                      type="button"
-                      onClick={onRetry}
-                      className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)]"
-                    >
-                      Skúsiť znova
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {!loading && !error ? (
-                <ResearchPane
-                  item={selectedItem}
-                  onNavigateToStatement={(statementId) => {
+            </>
+          ) : (
+            <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-slate-100/80 p-3 sm:p-4 lg:grid-cols-[320px_minmax(0,1fr)] dark:bg-slate-950">
+              <div className="min-h-[180px] lg:min-h-0">
+                <ResearchSidebar
+                  mode={data?.mode ?? "statement"}
+                  items={data?.items ?? []}
+                  activeTab={sidebarTab}
+                  onTabChange={handleTabChange}
+                  selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
+                  onSelect={(itemId) => {
+                    setSidebarTab("articles");
+                    setSelection({ type: "research-item", id: itemId });
+                  }}
+                  detectMatches={detectMatches}
+                  selectedMatchId={resolvedSelection?.type === "statement-match" ? resolvedSelection.statementId : null}
+                  onSelectMatch={(statementId) => {
                     setSidebarTab("statements");
                     setSelection({ type: "statement-match", statementId });
                   }}
                 />
-              ) : null}
-            </main>
-          </div>
+              </div>
+
+              <main className="min-h-0 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+                {loading ? (
+                  <div className="flex min-h-[280px] flex-col items-center justify-center rounded-3xl bg-white p-8 text-center dark:bg-slate-950/70">
+                    <LoadingSpinner size="lg" />
+                    <p className="mt-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Načítavam prieskum…
+                    </p>
+                  </div>
+                ) : null}
+
+                {!loading && error ? (
+                  <div className="rounded-3xl bg-white p-8 dark:bg-slate-950/70">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Prieskum sa nepodarilo načítať
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{error}</p>
+                    {onRetry ? (
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="mt-4 inline-flex rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)]"
+                      >
+                        Skúsiť znova
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {!loading && !error ? (
+                  <ResearchPane
+                    item={selectedItem}
+                    onNavigateToStatement={(statementId) => {
+                      setSidebarTab("statements");
+                      setSelection({ type: "statement-match", statementId });
+                    }}
+                  />
+                ) : null}
+              </main>
+            </div>
+          )}
         </section>
       </div>
     </ViewportPortal>

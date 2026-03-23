@@ -9,6 +9,7 @@ import type {
   SearchResponse,
   Statement,
 } from "@/types";
+import type { SearchFilterOwnershipState, SearchHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_SEARCH_MOCK === "true";
 
@@ -31,65 +32,79 @@ const extractedFilterKeys = [
 type ExtractedFilters =
   NonNullable<SearchResponse["query_understanding"]>["extracted_filters"];
 
+type SearchCompletionSource = "submit" | "auto-filter-refine" | "restore";
+
+type CompletedSearchSnapshot = {
+  requestKey: string;
+  query: string;
+  filters: FilterState;
+  filterOwnership: SearchFilterOwnershipState;
+  response: SearchResponse;
+  source: SearchCompletionSource;
+};
+
+function emptyFilterOwnership(): SearchFilterOwnershipState {
+  return {
+    strana: "none",
+    vyhodnotenie: "none",
+    meno: "none",
+    datum_od: "none",
+    datum_do: "none",
+  };
+}
+
 function clearModelOwnedFilters(
   currentFilters: FilterState,
-  ownedFields: Set<keyof FilterState>,
+  ownership: SearchFilterOwnershipState,
 ): FilterState {
-  if (ownedFields.size === 0) {
-    return currentFilters;
-  }
-
   return {
-    ...currentFilters,
-    strana: ownedFields.has("strana") ? null : currentFilters.strana,
-    vyhodnotenie: ownedFields.has("vyhodnotenie")
-      ? null
-      : currentFilters.vyhodnotenie,
-    meno: ownedFields.has("meno") ? null : currentFilters.meno,
-    datum_od: ownedFields.has("datum_od") ? null : currentFilters.datum_od,
-    datum_do: ownedFields.has("datum_do") ? null : currentFilters.datum_do,
+    strana: ownership.strana === "model" ? null : currentFilters.strana,
+    vyhodnotenie: ownership.vyhodnotenie === "model" ? null : currentFilters.vyhodnotenie,
+    meno: ownership.meno === "model" ? null : currentFilters.meno,
+    datum_od: ownership.datum_od === "model" ? null : currentFilters.datum_od,
+    datum_do: ownership.datum_do === "model" ? null : currentFilters.datum_do,
   };
 }
 
 function applyExtractedFilters(
   currentFilters: FilterState,
+  currentOwnership: SearchFilterOwnershipState,
   extractedFilters: ExtractedFilters,
-  ownedFields: Set<keyof FilterState>,
 ): {
   filters: FilterState;
-  ownedFields: Set<keyof FilterState>;
+  ownership: SearchFilterOwnershipState;
 } {
-  const clearedFilters = clearModelOwnedFilters(currentFilters, ownedFields);
-  const nextFilters = { ...clearedFilters };
-  const nextOwnedFields = new Set<keyof FilterState>();
+  const baseFilters = clearModelOwnedFilters(currentFilters, currentOwnership);
+  const nextFilters = { ...baseFilters };
+  const nextOwnership = { ...currentOwnership };
 
-  if (clearedFilters.strana === null && extractedFilters.strana !== null) {
+  if (baseFilters.strana === null && extractedFilters.strana !== null) {
     nextFilters.strana = extractedFilters.strana;
-    nextOwnedFields.add("strana");
+    nextOwnership.strana = "model";
   }
   if (
-    clearedFilters.vyhodnotenie === null &&
+    baseFilters.vyhodnotenie === null &&
     extractedFilters.vyhodnotenie !== null
   ) {
     nextFilters.vyhodnotenie = extractedFilters.vyhodnotenie;
-    nextOwnedFields.add("vyhodnotenie");
+    nextOwnership.vyhodnotenie = "model";
   }
-  if (clearedFilters.meno === null && extractedFilters.meno !== null) {
+  if (baseFilters.meno === null && extractedFilters.meno !== null) {
     nextFilters.meno = extractedFilters.meno;
-    nextOwnedFields.add("meno");
+    nextOwnership.meno = "model";
   }
-  if (clearedFilters.datum_od === null && extractedFilters.datum_od !== null) {
+  if (baseFilters.datum_od === null && extractedFilters.datum_od !== null) {
     nextFilters.datum_od = extractedFilters.datum_od;
-    nextOwnedFields.add("datum_od");
+    nextOwnership.datum_od = "model";
   }
-  if (clearedFilters.datum_do === null && extractedFilters.datum_do !== null) {
+  if (baseFilters.datum_do === null && extractedFilters.datum_do !== null) {
     nextFilters.datum_do = extractedFilters.datum_do;
-    nextOwnedFields.add("datum_do");
+    nextOwnership.datum_do = "model";
   }
 
   return {
     filters: nextFilters,
-    ownedFields: nextOwnedFields,
+    ownership: nextOwnership,
   };
 }
 
@@ -205,9 +220,11 @@ function runMockSearch(request: SearchRequest): SearchResponse {
 export function useSearch() {
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [filters, setFiltersState] = useState<FilterState>(emptyFilters);
+  const [filterOwnership, setFilterOwnership] = useState<SearchFilterOwnershipState>(emptyFilterOwnership());
   const [query, setQueryState] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
+  const [submittedOwnership, setSubmittedOwnership] = useState<SearchFilterOwnershipState>(emptyFilterOwnership());
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,8 +232,30 @@ export function useSearch() {
   const [availableFilters, setAvailableFilters] =
     useState<FiltersResponse | null>(null);
   const [filterLoadError, setFilterLoadError] = useState(false);
+  const [completedSearchSnapshot, setCompletedSearchSnapshot] = useState<CompletedSearchSnapshot | null>(null);
+  const [restoreVersion, setRestoreVersion] = useState(0);
+  const [manualFilterVersion, setManualFilterVersion] = useState(0);
+  const [isDefaultBrowseView, setIsDefaultBrowseView] = useState(false);
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
-  const modelSetFields = useRef<Set<keyof FilterState>>(new Set<keyof FilterState>());
+  const filterOwnershipRef = useRef<SearchFilterOwnershipState>(emptyFilterOwnership());
+  const filtersRef = useRef<FilterState>(emptyFilters);
+  const submittedFiltersRef = useRef<FilterState>(emptyFilters);
+  const requestSequenceRef = useRef(0);
+
+  const syncFilterOwnership = useCallback((ownership: SearchFilterOwnershipState) => {
+    filterOwnershipRef.current = ownership;
+    setFilterOwnership(ownership);
+  }, []);
+
+  const syncFilters = useCallback((filters: FilterState) => {
+    filtersRef.current = filters;
+    setFiltersState(filters);
+  }, []);
+
+  const syncSubmittedFilters = useCallback((filters: FilterState) => {
+    submittedFiltersRef.current = filters;
+    setSubmittedFilters(filters);
+  }, []);
 
   const loadFilters = useCallback(async () => {
     if (availableFiltersRef.current) {
@@ -253,99 +292,165 @@ export function useSearch() {
     async ({
       nextPage = page,
       submit = false,
+      overrideOwnership,
+      source = "submit",
     }: {
       nextPage?: number;
       submit?: boolean;
+      overrideOwnership?: SearchFilterOwnershipState;
+      source?: SearchCompletionSource;
     } = {}) => {
       setLoading(true);
       setError(null);
       setHasSearched(true);
+      setIsDefaultBrowseView(false);
 
       const activeQuery = submit ? query : submittedQuery;
-      const activeFilters = submit ? filters : submittedFilters;
+      const activeFilters = submit ? filtersRef.current : submittedFiltersRef.current;
+      const activeOwnership = overrideOwnership ?? (submit ? filterOwnershipRef.current : submittedOwnership);
 
-      // Capture and clear model-owned filters immediately so stale
-      // auto-detected filters disappear from the UI as soon as a new
-      // search starts, rather than lingering until the response arrives.
-      const previousOwnedFields = new Set(modelSetFields.current);
-      if (previousOwnedFields.size > 0) {
-        modelSetFields.current = new Set<keyof FilterState>();
-        setFiltersState((cur) => clearModelOwnedFilters(cur, previousOwnedFields));
-      }
-
-      const cleanedFilters = clearModelOwnedFilters(activeFilters, previousOwnedFields);
+      const cleanedFilters = clearModelOwnedFilters(activeFilters, activeOwnership);
+      const cleanedOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+        (ownership, key) => {
+          ownership[key] =
+            cleanedFilters[key] === null
+              ? "none"
+              : activeOwnership[key] === "model"
+                ? "user"
+                : activeOwnership[key];
+          return ownership;
+        },
+        emptyFilterOwnership(),
+      );
       const request = buildRequestBody(activeQuery, cleanedFilters, nextPage);
+      const requestKey = `${source}:${requestSequenceRef.current + 1}`;
+      requestSequenceRef.current += 1;
 
       setSubmittedQuery(activeQuery);
-      setSubmittedFilters(cleanedFilters);
+      syncSubmittedFilters(cleanedFilters);
+      setSubmittedOwnership(cleanedOwnership);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       try {
+        let responseData: SearchResponse | null = null;
+        let resolvedFinalFilters = cleanedFilters;
+        let resolvedFinalOwnership = cleanedOwnership;
+
         if (USE_MOCK) {
-          setResults(runMockSearch(request));
-          return;
-        }
-
-        const response = await fetch("/api/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-          throw new Error("Nepodarilo sa načítať výsledky vyhľadávania.");
-        }
-
-        const data: SearchResponse = await response.json();
-        setResults(data);
-        if (data.query_understanding?.extracted_filters) {
-          const extractedFilters = data.query_understanding.extracted_filters;
-          let nextSubmittedFilters: FilterState | null = null;
-          setFiltersState((currentFilters) => {
-            const nextState = applyExtractedFilters(
-              currentFilters,
-              extractedFilters,
-              modelSetFields.current,
-            );
-            modelSetFields.current = nextState.ownedFields;
-            nextSubmittedFilters = nextState.filters;
-            return nextState.filters;
+          const mockResult = runMockSearch(request);
+          setResults(mockResult);
+          responseData = mockResult;
+        } else {
+          const response = await fetch("/api/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(request),
           });
-          if (nextSubmittedFilters) {
-            setSubmittedFilters(nextSubmittedFilters);
+
+          if (!response.ok) {
+            throw new Error("Nepodarilo sa načítať výsledky vyhľadávania.");
           }
+
+          responseData = await response.json();
+          setResults(responseData);
+        }
+
+        if (responseData?.query_understanding?.extracted_filters) {
+          const extractedFilters = responseData.query_understanding.extracted_filters;
+          const nextState = applyExtractedFilters(
+            cleanedFilters,
+            cleanedOwnership,
+            extractedFilters,
+          );
+          resolvedFinalFilters = nextState.filters;
+          resolvedFinalOwnership = nextState.ownership;
+        }
+
+        if (submit) {
+          if (responseData === null) {
+            throw new Error("Nepodarilo sa zostaviť výsledky vyhľadávania.");
+          }
+
+          syncFilters(resolvedFinalFilters);
+          syncSubmittedFilters(resolvedFinalFilters);
+          syncFilterOwnership(resolvedFinalOwnership);
+          setSubmittedOwnership(resolvedFinalOwnership);
+          setCompletedSearchSnapshot({
+            requestKey,
+            query: activeQuery,
+            filters: resolvedFinalFilters,
+            filterOwnership: resolvedFinalOwnership,
+            response: {
+              results: responseData.results,
+              related_results: responseData.related_results,
+              related_articles: responseData.related_articles,
+              total_count: responseData.total_count,
+              page: responseData.page,
+              page_size: responseData.page_size,
+              query_time_ms: responseData.query_time_ms,
+              has_more: responseData.has_more,
+              query_understanding: responseData.query_understanding,
+            },
+            source,
+          });
         }
       } catch (caughtError) {
-        setResults(null);
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Nepodarilo sa načítať výsledky vyhľadávania.",
-        );
+        if (caughtError instanceof Error && caughtError.name === "AbortError") {
+          setError("Vyhľadávanie trvalo príliš dlho. Skúste to prosím znova.");
+        } else {
+          setResults(null);
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Nepodarilo sa načítať výsledky vyhľadávania.",
+          );
+        }
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     },
-    [filters, page, query, submittedFilters, submittedQuery],
+    [
+      page,
+      query,
+      submittedQuery,
+      submittedOwnership,
+      syncFilterOwnership,
+      syncFilters,
+      syncSubmittedFilters,
+    ],
   );
 
   const setFilters = useCallback((nextState: SetStateAction<FilterState>) => {
     setFiltersState((currentFilters) => {
       const nextFilters =
         typeof nextState === "function" ? nextState(currentFilters) : nextState;
-      let hasUserEditedFilters = false;
 
-      extractedFilterKeys.forEach((key) => {
-        if (currentFilters[key] !== nextFilters[key]) {
-          hasUserEditedFilters = true;
-        }
-      });
+      const hasAnyChange = extractedFilterKeys.some(
+        (key) => currentFilters[key] !== nextFilters[key],
+      );
 
-      if (hasUserEditedFilters) {
-        // Once the user adjusts filters, preserve the current selections as
-        // user-owned so they do not vanish on the next search refresh.
-        modelSetFields.current = new Set<keyof FilterState>();
+      if (hasAnyChange) {
+        setFilterOwnership(() => {
+          const nextOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+            (ownership, key) => {
+              ownership[key] = nextFilters[key] !== null ? "user" : "none";
+              return ownership;
+            },
+            emptyFilterOwnership(),
+          );
+
+          filterOwnershipRef.current = nextOwnership;
+          filtersRef.current = nextFilters;
+          setManualFilterVersion((currentVersion) => currentVersion + 1);
+          return nextOwnership;
+        });
+      } else {
+        filtersRef.current = nextFilters;
       }
 
       return nextFilters;
@@ -355,20 +460,141 @@ export function useSearch() {
   const setQuery = useCallback((nextQuery: string) => {
     setQueryState(nextQuery);
 
-    if (nextQuery !== "") {
+    if (!nextQuery.trim()) {
+      setHasSearched(false);
+      setResults(null);
+      setIsDefaultBrowseView(false);
+      setError(null);
+      setSubmittedQuery("");
+      syncSubmittedFilters(emptyFilters);
+      setSubmittedOwnership(emptyFilterOwnership());
+      syncFilters(emptyFilters);
+      syncFilterOwnership(emptyFilterOwnership());
+      setPage(1);
       return;
     }
 
-    setFiltersState((currentFilters) => {
-      if (modelSetFields.current.size === 0) {
-        return currentFilters;
+    setFilterOwnership((currentOwnership) => {
+      const hasModelOwnedFilters = extractedFilterKeys.some(
+        (key) => currentOwnership[key] === "model",
+      );
+      if (!hasModelOwnedFilters) {
+        return currentOwnership;
       }
 
-      const nextFilters = clearModelOwnedFilters(currentFilters, modelSetFields.current);
-      modelSetFields.current = new Set<keyof FilterState>();
-      return nextFilters;
+      const nextOwnership = { ...currentOwnership };
+      extractedFilterKeys.forEach((key) => {
+        if (nextOwnership[key] === "model") {
+          nextOwnership[key] = "none";
+        }
+      });
+
+      const clearedFilters = clearModelOwnedFilters(filtersRef.current, currentOwnership);
+      setFiltersState(clearedFilters);
+      filtersRef.current = clearedFilters;
+
+      filterOwnershipRef.current = nextOwnership;
+
+      return nextOwnership;
     });
-  }, []);
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+
+  const restore = useCallback((entry: SearchHistoryEntry) => {
+    setIsDefaultBrowseView(false);
+    setQueryState(entry.query);
+    setSubmittedQuery(entry.query);
+    syncFilters(entry.filters);
+    syncSubmittedFilters(entry.filters);
+    syncFilterOwnership(entry.filterOwnership);
+    setSubmittedOwnership(entry.filterOwnership);
+    setPage(entry.response.page ?? 1);
+    setHasSearched(true);
+    setError(null);
+    setResults({
+      results: entry.response.results,
+      related_results: entry.response.related_results,
+      related_articles: entry.response.related_articles,
+      total_count: entry.response.total_count,
+      page: entry.response.page,
+      page_size: entry.response.page_size,
+      query_time_ms: entry.response.query_time_ms,
+      has_more: entry.response.has_more,
+      query_understanding: entry.response.query_understanding,
+    });
+    setCompletedSearchSnapshot({
+      requestKey: `restore:${requestSequenceRef.current + 1}`,
+      query: entry.query,
+      filters: entry.filters,
+      filterOwnership: entry.filterOwnership,
+      response: {
+        results: entry.response.results,
+        related_results: entry.response.related_results,
+        related_articles: entry.response.related_articles,
+        total_count: entry.response.total_count,
+        page: entry.response.page,
+        page_size: entry.response.page_size,
+        query_time_ms: entry.response.query_time_ms,
+        has_more: entry.response.has_more,
+        query_understanding: entry.response.query_understanding,
+      },
+      source: "restore",
+    });
+    requestSequenceRef.current += 1;
+    setRestoreVersion((currentVersion) => currentVersion + 1);
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+
+  const showNewest = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setIsDefaultBrowseView(true);
+
+    const request: SearchRequest = {
+      page: 1,
+      page_size: 10,
+    };
+
+    try {
+      let responseData: SearchResponse;
+
+      if (USE_MOCK) {
+        responseData = runMockSearch(request);
+      } else {
+        const response = await fetch("/api/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          throw new Error("Nepodarilo sa načítať najnovšie výroky.");
+        }
+
+        responseData = await response.json();
+      }
+
+      setResults(responseData);
+      setSubmittedQuery("");
+      syncSubmittedFilters(emptyFilters);
+      setSubmittedOwnership(emptyFilterOwnership());
+      syncFilters(emptyFilters);
+      syncFilterOwnership(emptyFilterOwnership());
+      setHasSearched(false);
+      setPage(1);
+      setCompletedSearchSnapshot(null);
+    } catch (caughtError) {
+      setResults(null);
+      setIsDefaultBrowseView(false);
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nepodarilo sa načítať najnovšie výroky.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
 
   return {
     results,
@@ -376,16 +602,24 @@ export function useSearch() {
     error,
     query,
     submittedQuery,
+    submittedFilters,
+    filterOwnership,
     filters,
     page,
     availableFilters,
     filterLoadError,
+    completedSearchSnapshot,
+    restoreVersion,
+    manualFilterVersion,
+    isDefaultBrowseView,
     hasSearched,
     setQuery,
     setFilters,
     setPage,
     setError,
     search,
+    restore,
+    showNewest,
     loadFilters,
   };
 }

@@ -55,3 +55,18 @@ export function applyTheme(theme: ThemeMode) {
   root.dataset.theme = theme;
   root.classList.toggle("dark", theme === "dark");
 }
+
+export function getThemeInitScript(): string {
+  return `(() => {
+    const storedTheme = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
+    const theme =
+      storedTheme === "light" || storedTheme === "dark"
+        ? storedTheme
+        : window.matchMedia?.(${JSON.stringify(DARK_THEME_MEDIA_QUERY)}).matches
+          ? "dark"
+          : "light";
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.classList.toggle("dark", theme === "dark");
+  })();`;
+}

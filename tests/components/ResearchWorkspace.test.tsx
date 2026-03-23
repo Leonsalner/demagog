@@ -6,6 +6,7 @@ import { APP_NAVBAR_ID } from "@/lib/layout";
 describe("ResearchWorkspace", () => {
   let originalRequestAnimationFrame: typeof window.requestAnimationFrame | undefined;
   let originalCancelAnimationFrame: typeof window.cancelAnimationFrame | undefined;
+  let matchMediaWidth = 1024;
 
   beforeEach(() => {
     class ResizeObserverMock {
@@ -14,8 +15,26 @@ describe("ResearchWorkspace", () => {
     }
 
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 767px")
+          ? matchMediaWidth <= 767
+          : query.includes("max-width: 1023px")
+            ? matchMediaWidth <= 1023
+            : false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
     originalRequestAnimationFrame = window.requestAnimationFrame;
     originalCancelAnimationFrame = window.cancelAnimationFrame;
+    matchMediaWidth = 1024;
   });
 
   afterEach(() => {
@@ -282,6 +301,93 @@ describe("ResearchWorkspace", () => {
     expect(
       screen.queryByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the mobile navigator sheet instead of the visible sidebar on small screens", async () => {
+    matchMediaWidth = 390;
+
+    render(
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 96 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          displayState="open"
+          activeMode="aggregate"
+          data={{
+            mode: "aggregate",
+            items: [
+              {
+                id: "analysis:42",
+                kind: "analysis",
+                title: "Skrytá analýza",
+                body: "Analýza obsahu výroku.",
+                url: null,
+                domain: null,
+                author: null,
+                date: null,
+                statement_refs: [],
+                verdict: "Pravda",
+              },
+              {
+                id: "source:9",
+                kind: "external_source",
+                title: "Ministerstvo zdravotníctva",
+                body: null,
+                url: "https://health.gov.example/report",
+                domain: "health.gov.example",
+                author: null,
+                date: null,
+                statement_refs: [],
+              },
+            ],
+          }}
+          loading={false}
+          error={null}
+          detectResult={{
+            input_statement: "Na severe Slovenska chýbajú pediatri.",
+            overall_status: "RELATED_ONLY",
+            query_time_ms: 120,
+            matches: [
+              {
+                classification: "RELATED",
+                similarity: 0.86,
+                statement: {
+                  id: 42,
+                  vyrok: "Pediatrov na severe ubúda.",
+                  vyhodnotenie: "Pravda",
+                  odovodnenie: "Podrobná analýza.",
+                  datum: "2024-01-20",
+                  meno: "Testovací politik",
+                  strana: "Test",
+                },
+              },
+            ],
+          }}
+          onClose={vi.fn()}
+        />
+      </>,
+    );
+
+    expect(screen.queryByText("Prieskum")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zdroje" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zdroje" }));
+
+    expect(screen.getByRole("dialog", { name: "Zdroje" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Ministerstvo zdravotníctva/i }));
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Ministerstvo zdravotníctva" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Zdroje" })).not.toBeInTheDocument();
   });
 
   it("stages the overlay before the panel rises in and completes the enter callback", async () => {

@@ -8,6 +8,7 @@ Tento nástroj pomáha redakcii rýchlo overiť, či Demagog už daný výrok v 
 
 - **Vyhľadávanie:** Výborné na hľadanie širšieho kontextu. Pýtajte sa vlastnými slovami, hľadajte konkrétnu tému, osobu alebo otázku (napr. *"Čo povedal XY o zdravotníctve?"*).
 - **Detekcia duplicít:** Ak už máte presné znenie výroku, vložte ho sem. Aplikácia ho bleskovo porovná s existujúcimi záznamami v archíve.
+- **História:** Rýchly návrat k nedávnej práci pomocou lokálnej histórie vyhľadávania a analýz, ktorá šetrí váš čas.
 
 <p align="center">
   <img src="public/onboarding/step-02-search-light.png" alt="Prirodzené vyhľadávanie s automaticky doplnenými filtrami a výsledkami." width="1100" />

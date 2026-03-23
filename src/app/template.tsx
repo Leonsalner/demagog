@@ -32,10 +32,6 @@ export default function Template({
     return <>{children}</>;
   }
 
-  const addEnterOffset = isCompactViewport ? 18 : 28;
-  const addExitOffset = isCompactViewport ? -12 : -18;
-  const addInitialScale = isCompactViewport ? 0.992 : 0.982;
-
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
