@@ -12,6 +12,7 @@ interface SearchBarProps {
   onSearch: () => void;
   isVisible?: boolean;
   loading?: boolean;
+  filters?: FilterState;
   historyEntries?: SearchHistoryEntry[];
   onHistorySelect?: (entry: SearchHistoryEntry) => void;
   onHistoryRemove?: (id: string) => void;
@@ -405,6 +406,7 @@ export default function SearchBar({
   onSearch,
   isVisible = true,
   loading = false,
+  filters,
   historyEntries = [],
   onHistorySelect,
   onHistoryRemove,
@@ -507,7 +509,7 @@ export default function SearchBar({
           <button
             type="button"
             onClick={onSearch}
-            disabled={!value.trim() || loading}
+            disabled={(!value.trim() && !(filters && hasAnyFilters(filters))) || loading}
             className="inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400 md:min-w-36 md:flex-none"
           >
             {loading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
