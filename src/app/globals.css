@@ -228,3 +228,7 @@ a {
 .animate-feedback-hide {
   animation: feedbackPanelHide 240ms ease-in forwards;
 }
+
+button:not(:disabled) {
+  cursor: pointer;
+}

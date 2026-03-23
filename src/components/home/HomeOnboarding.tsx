@@ -583,7 +583,7 @@ export default function HomeOnboarding({
                   setShowScrollCue(false);
                 }
               }}
-              className="relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] sm:max-h-[calc(100dvh-3rem)] lg:grid lg:grid-cols-[minmax(0,1.6fr)_420px] lg:overflow-hidden"
+              className="relative z-10 flex max-h-[calc(100dvh-1rem)] w-full max-w-[92rem] flex-col overflow-y-auto rounded-[2rem] border border-slate-200 bg-white shadow-[0_40px_120px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.98),rgba(15,23,42,0.96))] dark:shadow-[0_48px_140px_-52px_rgba(2,6,23,0.96)] sm:max-h-[calc(100dvh-3rem)] lg:grid lg:grid-cols-[420px_minmax(0,1.6fr)] lg:overflow-hidden"
             >
               {isMobile ? (
                 <div className="pointer-events-none sticky right-0 top-4 z-20 -mb-11 ml-auto mr-4 mt-4 flex justify-end">
@@ -612,22 +612,15 @@ export default function HomeOnboarding({
               )}
 
               <div
-                ref={mediaPaneRef}
-                className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 lg:pt-20 xl:p-10 xl:pt-20"
-              >
-                <MediaStage step={currentStep} theme={theme} />
-              </div>
-
-              <div
                 ref={contentPaneRef}
-                className="flex flex-col overflow-visible bg-white/96 p-5 pt-6 dark:bg-slate-950/65 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
+                className="flex flex-col overflow-visible bg-slate-900 p-5 pt-6 dark:bg-slate-950 sm:p-7 lg:min-h-0 lg:overflow-y-auto lg:pt-10"
               >
                 <div className="pr-0 lg:pr-14">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#c04a25] dark:text-[#f07850]">
                       {currentStep.eyebrow}
                     </p>
-                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2rem]">
+                    <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-50 dark:text-slate-100 sm:text-[2rem]">
                       {currentStep.title}
                     </h2>
                   </div>
@@ -638,7 +631,7 @@ export default function HomeOnboarding({
                   className="mt-6 animate-[onboardingFade_240ms_ease-out] space-y-3"
                 >
                   {currentStep.body.map((line) => (
-                    <p key={line} className="text-sm leading-7 text-slate-600 dark:text-slate-300">
+                    <p key={line} className="text-sm leading-7 text-slate-300 dark:text-slate-300">
                       {line}
                     </p>
                   ))}
@@ -648,9 +641,9 @@ export default function HomeOnboarding({
                   className="sticky bottom-0 z-10 mt-6 -mx-5 border-t border-transparent px-5 pb-5 pt-5 sm:-mx-7 sm:px-7 lg:mx-0 lg:mt-auto lg:border-t-0 lg:bg-transparent lg:px-0 lg:pb-0"
                   style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 1.25rem)" }}
                 >
-                  <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-200/90 bg-white/92 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/90 dark:shadow-[0_28px_56px_-40px_rgba(2,6,23,0.95)]">
+                  <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-slate-700/60 bg-slate-800/90 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(0,0,0,0.5)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90 dark:shadow-[0_28px_56px_-40px_rgba(0,0,0,0.6)]">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400 dark:text-slate-400">
                         Krok {activeStep + 1} z {steps.length}
                       </p>
                       <div className="mt-3">
@@ -665,7 +658,7 @@ export default function HomeOnboarding({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-3">
+                    <div className="flex flex-wrap items-center justify-end gap-3 sm:flex-nowrap">
                       {activeStep > 0 ? (
                         <button
                           type="button"
@@ -676,38 +669,56 @@ export default function HomeOnboarding({
                               return nextStepIndex;
                             })
                           }
-                          className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                          className="inline-flex items-center justify-center rounded-full border border-slate-600 bg-transparent px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
                         >
                           Späť
                         </button>
                       ) : null}
 
-                      {isLastStep ? (
-                        <button
-                          type="button"
-                          onClick={() => closeOnboarding("completed")}
-                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                        >
-                          Hotovo
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveStep((stepIndex) => {
-                              const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
-                              setShowScrollCue(false);
-                              return nextStepIndex;
-                            })
-                          }
-                          className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
-                        >
-                          Ďalej
-                        </button>
-                      )}
+                      <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-end sm:gap-3">
+                        {isLastStep ? (
+                          <button
+                            type="button"
+                            onClick={() => closeOnboarding("completed")}
+                            className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                          >
+                            Hotovo
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveStep((stepIndex) => {
+                                  const nextStepIndex = Math.min(steps.length - 1, stepIndex + 1);
+                                  setShowScrollCue(false);
+                                  return nextStepIndex;
+                                })
+                              }
+                              className="inline-flex items-center justify-center rounded-full bg-[#d95830] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#c04a25] dark:bg-[#f07850] dark:hover:bg-[#d95830]"
+                            >
+                              Ďalej
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => closeOnboarding("dismissed")}
+                              className="inline-flex items-center justify-center text-sm text-slate-400 transition hover:text-slate-200 dark:text-slate-500 dark:hover:text-slate-300"
+                            >
+                              Preskočiť
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div
+                ref={mediaPaneRef}
+                className="overflow-visible border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-8 lg:pt-20 xl:p-10 xl:pt-20"
+              >
+                <MediaStage step={currentStep} theme={theme} />
               </div>
 
               {showScrollCue ? (
