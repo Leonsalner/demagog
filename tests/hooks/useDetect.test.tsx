@@ -228,6 +228,26 @@ describe("useDetect", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("clears the loading UI even when the aborted fetch never settles", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      void result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(11_000);
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.result).toEqual({
+      input_statement: "Pošlú nás na vojnu",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+      query_time_ms: 11_000,
+    });
+  });
+
   it("runs one background retry after timeout and upgrades the result if matches are found", async () => {
     let callCount = 0;
 
@@ -292,5 +312,24 @@ describe("useDetect", () => {
     expect(result.current.retryUpgradeNotice).toBe(
       "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
     );
+  });
+
+  it("uses the hard client deadline if the retry path also never resolves", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      void result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(23_000);
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.result).toEqual({
+      input_statement: "Pošlú nás na vojnu",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+      query_time_ms: 11_000,
+    });
   });
 });

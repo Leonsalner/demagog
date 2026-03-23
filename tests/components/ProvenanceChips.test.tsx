@@ -56,6 +56,9 @@ describe("ProvenanceChips", () => {
       "href",
       "https://demagog.sk/vyrok/1",
     );
+    expect(screen.getAllByRole("link", { name: /demagog.sk/i })[0].closest("div.absolute")?.className).toContain(
+      "lg:w-[min(36rem,calc(100vw-4rem))]",
+    );
     fireEvent.click(screen.getAllByRole("button", { name: "Preskúmať" })[1]);
 
     expect(onNavigateToStatement).toHaveBeenCalledWith(2);

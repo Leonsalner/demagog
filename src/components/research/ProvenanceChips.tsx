@@ -97,7 +97,7 @@ export default function ProvenanceChips({
       </div>
 
       {isOpen ? (
-        <div className="absolute right-0 top-full z-20 mt-3 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute right-0 top-full z-20 mt-3 w-[min(26rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] sm:w-[min(30rem,calc(100vw-3rem))] sm:max-w-[calc(100vw-3rem)] lg:w-[min(36rem,calc(100vw-4rem))] lg:max-w-[calc(100vw-4rem)] dark:border-slate-700 dark:bg-slate-900">
           <div className="space-y-2">
             {refs.map((ref) => (
               <div

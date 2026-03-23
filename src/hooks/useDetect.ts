@@ -9,6 +9,7 @@ import type { DetectHistoryEntry } from "@/types/history";
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
 const DETECT_TIMEOUT_MS = 11000;
 const DETECT_RETRY_TIMEOUT_MS = 8000;
+const DETECT_HARD_TIMEOUT_MS = 23000;
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -34,12 +35,15 @@ async function extractDetectErrorMessage(response: Response): Promise<string> {
   return "Detekcia zlyhala.";
 }
 
-function buildTimeoutFallbackResponse(statement: string): DetectResponse {
+function buildTimeoutFallbackResponse(
+  statement: string,
+  queryTimeMs: number = DETECT_TIMEOUT_MS,
+): DetectResponse {
   return {
     input_statement: statement,
     matches: [],
     overall_status: "NEW_CLAIM",
-    query_time_ms: DETECT_TIMEOUT_MS,
+    query_time_ms: queryTimeMs,
   };
 }
 
@@ -187,17 +191,76 @@ export function useDetect() {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    let didTimeout = false;
-
-    const timeoutId = setTimeout(() => {
-      didTimeout = true;
-      controller.abort();
-    }, DETECT_TIMEOUT_MS);
+    let didFallback = false;
+    let didStartRetry = false;
 
     setLoading(true);
     setError(null);
     setResult(null);
     setRetryUpgradeNotice(null);
+
+    const startBackgroundRetry = () => {
+      if (didStartRetry || USE_MOCK) {
+        return;
+      }
+
+      didStartRetry = true;
+      const retryController = new AbortController();
+      retryAbortControllerRef.current = retryController;
+      const retryTimeoutId = window.setTimeout(() => {
+        retryController.abort();
+      }, DETECT_RETRY_TIMEOUT_MS);
+
+      void runDetectRequest(statement, mode, retryController.signal)
+        .then((retryResult) => {
+          if (requestIdRef.current !== requestId || retryController.signal.aborted) {
+            return;
+          }
+
+          if (retryResult.overall_status !== "NEW_CLAIM") {
+            setResult(retryResult);
+            setRetryUpgradeNotice(
+              "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
+            );
+          }
+        })
+        .catch(() => {
+          // Keep the silent NEW_CLAIM fallback if the background retry also fails.
+        })
+        .finally(() => {
+          window.clearTimeout(retryTimeoutId);
+          if (retryAbortControllerRef.current === retryController) {
+            retryAbortControllerRef.current = null;
+          }
+        });
+    };
+
+    const finalizeTimeoutFallback = (queryTimeMs: number, startRetry: boolean) => {
+      if (didFallback || requestIdRef.current !== requestId) {
+        return;
+      }
+
+      didFallback = true;
+      controller.abort();
+      setResult(buildTimeoutFallbackResponse(statement, queryTimeMs));
+      setError(null);
+      setLoading(false);
+
+      if (startRetry) {
+        startBackgroundRetry();
+      }
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      finalizeTimeoutFallback(DETECT_TIMEOUT_MS, true);
+    }, DETECT_TIMEOUT_MS);
+    const hardTimeoutId = window.setTimeout(() => {
+      finalizeTimeoutFallback(DETECT_HARD_TIMEOUT_MS, false);
+      if (retryAbortControllerRef.current) {
+        retryAbortControllerRef.current.abort();
+        retryAbortControllerRef.current = null;
+      }
+    }, DETECT_HARD_TIMEOUT_MS);
 
     try {
       if (USE_MOCK) {
@@ -211,49 +274,15 @@ export function useDetect() {
 
       const data = await runDetectRequest(statement, mode, controller.signal);
 
-      if (requestIdRef.current !== requestId) {
+      if (requestIdRef.current !== requestId || didFallback) {
         return;
       }
 
       setResult(data);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        if (requestIdRef.current === requestId) {
-          if (didTimeout) {
-            setResult(buildTimeoutFallbackResponse(statement));
-            setError(null);
-
-            const retryController = new AbortController();
-            retryAbortControllerRef.current = retryController;
-            const retryTimeoutId = window.setTimeout(() => {
-              retryController.abort();
-            }, DETECT_RETRY_TIMEOUT_MS);
-
-            void runDetectRequest(statement, mode, retryController.signal)
-              .then((retryResult) => {
-                if (requestIdRef.current !== requestId || retryController.signal.aborted) {
-                  return;
-                }
-
-                if (retryResult.overall_status !== "NEW_CLAIM") {
-                  setResult(retryResult);
-                  setRetryUpgradeNotice(
-                    "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
-                  );
-                }
-              })
-              .catch(() => {
-                // Keep the silent NEW_CLAIM fallback if the background retry also fails.
-              })
-              .finally(() => {
-                window.clearTimeout(retryTimeoutId);
-                if (retryAbortControllerRef.current === retryController) {
-                  retryAbortControllerRef.current = null;
-                }
-              });
-          } else {
-            setError(null);
-          }
+        if (requestIdRef.current === requestId && !didFallback) {
+          setError(null);
         }
         return;
       }
@@ -263,8 +292,9 @@ export function useDetect() {
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
-      clearTimeout(timeoutId);
-      if (requestIdRef.current === requestId) {
+      window.clearTimeout(timeoutId);
+      window.clearTimeout(hardTimeoutId);
+      if (requestIdRef.current === requestId && !didFallback) {
         setLoading(false);
       }
     }
