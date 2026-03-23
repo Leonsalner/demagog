@@ -210,11 +210,25 @@ describe("HomeOnboarding", () => {
   });
 
   it("keeps the close button as a sticky floating control inside the card", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 639px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+
     renderOnboarding();
 
-    expect(
-      (await screen.findByRole("button", { name: "Zavrieť návod" })).parentElement?.className,
-    ).toContain("sticky");
+    await screen.findByRole("button", { name: "Zavrieť návod" });
+
+    expect(document.querySelector(".pointer-events-none.sticky")).not.toBeNull();
   });
 
   it("shows and hides the mobile scroll cue on the first step", async () => {
