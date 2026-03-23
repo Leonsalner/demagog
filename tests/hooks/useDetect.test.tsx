@@ -206,7 +206,7 @@ describe("useDetect", () => {
       () =>
         new Promise<Response>((_, reject) => {
           const abortError = new DOMException("Aborted", "AbortError");
-          setTimeout(() => reject(abortError), 12_000);
+          setTimeout(() => reject(abortError), 11_000);
         }),
     );
 
@@ -214,7 +214,7 @@ describe("useDetect", () => {
 
     await act(async () => {
       const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(12_000);
+      await vi.advanceTimersByTimeAsync(11_000);
       await detectPromise;
     });
 
@@ -223,7 +223,7 @@ describe("useDetect", () => {
       input_statement: "Pošlú nás na vojnu",
       matches: [],
       overall_status: "NEW_CLAIM",
-      query_time_ms: 12_000,
+      query_time_ms: 11_000,
     });
     expect(result.current.loading).toBe(false);
   });

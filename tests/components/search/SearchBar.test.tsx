@@ -179,6 +179,36 @@ describe("SearchBar history filter summary", () => {
     expect(screen.getByRole("button", { name: "Hľadať" })).toBeEnabled();
   });
 
+  it("keeps the mobile history trigger inline with the search action row", () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 1023px"),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    });
+
+    render(
+      <SearchBar
+        value=""
+        onChange={() => {}}
+        onSearch={() => {}}
+        historyEntries={[sampleEntry]}
+      />,
+    );
+
+    const searchButton = screen.getByRole("button", { name: "Hľadať" });
+    const historyButton = screen.getByRole("button", { name: "História" });
+
+    expect(searchButton.parentElement).toBe(historyButton.parentElement);
+  });
+
   it("closes the history popover when the search panel becomes inactive", () => {
     const view = render(
       <SearchBar

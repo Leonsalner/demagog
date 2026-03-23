@@ -7,7 +7,7 @@ import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
 import type { DetectHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
-const DETECT_TIMEOUT_MS = 12000;
+const DETECT_TIMEOUT_MS = 11000;
 
 function wait(ms: number) {
   return new Promise((resolve) => {

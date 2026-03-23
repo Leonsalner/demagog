@@ -446,7 +446,7 @@ export default function SearchBar({
 
   return (
     <div className="relative">
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">
             <svg
@@ -503,37 +503,38 @@ export default function SearchBar({
           ) : null}
         </div>
 
-        {isMounted && historyEntries.length > 0 && (
+        <div className="flex items-center gap-3 md:w-auto md:flex-none">
           <button
-            ref={historyButtonRef}
             type="button"
-            onClick={() => setIsHistoryOpen((current) => !current)}
+            onClick={onSearch}
             disabled={loading && value.trim().length > 0}
-            aria-expanded={isHistoryOpen}
-            aria-label="História"
-            title="História"
-            className={`inline-flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm transition-all duration-200 ease-out ${
-              isHistoryOpen
-                ? "border-[var(--brand-accent)] bg-[color:color-mix(in_srgb,var(--brand-accent)_10%,white)] text-[var(--brand-accent)] shadow-[0_10px_30px_-18px_rgba(217,88,48,0.55)] dark:border-[var(--brand-accent-dark)] dark:bg-[color:color-mix(in_srgb,var(--brand-accent-dark)_14%,rgb(2,6,23))] dark:text-[var(--brand-accent-dark)]"
-                : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
-            } disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500`}
+            className="inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400 md:min-w-36 md:flex-none"
           >
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 transition-transform duration-200 ease-out ${isHistoryOpen ? "scale-110 rotate-[-14deg]" : "scale-100 rotate-0"}`}>
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M12 7v5l4 2" />
-            </svg>
+            {loading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={onSearch}
-          disabled={loading && value.trim().length > 0}
-          className="inline-flex h-14 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400 sm:min-w-36"
-        >
-          {loading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
-        </button>
+          {isMounted && historyEntries.length > 0 && (
+            <button
+              ref={historyButtonRef}
+              type="button"
+              onClick={() => setIsHistoryOpen((current) => !current)}
+              aria-expanded={isHistoryOpen}
+              aria-label="História"
+              title="História"
+              className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-all duration-200 ease-out ${
+                isHistoryOpen
+                  ? "border-[var(--brand-accent)] bg-[color:color-mix(in_srgb,var(--brand-accent)_10%,white)] text-[var(--brand-accent)] shadow-[0_10px_30px_-18px_rgba(217,88,48,0.55)] dark:border-[var(--brand-accent-dark)] dark:bg-[color:color-mix(in_srgb,var(--brand-accent-dark)_14%,rgb(2,6,23))] dark:text-[var(--brand-accent-dark)]"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+              }`}
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 transition-transform duration-200 ease-out ${isHistoryOpen ? "scale-110 rotate-[-14deg]" : "scale-100 rotate-0"}`}>
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M12 7v5l4 2" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {isHistoryOpen && historyEntries.length > 0 && (

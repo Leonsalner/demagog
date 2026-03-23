@@ -121,4 +121,21 @@ describe("StatementInput", () => {
 
     expect(screen.queryByRole("dialog", { name: "História analýz" })).not.toBeInTheDocument();
   });
+
+  it("keeps the detect history trigger in the same action row as analyze", () => {
+    render(
+      <StatementInput
+        value="Ukrajina je Rusko."
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+        loading={false}
+        historyEntries={[historyEntry]}
+      />,
+    );
+
+    const submitButton = screen.getByRole("button", { name: "Analyzovať" });
+    const historyButton = screen.getByRole("button", { name: "História" });
+
+    expect(submitButton.parentElement).toBe(historyButton.parentElement);
+  });
 });

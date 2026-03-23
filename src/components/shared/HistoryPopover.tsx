@@ -244,7 +244,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
             role="dialog"
             aria-modal="true"
             aria-label={headerLabel}
-            className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[2rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] overscroll-contain [-webkit-overflow-scrolling:touch] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
+            className="relative max-h-[82dvh] w-full overflow-y-auto rounded-t-[1.75rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] overscroll-contain [-webkit-overflow-scrolling:touch] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
             style={{
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
@@ -252,15 +252,20 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
               paddingRight: "calc(env(safe-area-inset-right, 0px) + 0.75rem)",
             }}
           >
-            <div data-history-popover-header className="mb-4 flex items-center justify-between">
-              <div className="h-1 w-12 mx-auto -mt-2 mb-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {headerLabel}
-              </h2>
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <div data-history-popover-header className="flex items-center justify-between px-4 pb-2 pt-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  História
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {headerLabel}
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white/92 text-slate-500 shadow-[0_16px_44px_-30px_rgba(15,23,42,0.42)] backdrop-blur transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
                 aria-label="Zavrieť"
               >
                 <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -270,7 +275,7 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
             </div>
 
             <div
-              className="min-h-0 flex-1 overflow-y-auto p-2"
+              className="min-h-0 flex-1 overflow-y-auto px-2 pb-2"
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
@@ -282,10 +287,10 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
                 <div className="space-y-4">
                   {groupedEntries.map(({ label, entries: groupEntries }) => (
                     <div key={label}>
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      <h3 className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                         {label}
                       </h3>
-                      <ul className="space-y-2" ref={listRef}>
+                      <ul className="space-y-1.5" ref={listRef}>
                         {groupEntries.map((entry) => {
                           const globalIndex = flatEntries.indexOf(entry);
                           const isSwiping = swipingEntryId === entry.id;
@@ -295,15 +300,15 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
                               ref={(el) => {
                                 if (el) entryRefs.current.set(globalIndex, el);
                               }}
-                              className="relative overflow-hidden rounded-lg"
+                              className="relative overflow-hidden rounded-2xl"
                               onTouchStart={(e) => handleTouchStart(e, entry.id)}
                             >
                               <div
-                                className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center"
+                                className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-red-500"
                                 style={{ opacity: isSwiping ? Math.min(swipeOffset / SWIPE_THRESHOLD, 1) : 0 }}
                               >
-                                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-5 w-5 text-white">
-                                  <path fillRule="evenodd" d="M8 1a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 1Z" clipRule="evenodd" />
+                                <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 text-white">
+                                  <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
                                 </svg>
                               </div>
                               <div

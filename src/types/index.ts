@@ -36,6 +36,7 @@ export interface Article {
 
 export type ResearchWorkspaceMode = "statement" | "aggregate";
 export type ResearchItemKind = "analysis" | "clanky_article" | "external_source";
+export type SidebarTab = "articles" | "statements";
 
 export interface ResearchStatementRef {
   statement_id: number;

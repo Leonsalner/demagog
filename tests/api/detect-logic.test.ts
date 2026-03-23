@@ -181,7 +181,7 @@ describe("POST /api/detect logic", () => {
     );
   });
 
-  it("uses similarity-based fallback classes when classification fails", async () => {
+  it("returns NEW_CLAIM when classification fails", async () => {
     const rows = [
       buildRow(1, 0.91),
       buildRow(2, 0.71),
@@ -201,10 +201,13 @@ describe("POST /api/detect logic", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.matches.map((match: { classification: string }) => match.classification)).toEqual(
-      ["DUPLICATE", "RELATED", "UNRELATED"],
-    );
-    expect(data.overall_status).toBe("DUPLICATE_FOUND");
+    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBe("no-match");
+    expect(data).toMatchObject({
+      input_statement: "Nova formulacia tvrdenia",
+      matches: [],
+      overall_status: "NEW_CLAIM",
+    });
+    expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
   });
 
   it("adds related articles when duplicate or related matches are found", async () => {
