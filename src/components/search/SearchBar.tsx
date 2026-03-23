@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
+import ViewportPortal from "@/components/shared/ViewportPortal";
 import type { SearchHistoryEntry } from "@/types/history";
 import type { FilterState, Verdict } from "@/types";
 
@@ -205,7 +206,11 @@ function SearchHistoryRow({
 }) {
   const [isTouchDetailOpen, setIsTouchDetailOpen] = useState(false);
   const [isDesktopDetailOpen, setIsDesktopDetailOpen] = useState(false);
-  const [detailPlacement, setDetailPlacement] = useState<"above" | "below">("above");
+  const [desktopDetailPosition, setDesktopDetailPosition] = useState<{
+    top: number;
+    left: number;
+    maxWidth: number;
+  } | null>(null);
   const filterDetailRef = useRef<HTMLDivElement | null>(null);
   const filterTooltipRef = useRef<HTMLDivElement | null>(null);
   const hasFilters = hasAnyFilters(entry.filters);
@@ -245,8 +250,18 @@ function SearchHistoryRow({
       const requiredHeight = tooltipRect.height + 8;
       const spaceAbove = triggerRect.top - safeTop;
       const spaceBelow = safeBottom - triggerRect.bottom;
+      const viewportPadding = 16;
+      const shouldPlaceAbove = spaceAbove >= requiredHeight || spaceAbove >= spaceBelow;
+      const maxWidth = Math.min(320, window.innerWidth - viewportPadding * 2);
+      const left = Math.min(
+        Math.max(viewportPadding, triggerRect.left),
+        window.innerWidth - tooltipRect.width - viewportPadding,
+      );
+      const top = shouldPlaceAbove
+        ? Math.max(safeTop, triggerRect.top - tooltipRect.height - 8)
+        : Math.min(safeBottom - tooltipRect.height, triggerRect.bottom + 8);
 
-      setDetailPlacement(spaceAbove >= requiredHeight || spaceAbove >= spaceBelow ? "above" : "below");
+      setDesktopDetailPosition({ top, left, maxWidth });
     };
 
     updatePlacement();
@@ -262,7 +277,10 @@ function SearchHistoryRow({
   const showDesktopDetail = shouldShowFilterDetail
     ? () => setIsDesktopDetailOpen(true)
     : undefined;
-  const hideDesktopDetail = () => setIsDesktopDetailOpen(false);
+  const hideDesktopDetail = () => {
+    setIsDesktopDetailOpen(false);
+    setDesktopDetailPosition(null);
+  };
 
   return (
     <div
@@ -309,16 +327,6 @@ function SearchHistoryRow({
                   ) : null}
                 </div>
 
-                {shouldShowFilterDetail && isDesktopDetailOpen ? (
-                  <div
-                    ref={filterTooltipRef}
-                    className={`pointer-events-none absolute left-0 z-50 hidden max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-700 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 lg:block dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-white/10 ${
-                      detailPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
-                    }`}
-                  >
-                    {detailText}
-                  </div>
-                ) : null}
               </div>
             )}
           </div>
@@ -340,6 +348,23 @@ function SearchHistoryRow({
           <p className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400 lg:hidden">
             {detailText}
           </p>
+        ) : null}
+
+        {shouldShowFilterDetail && isDesktopDetailOpen ? (
+          <ViewportPortal>
+            <div
+              ref={filterTooltipRef}
+              className="pointer-events-none fixed z-[80] hidden rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-700 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 lg:block dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-white/10"
+              style={{
+                top: desktopDetailPosition?.top ?? 0,
+                left: desktopDetailPosition?.left ?? 0,
+                maxWidth: desktopDetailPosition?.maxWidth ?? 320,
+                visibility: desktopDetailPosition ? "visible" : "hidden",
+              }}
+            >
+              {detailText}
+            </div>
+          </ViewportPortal>
         ) : null}
       </div>
       <button
