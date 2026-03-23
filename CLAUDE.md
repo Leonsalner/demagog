@@ -154,5 +154,5 @@ Optional / script-only:
 - `docs/plans/`: implementation notes and feature plans
 - `demagog-plan.md`: higher-level product / implementation planning (some parts reflect early-phase assumptions)
 - `PLAN.md`: original project plan
-- `README.md`: product overview for internal readers (non-technical) and technical architecture specification (at the end of the file)
+- `README.md`: product overview for internal readers (non-technical) and technical specification (at the end of the file)
 - `docs/README.md`: developer guide and setup instructions

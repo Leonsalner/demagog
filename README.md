@@ -42,7 +42,7 @@ Ak pri skúšaní narazíte na chybu, niečo nebude fungovať, alebo máte nápa
 
 ---
 
-## Technical Architecture Specification
+## Technical
 
 This section outlines the technical implementation details of the application. For setup instructions and developer guides, please refer to [`docs/README.md`](docs/README.md).
 
