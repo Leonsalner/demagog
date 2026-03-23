@@ -201,7 +201,7 @@ describe("useDetect", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it("times out sooner and falls back to NEW_CLAIM instead of surfacing an error", async () => {
+  it("times out at 8s and falls back to NEW_CLAIM instead of surfacing an error", async () => {
     vi.mocked(fetch).mockImplementation(
       () =>
         new Promise<Response>((_, reject) => {
@@ -214,7 +214,7 @@ describe("useDetect", () => {
 
     await act(async () => {
       const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(11_000);
+      await vi.advanceTimersByTimeAsync(8_000);
       await detectPromise;
     });
 
@@ -223,7 +223,7 @@ describe("useDetect", () => {
       input_statement: "Pošlú nás na vojnu",
       matches: [],
       overall_status: "NEW_CLAIM",
-      query_time_ms: 11_000,
+      query_time_ms: 8_000,
     });
     expect(result.current.loading).toBe(false);
   });
@@ -235,7 +235,7 @@ describe("useDetect", () => {
 
     await act(async () => {
       void result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(11_000);
+      await vi.advanceTimersByTimeAsync(8_000);
     });
 
     expect(result.current.loading).toBe(false);
@@ -244,11 +244,11 @@ describe("useDetect", () => {
       input_statement: "Pošlú nás na vojnu",
       matches: [],
       overall_status: "NEW_CLAIM",
-      query_time_ms: 11_000,
+      query_time_ms: 8_000,
     });
   });
 
-  it("runs one background retry after timeout and upgrades the result if matches are found", async () => {
+  it("runs hidden background detect after visible timeout and surfaces late match via notice", async () => {
     let callCount = 0;
 
     vi.mocked(fetch).mockImplementation(
@@ -297,39 +297,202 @@ describe("useDetect", () => {
 
     await act(async () => {
       const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(11_000);
+      await vi.advanceTimersByTimeAsync(8_000);
       await detectPromise;
     });
 
     expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
-    expect(result.current.retryUpgradeNotice).toBeNull();
+    expect(result.current.lateMatchNotice).toBeNull();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
 
-    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
-    expect(result.current.retryUpgradeNotice).toBe(
-      "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
-    );
+    expect(result.current.lateMatchNotice).toEqual({
+      status: "RELATED_ONLY",
+      result: expect.objectContaining({
+        overall_status: "RELATED_ONLY",
+      }),
+    });
   });
 
-  it("uses the hard client deadline if the retry path also never resolves", async () => {
-    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+  it("dismisses late match notice", async () => {
+    let callCount = 0;
+
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          callCount += 1;
+
+          if (callCount === 1) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Pošlú nás na vojnu",
+                    matches: [],
+                    overall_status: "RELATED_ONLY",
+                    query_time_ms: 620,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_000,
+          );
+        }),
+    );
 
     const { result } = renderHook(() => useDetect());
 
     await act(async () => {
-      void result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(23_000);
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(8_000);
+      await detectPromise;
     });
 
-    expect(result.current.loading).toBe(false);
-    expect(result.current.result).toEqual({
-      input_statement: "Pošlú nás na vojnu",
-      matches: [],
-      overall_status: "NEW_CLAIM",
-      query_time_ms: 11_000,
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
     });
+
+    expect(result.current.lateMatchNotice).not.toBeNull();
+
+    act(() => {
+      result.current.dismissLateMatchNotice();
+    });
+
+    expect(result.current.lateMatchNotice).toBeNull();
+  });
+
+  it("applies late match result and clears notice", async () => {
+    let callCount = 0;
+
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          callCount += 1;
+
+          if (callCount === 1) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Pošlú nás na vojnu",
+                    matches: [
+                      {
+                        classification: "DUPLICATE",
+                        similarity: 0.92,
+                        statement: {
+                          id: 1,
+                          vyrok: "Pošlú nás do vojny",
+                          vyhodnotenie: "Pravda",
+                          odovodnenie: "Odôvodnenie",
+                          datum: "2026-01-01",
+                          meno: "Politik",
+                          strana: "Strana",
+                        },
+                      },
+                    ],
+                    overall_status: "DUPLICATE_FOUND",
+                    query_time_ms: 620,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_000,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(8_000);
+      await detectPromise;
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(result.current.lateMatchNotice?.status).toBe("DUPLICATE_FOUND");
+
+    act(() => {
+      result.current.applyLateMatchResult();
+    });
+
+    expect(result.current.result?.overall_status).toBe("DUPLICATE_FOUND");
+    expect(result.current.lateMatchNotice).toBeNull();
+  });
+
+  it("newer detect request invalidates previous hidden request", async () => {
+    let callCount = 0;
+
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          callCount += 1;
+
+          if (callCount === 1) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          if (callCount === 2) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Third statement",
+                    matches: [],
+                    overall_status: "DUPLICATE_FOUND",
+                    query_time_ms: 620,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_000,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      result.current.detect("First statement");
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.lateMatchNotice).toBeNull();
+
+    await act(async () => {
+      result.current.detect("Second statement");
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(result.current.result?.input_statement).toBe("Second statement");
+    expect(result.current.lateMatchNotice).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(result.current.result?.input_statement).toBe("Second statement");
   });
 });

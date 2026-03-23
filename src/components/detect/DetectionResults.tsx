@@ -8,7 +8,6 @@ import StatementCard from "../shared/StatementCard";
 
 interface DetectionResultsProps {
   result: DetectResponse;
-  retryUpgradeNotice?: string | null;
   onOpenStatementResearch?: (statementId: number) => void;
   researchPreparationStatus?: PreparedAggregateResearchStatus;
   onPrepareResearchRetry?: () => void;
@@ -65,7 +64,6 @@ function sortMatches(matches: DetectionMatch[]) {
 
 export default function DetectionResults({
   result,
-  retryUpgradeNotice = null,
   onOpenStatementResearch,
   researchPreparationStatus = "idle",
   onPrepareResearchRetry,
@@ -207,12 +205,6 @@ export default function DetectionResults({
           </div>
         </div>
       </div>
-
-      {retryUpgradeNotice ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-          {retryUpgradeNotice}
-        </div>
-      ) : null}
 
       <p className="text-sm text-slate-500 dark:text-slate-400">Analýza trvala {result.query_time_ms} ms</p>
 

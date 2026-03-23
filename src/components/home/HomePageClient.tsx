@@ -112,7 +112,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     result: detectResult,
     loading: detectLoading,
     error: detectError,
-    retryUpgradeNotice: detectRetryUpgradeNotice,
+    lateMatchNotice,
+    dismissLateMatchNotice,
+    applyLateMatchResult,
     detect,
     restore: restoreDetect,
     reset: resetDetect,
@@ -752,6 +754,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setResearchUiState({ activeTab, selection });
   }, []);
 
+  const handleLateMatchToastAction = useCallback(() => {
+    if (isAddModalOpen) {
+      setIsAddModalOpen(false);
+    }
+    applyLateMatchResult();
+  }, [isAddModalOpen, applyLateMatchResult]);
+
   return (
     <div className="relative min-h-[400px]">
       <div
@@ -1007,7 +1016,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               {!isDetectPanelLoading && detectResult ? (
                 <DetectionResults
                   result={detectResult}
-                  retryUpgradeNotice={detectRetryUpgradeNotice}
                   onOpenStatementResearch={(statementId) => {
                     void openStatementResearch(statementId, { revealWhenReady: false });
                   }}
@@ -1049,6 +1057,51 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         initialStatement={addModalInitialStatement}
         onClose={() => setIsAddModalOpen(false)}
       />
+
+      {lateMatchNotice ? (
+        <ViewportPortal>
+          <div
+            className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-[0_16px_48px_-16px_rgba(16,24,42,0.35)] dark:border-emerald-800/60 dark:bg-emerald-950/80 dark:shadow-[0_16px_48px_-16px_rgba(2,6,23,0.6)]"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+              paddingLeft: "calc(env(safe-area-inset-left, 0px) + 1rem)",
+              paddingRight: "calc(env(safe-area-inset-right, 0px) + 1rem)",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm dark:bg-emerald-900/60 dark:text-emerald-300">
+                !
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  Dodatočne sa našli podobné výroky
+                </h3>
+                <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+                  {lateMatchNotice.status === "DUPLICATE_FOUND"
+                    ? "Po oneskorenom overení sa našli pravdepodobné zhody."
+                    : "Po oneskorenom overení sa našli súvisiace výroky."}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLateMatchToastAction}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_-8px_rgba(217,88,48,0.5)] hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
+                  >
+                    {isAddModalOpen ? "Otvoriť zhody" : "Zobraziť zhody"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissLateMatchNotice}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white/80 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-white dark:border-emerald-700/50 dark:bg-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                  >
+                    Zavrieť
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ViewportPortal>
+      ) : null}
     </div>
   );
 }

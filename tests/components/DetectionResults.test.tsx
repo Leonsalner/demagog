@@ -101,17 +101,4 @@ describe("DetectionResults", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pridať výrok" })).toBeInTheDocument();
   });
-
-  it("renders the late-retry upgrade notice when provided", () => {
-    render(
-      <DetectionResults
-        result={buildResult()}
-        retryUpgradeNotice="Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky."
-      />,
-    );
-
-    expect(
-      screen.getByText("Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky."),
-    ).toBeInTheDocument();
-  });
 });

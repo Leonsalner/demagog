@@ -7,9 +7,8 @@ import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
 import type { DetectHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
-const DETECT_TIMEOUT_MS = 11000;
-const DETECT_RETRY_TIMEOUT_MS = 8000;
-const DETECT_HARD_TIMEOUT_MS = 23000;
+const DETECT_VISIBLE_TIMEOUT_MS = 8000;
+const DETECT_HIDDEN_TIMEOUT_MS = 10000;
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -37,7 +36,7 @@ async function extractDetectErrorMessage(response: Response): Promise<string> {
 
 function buildTimeoutFallbackResponse(
   statement: string,
-  queryTimeMs: number = DETECT_TIMEOUT_MS,
+  queryTimeMs: number = DETECT_VISIBLE_TIMEOUT_MS,
 ): DetectResponse {
   return {
     input_statement: statement,
@@ -145,15 +144,23 @@ function createMockResponse(input: string, topK: number): DetectResponse {
   };
 }
 
+export type DetectLateMatchNotice =
+  | {
+      status: "DUPLICATE_FOUND" | "RELATED_ONLY";
+      result: DetectResponse;
+    }
+  | null;
+
 export function useDetect() {
   const [result, setResult] = useState<DetectResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retryUpgradeNotice, setRetryUpgradeNotice] = useState<string | null>(null);
+  const [lateMatchNotice, setLateMatchNotice] = useState<DetectLateMatchNotice>(null);
 
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const retryAbortControllerRef = useRef<AbortController | null>(null);
+  const hiddenAbortControllerRef = useRef<AbortController | null>(null);
+  const visibleTimeoutRef = useRef<number | null>(null);
 
   const runDetectRequest = useCallback(
     async (
@@ -177,124 +184,165 @@ export function useDetect() {
     [],
   );
 
+  const dismissLateMatchNotice = useCallback(() => {
+    setLateMatchNotice(null);
+  }, []);
+
+  const applyLateMatchResult = useCallback(() => {
+    if (lateMatchNotice) {
+      setResult(lateMatchNotice.result);
+      setLateMatchNotice(null);
+    }
+  }, [lateMatchNotice]);
+
   const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-    if (retryAbortControllerRef.current) {
-      retryAbortControllerRef.current.abort();
-      retryAbortControllerRef.current = null;
+    if (hiddenAbortControllerRef.current) {
+      hiddenAbortControllerRef.current.abort();
+      hiddenAbortControllerRef.current = null;
+    }
+    if (visibleTimeoutRef.current !== null) {
+      window.clearTimeout(visibleTimeoutRef.current);
+      visibleTimeoutRef.current = null;
     }
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    let didFallback = false;
-    let didStartRetry = false;
+    let didVisibleFallback = false;
 
     setLoading(true);
     setError(null);
     setResult(null);
-    setRetryUpgradeNotice(null);
+    setLateMatchNotice(null);
 
-    const startBackgroundRetry = () => {
-      if (didStartRetry || USE_MOCK) {
+    const finalizeVisibleTimeoutFallback = () => {
+      if (didVisibleFallback || requestIdRef.current !== requestId) {
         return;
       }
 
-      didStartRetry = true;
-      const retryController = new AbortController();
-      retryAbortControllerRef.current = retryController;
-      const retryTimeoutId = window.setTimeout(() => {
-        retryController.abort();
-      }, DETECT_RETRY_TIMEOUT_MS);
+      didVisibleFallback = true;
+      controller.abort();
+      setResult(buildTimeoutFallbackResponse(statement, DETECT_VISIBLE_TIMEOUT_MS));
+      setError(null);
+      setLoading(false);
 
-      void runDetectRequest(statement, mode, retryController.signal)
-        .then((retryResult) => {
-          if (requestIdRef.current !== requestId || retryController.signal.aborted) {
+      startHiddenBackgroundDetect(statement, mode, requestId);
+    };
+
+    const startHiddenBackgroundDetect = (
+      bgStatement: string,
+      bgMode: DetectMode,
+      bgRequestId: number,
+    ) => {
+      if (USE_MOCK) {
+        return;
+      }
+
+      const hiddenController = new AbortController();
+      hiddenAbortControllerRef.current = hiddenController;
+      const hiddenTimeoutId = window.setTimeout(() => {
+        hiddenController.abort();
+      }, DETECT_HIDDEN_TIMEOUT_MS);
+
+      void runDetectRequest(bgStatement, bgMode, hiddenController.signal)
+        .then((hiddenResult) => {
+          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
             return;
           }
 
-          if (retryResult.overall_status !== "NEW_CLAIM") {
-            setResult(retryResult);
-            setRetryUpgradeNotice(
-              "Dodatočné overenie našlo zhody. Zobrazené sú aktualizované výsledky.",
-            );
+          if (hiddenResult.overall_status !== "NEW_CLAIM") {
+            setLateMatchNotice({
+              status: hiddenResult.overall_status,
+              result: hiddenResult,
+            });
           }
         })
         .catch(() => {
-          // Keep the silent NEW_CLAIM fallback if the background retry also fails.
+          // Silent fail - late matches not available
         })
         .finally(() => {
-          window.clearTimeout(retryTimeoutId);
-          if (retryAbortControllerRef.current === retryController) {
-            retryAbortControllerRef.current = null;
+          window.clearTimeout(hiddenTimeoutId);
+          if (hiddenAbortControllerRef.current === hiddenController) {
+            hiddenAbortControllerRef.current = null;
           }
         });
     };
 
-    const finalizeTimeoutFallback = (queryTimeMs: number, startRetry: boolean) => {
-      if (didFallback || requestIdRef.current !== requestId) {
-        return;
-      }
-
-      didFallback = true;
-      controller.abort();
-      setResult(buildTimeoutFallbackResponse(statement, queryTimeMs));
-      setError(null);
-      setLoading(false);
-
-      if (startRetry) {
-        startBackgroundRetry();
-      }
-    };
-
-    const timeoutId = window.setTimeout(() => {
-      finalizeTimeoutFallback(DETECT_TIMEOUT_MS, true);
-    }, DETECT_TIMEOUT_MS);
-    const hardTimeoutId = window.setTimeout(() => {
-      finalizeTimeoutFallback(DETECT_HARD_TIMEOUT_MS, false);
-      if (retryAbortControllerRef.current) {
-        retryAbortControllerRef.current.abort();
-        retryAbortControllerRef.current = null;
-      }
-    }, DETECT_HARD_TIMEOUT_MS);
+    visibleTimeoutRef.current = window.setTimeout(() => {
+      finalizeVisibleTimeoutFallback();
+    }, DETECT_VISIBLE_TIMEOUT_MS);
 
     try {
       if (USE_MOCK) {
         await wait(1200);
-        if (requestIdRef.current !== requestId) {
+        if (requestIdRef.current !== requestId || didVisibleFallback) {
           return;
         }
         setResult(createMockResponse(statement, 10));
+        setLoading(false);
         return;
       }
 
-      const data = await runDetectRequest(statement, mode, controller.signal);
+      const visibleRequestPromise = runDetectRequest(statement, mode, controller.signal)
+        .then((data) => {
+          if (requestIdRef.current !== requestId || didVisibleFallback) {
+            return "stale" as const;
+          }
 
-      if (requestIdRef.current !== requestId || didFallback) {
-        return;
-      }
+          if (visibleTimeoutRef.current !== null) {
+            window.clearTimeout(visibleTimeoutRef.current);
+            visibleTimeoutRef.current = null;
+          }
+          setResult(data);
+          return "resolved" as const;
+        })
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            if (requestIdRef.current === requestId && !didVisibleFallback) {
+              setError(null);
+            }
+            return "aborted" as const;
+          }
 
-      setResult(data);
+          if (requestIdRef.current === requestId && !didVisibleFallback) {
+            setResult(null);
+            setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
+          }
+          return "errored" as const;
+        });
+
+      const visibleTimeoutPromise = new Promise<"timeout">((resolve) => {
+        visibleTimeoutRef.current = window.setTimeout(() => {
+          finalizeVisibleTimeoutFallback();
+          resolve("timeout");
+        }, DETECT_VISIBLE_TIMEOUT_MS);
+      });
+
+      await Promise.race([visibleRequestPromise, visibleTimeoutPromise]);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        if (requestIdRef.current === requestId && !didFallback) {
+        if (requestIdRef.current === requestId && !didVisibleFallback) {
           setError(null);
         }
         return;
       }
-      if (requestIdRef.current !== requestId) {
+      if (requestIdRef.current !== requestId || didVisibleFallback) {
         return;
       }
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
     } finally {
-      window.clearTimeout(timeoutId);
-      window.clearTimeout(hardTimeoutId);
-      if (requestIdRef.current === requestId && !didFallback) {
+      if (visibleTimeoutRef.current !== null) {
+        window.clearTimeout(visibleTimeoutRef.current);
+        visibleTimeoutRef.current = null;
+      }
+      if (requestIdRef.current === requestId && !didVisibleFallback) {
         setLoading(false);
       }
     }
@@ -306,14 +354,18 @@ export function useDetect() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (retryAbortControllerRef.current) {
-      retryAbortControllerRef.current.abort();
-      retryAbortControllerRef.current = null;
+    if (hiddenAbortControllerRef.current) {
+      hiddenAbortControllerRef.current.abort();
+      hiddenAbortControllerRef.current = null;
+    }
+    if (visibleTimeoutRef.current !== null) {
+      window.clearTimeout(visibleTimeoutRef.current);
+      visibleTimeoutRef.current = null;
     }
     setResult(null);
     setError(null);
     setLoading(false);
-    setRetryUpgradeNotice(null);
+    setLateMatchNotice(null);
   }, []);
 
   const restore = useCallback((entry: DetectHistoryEntry) => {
@@ -322,16 +374,30 @@ export function useDetect() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (retryAbortControllerRef.current) {
-      retryAbortControllerRef.current.abort();
-      retryAbortControllerRef.current = null;
+    if (hiddenAbortControllerRef.current) {
+      hiddenAbortControllerRef.current.abort();
+      hiddenAbortControllerRef.current = null;
+    }
+    if (visibleTimeoutRef.current !== null) {
+      window.clearTimeout(visibleTimeoutRef.current);
+      visibleTimeoutRef.current = null;
     }
 
     setLoading(false);
     setError(null);
     setResult(entry.response);
-    setRetryUpgradeNotice(null);
+    setLateMatchNotice(null);
   }, []);
 
-  return { result, loading, error, retryUpgradeNotice, detect, restore, reset };
+  return {
+    result,
+    loading,
+    error,
+    lateMatchNotice,
+    dismissLateMatchNotice,
+    applyLateMatchResult,
+    detect,
+    restore,
+    reset,
+  };
 }
