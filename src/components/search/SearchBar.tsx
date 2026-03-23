@@ -293,7 +293,6 @@ function SearchHistoryRow({
               >
                 <div
                   className="flex min-w-0 flex-wrap items-center gap-1"
-                  title={shouldShowFilterDetail ? detailText : undefined}
                 >
                   {visibleTokens.map((token) => (
                     <span
@@ -313,7 +312,7 @@ function SearchHistoryRow({
                 {shouldShowFilterDetail && isDesktopDetailOpen ? (
                   <div
                     ref={filterTooltipRef}
-                    className={`pointer-events-none absolute left-0 z-50 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-xl lg:block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${
+                    className={`pointer-events-none absolute left-0 z-50 hidden max-w-xs rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] leading-5 text-slate-700 shadow-[0_18px_40px_-16px_rgba(15,23,42,0.35)] ring-1 ring-black/5 lg:block dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-white/10 ${
                       detailPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"
                     }`}
                   >
