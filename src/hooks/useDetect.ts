@@ -257,6 +257,7 @@ export function useDetect() {
           }
 
           if (hiddenResult.overall_status !== "NEW_CLAIM") {
+            setResult(hiddenResult);
             setLateMatchNotice({
               status: hiddenResult.overall_status,
               result: hiddenResult,
@@ -273,10 +274,6 @@ export function useDetect() {
           }
         });
     };
-
-    visibleTimeoutRef.current = window.setTimeout(() => {
-      finalizeVisibleTimeoutFallback();
-    }, DETECT_VISIBLE_TIMEOUT_MS);
 
     try {
       if (USE_MOCK) {

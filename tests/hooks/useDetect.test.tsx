@@ -435,6 +435,124 @@ describe("useDetect", () => {
     expect(result.current.lateMatchNotice).toBeNull();
   });
 
+  it("applies late hidden matches automatically before the notice is dismissed", async () => {
+    let callCount = 0;
+
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          callCount += 1;
+
+          if (callCount === 1) {
+            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
+            return;
+          }
+
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Pošlú nás na vojnu",
+                    matches: [
+                      {
+                        classification: "RELATED",
+                        similarity: 0.78,
+                        statement: {
+                          id: 2,
+                          vyrok: "Pošlú nás na front",
+                          vyhodnotenie: "Nepravda",
+                          odovodnenie: "Odôvodnenie",
+                          datum: "2026-02-01",
+                          meno: "Politik",
+                          strana: "Strana",
+                        },
+                      },
+                    ],
+                    overall_status: "RELATED_ONLY",
+                    query_time_ms: 730,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_000,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(8_000);
+      await detectPromise;
+    });
+
+    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
+    expect(result.current.lateMatchNotice?.status).toBe("RELATED_ONLY");
+  });
+
+  it("does not overwrite a successful visible detect result with a stale timeout fallback", async () => {
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          setTimeout(
+            () =>
+              resolve(
+                new Response(
+                  JSON.stringify({
+                    input_statement: "Pošlú nás na vojnu",
+                    matches: [
+                      {
+                        classification: "RELATED",
+                        similarity: 0.81,
+                        statement: {
+                          id: 3,
+                          vyrok: "Pošlú nás do konfliktu",
+                          vyhodnotenie: "Zavádzajúce",
+                          odovodnenie: "Odôvodnenie",
+                          datum: "2026-02-03",
+                          meno: "Politik",
+                          strana: "Strana",
+                        },
+                      },
+                    ],
+                    overall_status: "RELATED_ONLY",
+                    query_time_ms: 2_400,
+                  }),
+                  { status: 200 },
+                ),
+              ),
+            2_400,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(2_400);
+      await detectPromise;
+    });
+
+    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
+    expect(result.current.result?.matches).toHaveLength(1);
+    expect(result.current.lateMatchNotice).toBeNull();
+  });
+
   it("newer detect request invalidates previous hidden request", async () => {
     let callCount = 0;
 
@@ -449,6 +567,25 @@ describe("useDetect", () => {
           }
 
           if (callCount === 2) {
+            setTimeout(
+              () =>
+                resolve(
+                  new Response(
+                    JSON.stringify({
+                      input_statement: "First statement",
+                      matches: [],
+                      overall_status: "RELATED_ONLY",
+                      query_time_ms: 620,
+                    }),
+                    { status: 200 },
+                  ),
+                ),
+              2_000,
+            );
+            return;
+          }
+
+          if (callCount === 3) {
             setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
             return;
           }
@@ -458,7 +595,7 @@ describe("useDetect", () => {
               resolve(
                 new Response(
                   JSON.stringify({
-                    input_statement: "Third statement",
+                    input_statement: "Second statement",
                     matches: [],
                     overall_status: "DUPLICATE_FOUND",
                     query_time_ms: 620,
@@ -494,5 +631,7 @@ describe("useDetect", () => {
     });
 
     expect(result.current.result?.input_statement).toBe("Second statement");
+    expect(result.current.result?.overall_status).toBe("DUPLICATE_FOUND");
+    expect(result.current.lateMatchNotice?.status).toBe("DUPLICATE_FOUND");
   });
 });
