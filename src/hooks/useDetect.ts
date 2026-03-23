@@ -14,6 +14,24 @@ function wait(ms: number) {
   });
 }
 
+async function extractDetectErrorMessage(response: Response): Promise<string> {
+  try {
+    const errorBody = await response.json();
+    if (
+      errorBody &&
+      typeof errorBody === "object" &&
+      "error" in errorBody &&
+      typeof errorBody.error === "string"
+    ) {
+      return errorBody.error;
+    }
+  } catch {
+    // Ignore malformed or empty error payloads.
+  }
+
+  return "Detekcia zlyhala.";
+}
+
 function buildMatch(
   statement: Statement,
   similarity: number,
@@ -160,21 +178,7 @@ export function useDetect() {
       }
 
       if (!response.ok) {
-        let message = "Detekcia zlyhala.";
-        try {
-          const errorBody = await response.json();
-          if (
-            errorBody &&
-            typeof errorBody === "object" &&
-            "error" in errorBody &&
-            typeof errorBody.error === "string"
-          ) {
-            message = errorBody.error;
-          }
-        } catch {
-          // ignore malformed error payloads and use the default message
-        }
-        throw new Error(message);
+        throw new Error(await extractDetectErrorMessage(response));
       }
 
       const data: DetectResponse = await response.json();

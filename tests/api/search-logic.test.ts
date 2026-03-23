@@ -197,6 +197,49 @@ describe("POST /api/search logic", () => {
     });
   });
 
+  it("returns the 10 newest statements directly for the default browse query", async () => {
+    const newestRows = Array.from({ length: 12 }, (_, index) =>
+      buildRow(index + 1, {
+        datum: `2026-01-${String(20 - index).padStart(2, "0")}`,
+      }),
+    );
+    const newestQuery = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({
+        data: newestRows,
+        error: null,
+      }),
+    };
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table !== "vyroky") {
+          throw new Error(`Unexpected table ${table}`);
+        }
+
+        return newestQuery;
+      }),
+      rpc: vi.fn(),
+    };
+
+    vi.mocked(supabasePublic).mockReturnValue(supabase as never);
+
+    const response = await POST(createRequest({ page: 3, page_size: 25 }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(newestQuery.order).toHaveBeenCalledWith("datum", {
+      ascending: false,
+      nullsFirst: false,
+    });
+    expect(newestQuery.limit).toHaveBeenCalledWith(10);
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(data.results).toHaveLength(12);
+    expect(data.related_results).toBeUndefined();
+    expect(data.related_articles).toBeUndefined();
+    expect(data.query_understanding).toBeUndefined();
+  });
+
   it("fetches only the requested semantic page and exposes the database total", async () => {
     const supabase = createSupabaseMock({
       rpc: async (fn) => {

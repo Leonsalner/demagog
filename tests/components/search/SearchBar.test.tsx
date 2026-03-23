@@ -95,7 +95,7 @@ describe("SearchBar history filter summary", () => {
     fireEvent.click(screen.getByRole("button", { name: "Detaily filtrov" }));
 
     expect(
-      screen.getAllByText(/Hodnotenie: Pravda, Nepravda · Politik: R\. Fico/i).length,
+      screen.getAllByText(/Hodnotenie: Pravda, Nepravda · Politik: Robert Fico/i).length,
     ).toBeGreaterThan(0);
   });
 });

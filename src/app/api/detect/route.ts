@@ -330,15 +330,15 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  try {
-    const retrievalCount = Math.max(
-      topK,
-      mode === "fast" ? FAST_DETECT_RETRIEVAL_COUNT : THOROUGH_DETECT_RETRIEVAL_COUNT
-    );
-    let rows: MatchRow[];
-    let embedding: number[] | null = null;
-    let usedLexicalFallback = false;
+  const retrievalCount = Math.max(
+    topK,
+    mode === "fast" ? FAST_DETECT_RETRIEVAL_COUNT : THOROUGH_DETECT_RETRIEVAL_COUNT
+  );
+  let rows: MatchRow[];
+  let embedding: number[] | null = null;
+  let usedLexicalFallback = false;
 
+  try {
     if (await canUseMatchStatementsRpc(supabase)) {
       try {
         embedding = await embedText(statement, "detect");
@@ -369,13 +369,21 @@ export async function POST(request: NextRequest) {
       usedLexicalFallback = true;
       rows = await runLexicalDetectFallback(supabase, statement, retrievalCount);
     }
+  } catch (error) {
+    logger.warn("detect_query_failed", "catch", {
+      route: "/api/detect",
+      duration_ms: Math.round(performance.now() - start),
+    }, error);
+    return NextResponse.json({ error: "Database error" }, { status: 502 });
+  }
 
-    const similarityThreshold = usedLexicalFallback ? 0.15 : 0.5;
+  const similarityThreshold = usedLexicalFallback ? 0.15 : 0.5;
 
-    if (rows.length === 0 || rows.every((row) => row.similarity < similarityThreshold)) {
-      return buildNewClaimFallbackResponse(statement, start, correlationId);
-    }
+  if (rows.length === 0 || rows.every((row) => row.similarity < similarityThreshold)) {
+    return buildNewClaimFallbackResponse(statement, start, correlationId);
+  }
 
+  try {
     let classifications:
       | Awaited<ReturnType<typeof classifyMatches>>
       | Array<ReturnType<typeof buildFallbackClassification>>;
@@ -486,7 +494,9 @@ export async function POST(request: NextRequest) {
         : {}),
     };
 
-    return NextResponse.json(response);
+    const nextResponse = NextResponse.json(response);
+    nextResponse.headers.set("X-Correlation-ID", correlationId);
+    return nextResponse;
   } catch (error) {
     logger.warn("detect_query_fallback", "catch", {
       route: "/api/detect",

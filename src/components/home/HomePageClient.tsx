@@ -180,6 +180,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   useEffect(() => {
     if (
       activeTab !== "search" ||
+      availableFilters === null ||
       loading ||
       isHydratingSearchRestore ||
       query.trim() !== "" ||
@@ -193,6 +194,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     void showNewest();
   }, [
     activeTab,
+    availableFilters,
     hasSearched,
     isHydratingSearchRestore,
     loading,

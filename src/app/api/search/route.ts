@@ -871,6 +871,22 @@ function buildRelatedFilterParams(body: SearchRequest, meno: string) {
   };
 }
 
+async function fetchNewestStatements(
+  supabase: ReturnType<typeof supabasePublic>,
+): Promise<Statement[]> {
+  const { data, error } = await supabase
+    .from("vyroky")
+    .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url")
+    .order("datum", { ascending: false, nullsFirst: false })
+    .limit(10);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as SearchRow[]).map(toStatement);
+}
+
 async function fetchRelatedResults(
   supabase: ReturnType<typeof supabasePublic>,
   queryEmbedding: number[],
@@ -985,6 +1001,7 @@ export async function POST(request: NextRequest) {
   const pageSize = body.page_size ?? 10;
   const offset = (page - 1) * pageSize;
   const timings: SearchStageTimings = {};
+  const isDefaultBrowseQuery = !body.query && !hasAnySearchFilters(body);
 
   try {
     let results: Statement[] = [];
@@ -994,7 +1011,11 @@ export async function POST(request: NextRequest) {
     let relatedArticles: Article[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
 
-    if (body.query) {
+    if (isDefaultBrowseQuery) {
+      results = await fetchNewestStatements(supabase);
+      totalCount = results.length;
+      hasMore = false;
+    } else if (body.query) {
       const distinctValuesStartedAt = performance.now();
       const {
         meno: allNames,
@@ -1171,25 +1192,7 @@ export async function POST(request: NextRequest) {
         };
       }
 
-      const isDefaultBrowseQuery = !body.query && !hasAnySearchFilters(filterBody);
-
-      if (isDefaultBrowseQuery) {
-        const { data, error } = await supabase
-          .from("vyroky")
-          .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url")
-          .order("datum", { ascending: false, nullsFirst: false })
-          .range(offset, offset + pageSize - 1);
-
-        if (error) {
-          return NextResponse.json({ error: "Database error" }, { status: 502 });
-        }
-
-        const pageRows = (data ?? []) as SearchRow[];
-        results = pageRows.map(toStatement);
-        hasMore = false;
-        totalCount = results.length;
-      } else {
-
+      {
         const query = applyStatementFilters(
           supabase
             .from("vyroky")
@@ -1215,18 +1218,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch and attach statement sources for all result IDs.
-    const sourcesStartedAt = performance.now();
-    const allIds = [
-      ...results.map((s) => s.id),
-      ...(relatedResults ?? []).map((s) => s.id),
-    ];
-    const sourcesMap = await fetchSourcesForIds(supabase, allIds);
-    recordStageTiming(timings, "sources_ms", sourcesStartedAt);
+    if (!isDefaultBrowseQuery) {
+      const sourcesStartedAt = performance.now();
+      const allIds = [
+        ...results.map((s) => s.id),
+        ...(relatedResults ?? []).map((s) => s.id),
+      ];
+      const sourcesMap = await fetchSourcesForIds(supabase, allIds);
+      recordStageTiming(timings, "sources_ms", sourcesStartedAt);
 
-    results = attachSources(results, sourcesMap);
-    if (relatedResults) {
-      relatedResults = attachSources(relatedResults, sourcesMap);
+      results = attachSources(results, sourcesMap);
+      if (relatedResults) {
+        relatedResults = attachSources(relatedResults, sourcesMap);
+      }
     }
 
     const response: SearchResponse = {

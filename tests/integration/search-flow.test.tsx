@@ -281,6 +281,74 @@ describe("search page flow", () => {
     expect(showNewest).toHaveBeenCalledTimes(1);
   });
 
+  it("returns to newest browse mode after the query is cleared back to empty", async () => {
+    const setQuery = vi.fn();
+    const showNewest = vi.fn().mockResolvedValue(undefined);
+
+    vi.mocked(useSearch)
+      .mockReturnValueOnce({
+        results: buildResults(),
+        loading: false,
+        error: null,
+        query: "konsolidácia",
+        submittedQuery: "konsolidácia",
+        submittedFilters: emptyFilters,
+        filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
+        filters: emptyFilters,
+        page: 1,
+        availableFilters,
+        filterLoadError: false,
+        completedSearchSnapshot: null,
+        restoreVersion: 0,
+        manualFilterVersion: 0,
+        isDefaultBrowseView: false,
+        hasSearched: true,
+        setQuery,
+        setFilters: vi.fn(),
+        setPage: vi.fn(),
+        setError: vi.fn(),
+        loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        search: vi.fn(),
+        restore: vi.fn(),
+        showNewest,
+      })
+      .mockReturnValueOnce({
+        results: null,
+        loading: false,
+        error: null,
+        query: "",
+        submittedQuery: "",
+        submittedFilters: emptyFilters,
+        filterOwnership: { strana: "none", vyhodnotenie: "none", meno: "none", datum_od: "none", datum_do: "none" },
+        filters: emptyFilters,
+        page: 1,
+        availableFilters,
+        filterLoadError: false,
+        completedSearchSnapshot: null,
+        restoreVersion: 0,
+        manualFilterVersion: 0,
+        isDefaultBrowseView: false,
+        hasSearched: false,
+        setQuery,
+        setFilters: vi.fn(),
+        setPage: vi.fn(),
+        setError: vi.fn(),
+        loadFilters: vi.fn().mockResolvedValue(availableFilters),
+        search: vi.fn(),
+        restore: vi.fn(),
+        showNewest,
+      });
+
+    const view = await renderHome();
+    fireEvent.change(screen.getByPlaceholderText("Hľadať výroky..."), {
+      target: { value: "" },
+    });
+    view.rerender(await renderHomeTree());
+
+    expect(setQuery).toHaveBeenCalledWith("");
+    expect(showNewest).toHaveBeenCalledTimes(1);
+  });
+
   it("skips the auto-search effect when filters were updated by the model", async () => {
     vi.useFakeTimers();
 

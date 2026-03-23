@@ -59,6 +59,22 @@ function formatDateToken(value: string): string {
   return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
 }
 
+function buildCompactDateLabel(from: string | null, to: string | null): string | null {
+  if (from && to) {
+    return `${formatDateToken(from)}-${formatDateToken(to)}`;
+  }
+
+  if (from) {
+    return `od ${formatDateToken(from)}`;
+  }
+
+  if (to) {
+    return `do ${formatDateToken(to)}`;
+  }
+
+  return null;
+}
+
 function buildFilterTokens(filters: FilterState): FilterToken[] {
   const tokens: FilterToken[] = [];
 
@@ -86,22 +102,11 @@ function buildFilterTokens(filters: FilterState): FilterToken[] {
     });
   }
 
-  if (filters.datum_od && filters.datum_do) {
+  const compactDateLabel = buildCompactDateLabel(filters.datum_od, filters.datum_do);
+  if (compactDateLabel) {
     tokens.push({
       key: "date-range",
-      label: `${formatDateToken(filters.datum_od)}-${formatDateToken(filters.datum_do)}`,
-      tone: "neutral",
-    });
-  } else if (filters.datum_od) {
-    tokens.push({
-      key: "date-from",
-      label: `od ${formatDateToken(filters.datum_od)}`,
-      tone: "neutral",
-    });
-  } else if (filters.datum_do) {
-    tokens.push({
-      key: "date-to",
-      label: `do ${formatDateToken(filters.datum_do)}`,
+      label: compactDateLabel,
       tone: "neutral",
     });
   }
@@ -117,7 +122,7 @@ function buildFilterDetailText(filters: FilterState): string {
   }
 
   if (filters.meno?.length) {
-    parts.push(`Politik: ${filters.meno.map(abbreviateName).join(", ")}`);
+    parts.push(`Politik: ${filters.meno.join(", ")}`);
   }
 
   if (filters.strana?.length) {
@@ -208,7 +213,7 @@ function SearchHistoryRow({
                 </div>
 
                 {detailText ? (
-                  <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-lg group-hover:block group-focus-within:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 lg:block">
+                  <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-lg lg:group-hover:block lg:group-focus-within:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                     {detailText}
                   </div>
                 ) : null}
