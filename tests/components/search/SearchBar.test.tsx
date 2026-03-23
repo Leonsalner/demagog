@@ -157,7 +157,7 @@ describe("SearchBar history filter summary", () => {
     fireEvent.click(screen.getByRole("button", { name: "História" }));
 
     const dialog = screen.getByRole("dialog", { name: "História vyhľadávania" });
-    expect(dialog).toHaveStyle({ width: "760px" });
+    expect(dialog).toHaveStyle({ width: "420px" });
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }));
 

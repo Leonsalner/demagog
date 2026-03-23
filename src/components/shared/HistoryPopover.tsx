@@ -176,7 +176,8 @@ export default function HistoryPopover<T extends { id: string; createdAt: string
 
       const viewportPadding = 24;
       const resolvedWidth = Math.min(
-        desktopMaxWidth ?? desktopWidth,
+        desktopWidth,
+        desktopMaxWidth ?? Number.POSITIVE_INFINITY,
         window.innerWidth - viewportPadding * 2,
       );
       const top = rect.bottom + desktopOffsetY;

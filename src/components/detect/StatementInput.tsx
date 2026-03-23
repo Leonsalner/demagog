@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
 import type { DetectHistoryEntry } from "@/types/history";
 
@@ -41,6 +41,20 @@ const DETECT_ACCENT_CLASSES: Record<AccentTone, { bar: string; bg: string }> = {
     bg: "bg-amber-50/40 dark:bg-amber-950/20",
   },
 };
+
+function getAdaptiveHistoryWidth(
+  queries: string[],
+  baseWidth: number,
+  threshold: number,
+  maxWidth: number,
+): number {
+  const longestQueryLength = queries.reduce(
+    (longest, query) => Math.max(longest, query.trim().length),
+    0,
+  );
+  const growthSteps = Math.ceil(Math.max(0, longestQueryLength - threshold) / 8);
+  return Math.min(maxWidth, baseWidth + growthSteps * 40);
+}
 
 function DetectHistoryRow({
   entry,
@@ -135,6 +149,10 @@ export default function StatementInput({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const desktopHistoryWidth = useMemo(
+    () => getAdaptiveHistoryWidth(historyEntries.map((entry) => entry.query), 440, 56, 760),
+    [historyEntries],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -276,8 +294,7 @@ export default function StatementInput({
           headerLabel="História analýz"
           anchorRef={historyButtonRef}
           desktopAnchorAlign="end"
-          desktopWidth={560}
-          desktopMaxWidth={820}
+          desktopWidth={desktopHistoryWidth}
           desktopMaxHeight={500}
           desktopOffsetY={12}
           emptyMessage="Žiadne uložené analýzy"

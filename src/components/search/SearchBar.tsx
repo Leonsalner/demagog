@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 import type { SearchHistoryEntry } from "@/types/history";
@@ -140,6 +140,20 @@ function buildFilterDetailText(filters: FilterState): string {
   }
 
   return parts.join(" · ");
+}
+
+function getAdaptiveHistoryWidth(
+  queries: string[],
+  baseWidth: number,
+  threshold: number,
+  maxWidth: number,
+): number {
+  const longestQueryLength = queries.reduce(
+    (longest, query) => Math.max(longest, query.trim().length),
+    0,
+  );
+  const growthSteps = Math.ceil(Math.max(0, longestQueryLength - threshold) / 8);
+  return Math.min(maxWidth, baseWidth + growthSteps * 40);
 }
 
 function filterChipClassName(tone: FilterToken["tone"]): string {
@@ -399,6 +413,10 @@ export default function SearchBar({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const desktopHistoryWidth = useMemo(
+    () => getAdaptiveHistoryWidth(historyEntries.map((entry) => entry.query), 420, 48, 680),
+    [historyEntries],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -529,8 +547,7 @@ export default function SearchBar({
           headerLabel="História vyhľadávania"
           anchorRef={historyButtonRef}
           desktopAnchorAlign="center"
-          desktopWidth={560}
-          desktopMaxWidth={760}
+          desktopWidth={desktopHistoryWidth}
           desktopMaxHeight={440}
           desktopOffsetY={12}
           emptyMessage="Žiadne uložené vyhľadávania"
