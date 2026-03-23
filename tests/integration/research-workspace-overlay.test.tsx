@@ -127,6 +127,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const setFilters = vi.fn();
   const setPage = vi.fn();
   const search = vi.fn();
+  const showNewest = vi.fn().mockResolvedValue(undefined);
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
 
   vi.mocked(useSearch).mockReturnValue({
@@ -143,6 +144,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     completedSearchSnapshot: null,
     restoreVersion: 0,
     manualFilterVersion: 0,
+    isDefaultBrowseView: false,
     filterLoadError: false,
     hasSearched: false,
     setQuery,
@@ -151,6 +153,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setError: vi.fn(),
     search,
     restore: vi.fn(),
+    showNewest,
     loadFilters,
     ...overrides,
   });

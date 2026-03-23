@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import HistoryPopover from "@/components/shared/HistoryPopover";
 import type { SearchHistoryEntry } from "@/types/history";
+import type { FilterState, Verdict } from "@/types";
 
 interface SearchBarProps {
   value: string;
@@ -15,6 +16,142 @@ interface SearchBarProps {
   onHistoryClear?: () => void;
 }
 
+type FilterToken = {
+  key: string;
+  label: string;
+  tone: "verdict-green" | "verdict-red" | "verdict-amber" | "verdict-slate" | "neutral";
+};
+
+const VERDICT_TONE: Record<Verdict, FilterToken["tone"]> = {
+  Pravda: "verdict-green",
+  Nepravda: "verdict-red",
+  Zavádzajúce: "verdict-amber",
+  Neoveriteľné: "verdict-slate",
+};
+
+function hasAnyFilters(filters: FilterState): boolean {
+  return (
+    filters.strana !== null ||
+    filters.vyhodnotenie !== null ||
+    filters.meno !== null ||
+    filters.datum_od !== null ||
+    filters.datum_do !== null
+  );
+}
+
+function abbreviateName(name: string): string {
+  const tokens = name.trim().split(/\s+/u).filter(Boolean);
+
+  if (tokens.length < 2) {
+    return name;
+  }
+
+  return `${tokens[0].charAt(0)}. ${tokens.slice(1).join(" ")}`;
+}
+
+function formatDateToken(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+}
+
+function buildFilterTokens(filters: FilterState): FilterToken[] {
+  const tokens: FilterToken[] = [];
+
+  for (const verdict of filters.vyhodnotenie ?? []) {
+    tokens.push({
+      key: `verdict:${verdict}`,
+      label: verdict,
+      tone: VERDICT_TONE[verdict],
+    });
+  }
+
+  if (filters.meno?.[0]) {
+    tokens.push({
+      key: `meno:${filters.meno[0]}`,
+      label: abbreviateName(filters.meno[0]),
+      tone: "neutral",
+    });
+  }
+
+  if (filters.strana?.[0]) {
+    tokens.push({
+      key: `strana:${filters.strana[0]}`,
+      label: filters.strana[0],
+      tone: "neutral",
+    });
+  }
+
+  if (filters.datum_od && filters.datum_do) {
+    tokens.push({
+      key: "date-range",
+      label: `${formatDateToken(filters.datum_od)}-${formatDateToken(filters.datum_do)}`,
+      tone: "neutral",
+    });
+  } else if (filters.datum_od) {
+    tokens.push({
+      key: "date-from",
+      label: `od ${formatDateToken(filters.datum_od)}`,
+      tone: "neutral",
+    });
+  } else if (filters.datum_do) {
+    tokens.push({
+      key: "date-to",
+      label: `do ${formatDateToken(filters.datum_do)}`,
+      tone: "neutral",
+    });
+  }
+
+  return tokens;
+}
+
+function buildFilterDetailText(filters: FilterState): string {
+  const parts: string[] = [];
+
+  if (filters.vyhodnotenie?.length) {
+    parts.push(`Hodnotenie: ${filters.vyhodnotenie.join(", ")}`);
+  }
+
+  if (filters.meno?.length) {
+    parts.push(`Politik: ${filters.meno.map(abbreviateName).join(", ")}`);
+  }
+
+  if (filters.strana?.length) {
+    parts.push(`Strana: ${filters.strana.join(", ")}`);
+  }
+
+  if (filters.datum_od) {
+    parts.push(`Dátum od: ${formatDateToken(filters.datum_od)}`);
+  }
+
+  if (filters.datum_do) {
+    parts.push(`Dátum do: ${formatDateToken(filters.datum_do)}`);
+  }
+
+  return parts.join(" · ");
+}
+
+function filterChipClassName(tone: FilterToken["tone"]): string {
+  if (tone === "verdict-green") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-300";
+  }
+  if (tone === "verdict-red") {
+    return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/50 dark:text-rose-300";
+  }
+  if (tone === "verdict-amber") {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-300";
+  }
+  if (tone === "verdict-slate") {
+    return "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  }
+
+  return "border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300";
+}
+
 function SearchHistoryRow({
   entry,
   onSelect,
@@ -24,34 +161,80 @@ function SearchHistoryRow({
   onSelect: () => void;
   onRemove: () => void;
 }) {
-  const hasFilters =
-    entry.filterOwnership.strana !== "none" ||
-    entry.filterOwnership.vyhodnotenie !== "none" ||
-    entry.filterOwnership.meno !== "none" ||
-    entry.filterOwnership.datum_od !== "none" ||
-    entry.filterOwnership.datum_do !== "none";
-
+  const [isTouchDetailOpen, setIsTouchDetailOpen] = useState(false);
+  const hasFilters = hasAnyFilters(entry.filters);
+  const allTokens = buildFilterTokens(entry.filters);
+  const visibleTokens = allTokens.slice(0, 2);
+  const hiddenTokenCount = Math.max(0, allTokens.length - visibleTokens.length);
+  const detailText = buildFilterDetailText(entry.filters);
   const resultCount = entry.response.results?.length ?? 0;
   const relatedResultCount = entry.response.related_results?.length ?? 0;
 
   return (
     <div className="group relative flex items-start gap-3 rounded-lg p-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
-      <button
-        type="button"
-        onClick={onSelect}
-        className="min-w-0 flex-1 text-left"
-      >
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-          {entry.query || "(prázdny dopyt)"}
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span>{resultCount} výsledkov</span>
-          {relatedResultCount > 0 && (
-            <span>+ {relatedResultCount} súvisiacich</span>
-          )}
-          {hasFilters && <span className="text-amber-600 dark:text-amber-400">s filtrami</span>}
-        </div>
-      </button>
+      <div className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="min-w-0 w-full text-left"
+        >
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {entry.query || "(prázdny dopyt)"}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <span>{resultCount} výsledkov</span>
+            {relatedResultCount > 0 && (
+              <span>+ {relatedResultCount} súvisiacich</span>
+            )}
+            {hasFilters && (
+              <div className="relative min-w-0">
+                <div
+                  className="flex min-w-0 flex-wrap items-center gap-1"
+                  title={detailText || undefined}
+                >
+                  {visibleTokens.map((token) => (
+                    <span
+                      key={token.key}
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${filterChipClassName(token.tone)}`}
+                    >
+                      {token.label}
+                    </span>
+                  ))}
+                  {hiddenTokenCount > 0 ? (
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      +{hiddenTokenCount}
+                    </span>
+                  ) : null}
+                </div>
+
+                {detailText ? (
+                  <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 hidden max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-lg group-hover:block group-focus-within:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 lg:block">
+                    {detailText}
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </button>
+
+        {detailText ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIsTouchDetailOpen((current) => !current);
+            }}
+            className="mt-1 inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400 lg:hidden"
+            aria-expanded={isTouchDetailOpen}
+          >
+            Detaily filtrov
+          </button>
+        ) : null}
+        {detailText && isTouchDetailOpen ? (
+          <p className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400 lg:hidden">
+            {detailText}
+          </p>
+        ) : null}
+      </div>
       <button
         type="button"
         onClick={(e) => {

@@ -235,6 +235,7 @@ export function useSearch() {
   const [completedSearchSnapshot, setCompletedSearchSnapshot] = useState<CompletedSearchSnapshot | null>(null);
   const [restoreVersion, setRestoreVersion] = useState(0);
   const [manualFilterVersion, setManualFilterVersion] = useState(0);
+  const [isDefaultBrowseView, setIsDefaultBrowseView] = useState(false);
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const filterOwnershipRef = useRef<SearchFilterOwnershipState>(emptyFilterOwnership());
   const filtersRef = useRef<FilterState>(emptyFilters);
@@ -302,6 +303,7 @@ export function useSearch() {
       setLoading(true);
       setError(null);
       setHasSearched(true);
+      setIsDefaultBrowseView(false);
 
       const activeQuery = submit ? query : submittedQuery;
       const activeFilters = submit ? filtersRef.current : submittedFiltersRef.current;
@@ -453,6 +455,8 @@ export function useSearch() {
     if (!nextQuery.trim()) {
       setHasSearched(false);
       setResults(null);
+      setIsDefaultBrowseView(false);
+      setError(null);
       setSubmittedQuery("");
       syncSubmittedFilters(emptyFilters);
       setSubmittedOwnership(emptyFilterOwnership());
@@ -488,6 +492,7 @@ export function useSearch() {
   }, []);
 
   const restore = useCallback((entry: SearchHistoryEntry) => {
+    setIsDefaultBrowseView(false);
     setQueryState(entry.query);
     setSubmittedQuery(entry.query);
     syncFilters(entry.filters);
@@ -530,6 +535,59 @@ export function useSearch() {
     setRestoreVersion((currentVersion) => currentVersion + 1);
   }, []);
 
+  const showNewest = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setIsDefaultBrowseView(true);
+
+    const request: SearchRequest = {
+      page: 1,
+      page_size: 10,
+    };
+
+    try {
+      let responseData: SearchResponse;
+
+      if (USE_MOCK) {
+        responseData = runMockSearch(request);
+      } else {
+        const response = await fetch("/api/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          throw new Error("Nepodarilo sa načítať najnovšie výroky.");
+        }
+
+        responseData = await response.json();
+      }
+
+      setResults(responseData);
+      setSubmittedQuery("");
+      syncSubmittedFilters(emptyFilters);
+      setSubmittedOwnership(emptyFilterOwnership());
+      syncFilters(emptyFilters);
+      syncFilterOwnership(emptyFilterOwnership());
+      setHasSearched(false);
+      setPage(1);
+      setCompletedSearchSnapshot(null);
+    } catch (caughtError) {
+      setResults(null);
+      setIsDefaultBrowseView(false);
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Nepodarilo sa načítať najnovšie výroky.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+
   return {
     results,
     loading,
@@ -545,6 +603,7 @@ export function useSearch() {
     completedSearchSnapshot,
     restoreVersion,
     manualFilterVersion,
+    isDefaultBrowseView,
     hasSearched,
     setQuery,
     setFilters,
@@ -552,6 +611,7 @@ export function useSearch() {
     setError,
     search,
     restore,
+    showNewest,
     loadFilters,
   };
 }

@@ -230,6 +230,16 @@ function buildFilterParams(body: SearchRequest) {
   };
 }
 
+function hasAnySearchFilters(body: SearchRequest): boolean {
+  return Boolean(
+    body.strana ||
+      body.vyhodnotenie ||
+      body.meno ||
+      body.datum_od ||
+      body.datum_do
+  );
+}
+
 function mergeQueryFilters(
   body: SearchRequest,
   extractedFilters: QueryUnderstanding["filters"]
@@ -1161,28 +1171,48 @@ export async function POST(request: NextRequest) {
         };
       }
 
-      const query = applyStatementFilters(
-        supabase
+      const isDefaultBrowseQuery = !body.query && !hasAnySearchFilters(filterBody);
+
+      if (isDefaultBrowseQuery) {
+        const { data, error } = await supabase
           .from("vyroky")
-          .select(
-            "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
-            { count: "planned" }
-          ),
-        filterBody
-      );
+          .select("id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url")
+          .order("datum", { ascending: false, nullsFirst: false })
+          .range(offset, offset + pageSize - 1);
 
-      const { data, error, count } = await query
-        .order("datum", { ascending: false, nullsFirst: false })
-        .range(offset, offset + pageSize);
+        if (error) {
+          return NextResponse.json({ error: "Database error" }, { status: 502 });
+        }
 
-      if (error) {
-        return NextResponse.json({ error: "Database error" }, { status: 502 });
+        const pageRows = (data ?? []) as SearchRow[];
+        results = pageRows.map(toStatement);
+        hasMore = false;
+        totalCount = results.length;
+      } else {
+
+        const query = applyStatementFilters(
+          supabase
+            .from("vyroky")
+            .select(
+              "id, vyrok, vyhodnotenie, odovodnenie, datum, meno, strana, url, speaker_url",
+              { count: "planned" }
+            ),
+          filterBody
+        );
+
+        const { data, error, count } = await query
+          .order("datum", { ascending: false, nullsFirst: false })
+          .range(offset, offset + pageSize);
+
+        if (error) {
+          return NextResponse.json({ error: "Database error" }, { status: 502 });
+        }
+
+        const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
+        results = pageRows.map(toStatement);
+        hasMore = (data?.length ?? 0) > pageSize;
+        totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
       }
-
-      const pageRows = ((data ?? []) as SearchRow[]).slice(0, pageSize);
-      results = pageRows.map(toStatement);
-      hasMore = (data?.length ?? 0) > pageSize;
-      totalCount = count ?? offset + results.length + (hasMore ? 1 : 0);
     }
 
     // Fetch and attach statement sources for all result IDs.

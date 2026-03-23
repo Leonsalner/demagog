@@ -426,4 +426,30 @@ describe("useSearch", () => {
     expect(result.current.availableFilters).not.toBeNull();
     expect(result.current.filterLoadError).toBe(true);
   });
+
+  it("loads the newest results without marking the view as a submitted search", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => buildResponse(),
+    } as Response);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      await result.current.showNewest();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/search",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ page: 1, page_size: 10 }),
+      }),
+    );
+    expect(result.current.results?.results.length).toBeGreaterThan(0);
+    expect(result.current.hasSearched).toBe(false);
+    expect(result.current.isDefaultBrowseView).toBe(true);
+    expect(result.current.completedSearchSnapshot).toBeNull();
+  });
 });

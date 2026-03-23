@@ -99,12 +99,14 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     completedSearchSnapshot,
     restoreVersion,
     manualFilterVersion,
+    isDefaultBrowseView,
     hasSearched,
     setQuery,
     setFilters,
     setPage,
     search,
     restore: restoreSearch,
+    showNewest,
     loadFilters,
   } = useSearch();
   const {
@@ -174,6 +176,31 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   useEffect(() => {
     void loadFilters();
   }, [loadFilters]);
+
+  useEffect(() => {
+    if (
+      activeTab !== "search" ||
+      loading ||
+      isHydratingSearchRestore ||
+      query.trim() !== "" ||
+      hasSearched ||
+      results !== null ||
+      error !== null
+    ) {
+      return;
+    }
+
+    void showNewest();
+  }, [
+    activeTab,
+    hasSearched,
+    isHydratingSearchRestore,
+    loading,
+    error,
+    query,
+    results,
+    showNewest,
+  ]);
 
   const handleOpenStatementResearch = useCallback(
     (statementId: number) => {
@@ -323,7 +350,11 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   }, [isHydratingSearchRestore]);
 
   useEffect(() => {
-    if (!completedSearchSnapshot || completedSearchSnapshot.source === "restore") {
+    if (
+      !completedSearchSnapshot ||
+      completedSearchSnapshot.source === "restore" ||
+      isDefaultBrowseView
+    ) {
       return;
     }
 
@@ -353,7 +384,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     };
 
     saveSearchEntry(entry);
-  }, [completedSearchSnapshot, saveSearchEntry]);
+  }, [completedSearchSnapshot, isDefaultBrowseView, saveSearchEntry]);
 
   useEffect(() => {
     if (!detectResult) {

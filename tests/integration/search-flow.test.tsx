@@ -100,6 +100,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const setFilters = vi.fn();
   const setPage = vi.fn();
   const search = vi.fn();
+  const showNewest = vi.fn().mockResolvedValue(undefined);
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
 
   vi.mocked(useSearch).mockReturnValue({
@@ -117,6 +118,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     completedSearchSnapshot: null,
     restoreVersion: 0,
     manualFilterVersion: 0,
+    isDefaultBrowseView: false,
     hasSearched: false,
     setQuery,
     setFilters,
@@ -124,6 +126,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setError: vi.fn(),
     search,
     restore: vi.fn(),
+    showNewest,
     loadFilters,
     ...overrides,
   });
@@ -134,6 +137,7 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     setPage,
     search,
     restore: vi.fn(),
+    showNewest,
     loadFilters,
   };
 }
@@ -174,13 +178,14 @@ describe("search page flow", () => {
     vi.useRealTimers();
   });
 
-  it("renders the initial search state", async () => {
-    mockUseSearchReturn();
+  it("renders newest results on the initial empty search state", async () => {
+    const { showNewest } = mockUseSearchReturn();
 
     await renderHome();
 
     expect(screen.getByPlaceholderText("Hľadať výroky...")).toBeInTheDocument();
     expect(screen.getAllByText("Filtre").length).toBeGreaterThan(0);
+    expect(showNewest).toHaveBeenCalledTimes(1);
   });
 
   it("submits a query through the search button", async () => {
@@ -235,10 +240,11 @@ describe("search page flow", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not auto-search on the initial render", async () => {
+  it("loads the newest results on the initial render without auto-searching", async () => {
     vi.useFakeTimers();
 
     const stableSearch = vi.fn();
+    const showNewest = vi.fn().mockResolvedValue(undefined);
 
     vi.mocked(useSearch).mockReturnValue({
       results: null,
@@ -255,6 +261,7 @@ describe("search page flow", () => {
       completedSearchSnapshot: null,
       restoreVersion: 0,
       manualFilterVersion: 0,
+      isDefaultBrowseView: false,
       hasSearched: false,
       setQuery: vi.fn(),
       setFilters: vi.fn(),
@@ -262,13 +269,16 @@ describe("search page flow", () => {
       setError: vi.fn(),
       loadFilters: vi.fn().mockResolvedValue(availableFilters),
       search: stableSearch,
-      restore: vi.fn(),    });
+      restore: vi.fn(),
+      showNewest,
+    });
 
     await renderHome();
 
     vi.advanceTimersByTime(600);
 
     expect(stableSearch).not.toHaveBeenCalled();
+    expect(showNewest).toHaveBeenCalledTimes(1);
   });
 
   it("skips the auto-search effect when filters were updated by the model", async () => {
@@ -292,6 +302,7 @@ describe("search page flow", () => {
         completedSearchSnapshot: null,
         restoreVersion: 0,
         manualFilterVersion: 0,
+        isDefaultBrowseView: false,
         hasSearched: true,
         setQuery: vi.fn(),
         setFilters: vi.fn(),
@@ -299,6 +310,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
     restore: vi.fn(),
+        showNewest: vi.fn().mockResolvedValue(undefined),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
         })      .mockReturnValueOnce({
@@ -340,6 +352,7 @@ describe("search page flow", () => {
         completedSearchSnapshot: null,
         restoreVersion: 0,
         manualFilterVersion: 0,
+        isDefaultBrowseView: false,
         hasSearched: true,
         setQuery: vi.fn(),
         setFilters: vi.fn(),
@@ -347,6 +360,7 @@ describe("search page flow", () => {
         setError: vi.fn(),
         search,
     restore: vi.fn(),
+        showNewest: vi.fn().mockResolvedValue(undefined),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
         });

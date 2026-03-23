@@ -101,6 +101,7 @@ describe("feedback context integration", () => {
       completedSearchSnapshot: null,
       restoreVersion: 0,
       manualFilterVersion: 0,
+      isDefaultBrowseView: false,
       filterLoadError: false,
       hasSearched: false,
       setQuery: vi.fn(),
@@ -109,6 +110,7 @@ describe("feedback context integration", () => {
       setError: vi.fn(),
       search: vi.fn(),
       restore: vi.fn(),
+      showNewest: vi.fn().mockResolvedValue(undefined),
       loadFilters: vi.fn().mockResolvedValue(null),
     });
     vi.mocked(useDetect).mockReturnValue({

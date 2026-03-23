@@ -160,7 +160,21 @@ export function useDetect() {
       }
 
       if (!response.ok) {
-        throw new Error("Detekcia zlyhala.");
+        let message = "Detekcia zlyhala.";
+        try {
+          const errorBody = await response.json();
+          if (
+            errorBody &&
+            typeof errorBody === "object" &&
+            "error" in errorBody &&
+            typeof errorBody.error === "string"
+          ) {
+            message = errorBody.error;
+          }
+        } catch {
+          // ignore malformed error payloads and use the default message
+        }
+        throw new Error(message);
       }
 
       const data: DetectResponse = await response.json();

@@ -72,6 +72,7 @@ async function renderHome(mode?: string) {
 }
 
 function mockUseSearchReturn() {
+  const showNewest = vi.fn().mockResolvedValue(undefined);
   vi.mocked(useSearch).mockReturnValue({
     results: null,
     loading: false,
@@ -97,6 +98,7 @@ function mockUseSearchReturn() {
     completedSearchSnapshot: null,
     restoreVersion: 0,
     manualFilterVersion: 0,
+    isDefaultBrowseView: false,
     hasSearched: false,
     setQuery: vi.fn(),
     setFilters: vi.fn(),
@@ -104,6 +106,7 @@ function mockUseSearchReturn() {
     setError: vi.fn(),
     search: vi.fn(),
     restore: vi.fn(),
+    showNewest,
     loadFilters: vi.fn().mockResolvedValue(null),
     filterLoadError: false,
   });

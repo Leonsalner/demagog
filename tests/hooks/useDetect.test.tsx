@@ -14,10 +14,10 @@ describe("useDetect", () => {
     vi.clearAllMocks();
   });
 
-  it("surfaces API failures instead of returning fabricated mock matches", async () => {
+  it("surfaces explicit API error messages instead of returning fabricated mock matches", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,
-      json: async () => ({}),
+      json: async () => ({ error: "Embedding service unavailable" }),
     } as Response);
 
     const { result } = renderHook(() => useDetect());
@@ -27,7 +27,28 @@ describe("useDetect", () => {
     });
 
     expect(result.current.result).toBeNull();
-    expect(result.current.error).toBe("Detekcia zlyhala.");
+    expect(result.current.error).toBe("Embedding service unavailable");
+  });
+
+  it("accepts a valid NEW_CLAIM response instead of surfacing a generic error", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        input_statement: "Pošlú nás na vojnu",
+        matches: [],
+        overall_status: "NEW_CLAIM",
+        query_time_ms: 18,
+      }),
+    } as Response);
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      await result.current.detect("Pošlú nás na vojnu");
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
   });
 
   it("defaults detect requests to the fast mode", async () => {
