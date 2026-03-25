@@ -46,6 +46,14 @@ Ak pri skúšaní narazíte na chybu, niečo nebude fungovať, alebo máte nápa
 
 This section outlines the technical implementation details of the application. For setup instructions and developer guides, please refer to [`docs/README.md`](docs/README.md).
 
+### Deployment & Migration
+
+- **Current State**: Deployed on **Vercel** with a **Supabase Cloud** backend.
+- **Planned Migration**: The application is moving toward a self-hosted infrastructure.
+  - **Environment**: Transitioning from Vercel to independent infrastructure (likely Linux-based, details to be finalized).
+  - **Database**: Moving from Supabase Cloud to a **local PostgreSQL** instance with the `pgvector` extension.
+  - **CI/CD**: Automation will be handled through **GitHub Actions**, with the possibility of utilizing self-hosted runners to integrate directly with the target environment.
+
 ### Prerequisites & Database Requirements
 
 **Prerequisites:**

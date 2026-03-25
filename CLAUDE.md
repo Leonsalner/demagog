@@ -148,6 +148,7 @@ Optional / script-only:
 - The feedback widget is mounted globally from `src/app/layout.tsx`.
 - 2048-dimensional vectors exceed pgvector's 2000d HNSW limit. Retrieval is designed around RPCs / sequential scans rather than HNSW indexing.
 - `scripts/import-data.ts` and `scripts/embed-statements.ts` specifically expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+- **Planned Migration**: The app is moving from Vercel/Supabase Cloud to self-hosted Linux infrastructure with a local PostgreSQL DB. CI/CD will transition to GitHub Actions (likely with local runners).
 
 ## Planning References
 
