@@ -344,7 +344,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "top_k must be between 1 and 20",
+      error: "Parameter top_k musí byť medzi 1 a 20.",
     });
   });
 
@@ -402,7 +402,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "top_k must be between 1 and 20",
+      error: "Parameter top_k musí byť medzi 1 a 20.",
     });
   });
 
@@ -438,7 +438,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Statement too long (max 2000 chars)",
+      error: "Výrok je príliš dlhý. Maximum je 2000 znakov.",
     });
   });
 
@@ -451,7 +451,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Statement is required",
+      error: "Výrok je povinný.",
     });
   });
 

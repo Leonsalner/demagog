@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -13,6 +14,17 @@ export default function Navbar() {
   const searchParams = useSearchParams();
   const isHome = pathname === "/";
   const activeHomeTab = searchParams.get("mode") === "detect" ? "detect" : "search";
+  const searchHref = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("mode");
+    const queryString = params.toString();
+    return queryString ? `/?${queryString}` : "/";
+  }, [searchParams]);
+  const detectHref = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("mode", "detect");
+    return `/?${params.toString()}`;
+  }, [searchParams]);
   const { isOpen, isSubmitting, togglePanel } = useFeedbackWidgetControls();
   const widgetStore = useFeedbackWidgetStore();
 
@@ -63,7 +75,7 @@ export default function Navbar() {
 
               <Link
                 id="navbar-search-tab"
-                href="/"
+                href={searchHref}
                 role="tab"
                 aria-controls="search-panel"
                 aria-selected={activeHomeTab === "search"}
@@ -79,7 +91,7 @@ export default function Navbar() {
 
               <Link
                 id="navbar-detect-tab"
-                href="/?mode=detect"
+                href={detectHref}
                 role="tab"
                 aria-controls="detect-panel"
                 aria-selected={activeHomeTab === "detect"}

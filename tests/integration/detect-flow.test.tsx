@@ -29,6 +29,12 @@ vi.mock("@/hooks/useResearch", () => ({
   useResearch: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams("mode=detect")),
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+}));
+
 vi.mock("next/link", () => ({
   default: (props: {
     children?: ReactNode;
@@ -49,6 +55,22 @@ const { useDetect } = await import("@/hooks/useDetect");
 const { usePreparedAggregateResearch } = await import("@/hooks/usePreparedAggregateResearch");
 const { useResearch } = await import("@/hooks/useResearch");
 const { useSearch } = await import("@/hooks/useSearch");
+const { usePathname, useSearchParams, useRouter } = await import("next/navigation");
+
+function createReadonlySearchParams(value = "") {
+  return new URLSearchParams(value) as never;
+}
+
+function createRouterMock() {
+  return {
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  } as never;
+}
 
 function createSearchParams(mode?: string) {
   return Promise.resolve(mode ? { mode } : {}) as Promise<{
@@ -69,6 +91,11 @@ async function renderHomeTree(mode?: string) {
 }
 
 async function renderHome(mode?: string) {
+  vi.mocked(usePathname).mockReturnValue("/");
+  vi.mocked(useSearchParams).mockReturnValue(
+    createReadonlySearchParams(mode ? `mode=${mode}` : "mode=detect"),
+  );
+  vi.mocked(useRouter).mockReturnValue(createRouterMock());
   return render(await renderHomeTree(mode));
 }
 
@@ -109,6 +136,14 @@ function mockUseSearchReturn() {
     restore: vi.fn(),
     showNewest,
     loadFilters: vi.fn().mockResolvedValue(null),
+    clearModelFilters: vi.fn().mockReturnValue({
+      strana: null,
+      vyhodnotenie: null,
+      meno: null,
+      datum_od: null,
+      datum_do: null,
+    }),
+    applySearchUrlState: vi.fn(),
     filterLoadError: false,
   });
 }
@@ -121,6 +156,8 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    uiState: "idle",
+    verifyingStatement: null,
     lateMatchNotice: null,
     dismissLateMatchNotice: vi.fn(),
     applyLateMatchResult: vi.fn(),
@@ -248,7 +285,22 @@ function buildDetectHistoryEntry(overrides?: Partial<DetectHistoryEntry>): Detec
 describe("detect page flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
+    const storage = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: vi.fn((key: string) => storage.get(key) ?? null),
+        setItem: vi.fn((key: string, value: string) => {
+          storage.set(key, value);
+        }),
+        removeItem: vi.fn((key: string) => {
+          storage.delete(key);
+        }),
+        clear: vi.fn(() => {
+          storage.clear();
+        }),
+      },
+    });
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -267,6 +319,12 @@ describe("detect page flow", () => {
     mockUseResearchReturn();
   });
 
+  function syncDetectInput(value: string) {
+    fireEvent.change(screen.getByLabelText("Politický výrok"), {
+      target: { value },
+    });
+  }
+
   it("renders the input form", async () => {
     mockUseDetectReturn();
 
@@ -276,7 +334,7 @@ describe("detect page flow", () => {
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeInTheDocument();
   }, 40_000);
 
-  it("submits a statement through the single fast detect path", async () => {
+  it("submits a statement through the default thorough detect path", async () => {
     const { detect } = mockUseDetectReturn();
 
     await renderHome("detect");
@@ -287,7 +345,7 @@ describe("detect page flow", () => {
 
     expect(detect).toHaveBeenCalledWith(
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
-      "fast",
+      "thorough",
     );
   }, 20_000);
 
@@ -309,6 +367,7 @@ describe("detect page flow", () => {
     });
     mockUseDetectReturn({ result: mockDetectDuplicate });
     const { rerender } = await renderHome("detect");
+    syncDetectInput(mockDetectDuplicate.input_statement);
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
 
     mockUsePreparedAggregateResearchReturn({
@@ -317,6 +376,7 @@ describe("detect page flow", () => {
     });
     mockUseDetectReturn({ result: mockDetectRelated });
     rerender(await renderHomeTree("detect"));
+    syncDetectInput(mockDetectRelated.input_statement);
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
@@ -324,28 +384,28 @@ describe("detect page flow", () => {
     mockUseDetectReturn({ result: mockDetectNew });
 
     await renderHome("detect");
+    syncDetectInput(mockDetectNew.input_statement);
 
     expect(
       screen.getByText(/Tento výrok vyzerá byť nový\. Chcete ho pridať do databázy\?/i),
     ).toBeInTheDocument();
   });
 
-  it("clears stale detect and prepared aggregate state while editing", async () => {
-    const { reset } = mockUseDetectReturn({ result: mockDetectDuplicate });
-    const { reset: resetPreparedAggregateResearch } = mockUsePreparedAggregateResearchReturn({
+  it("keeps detect results visible but marks them stale while editing", async () => {
+    mockUseDetectReturn({ result: mockDetectDuplicate });
+    mockUsePreparedAggregateResearchReturn({
       status: "error",
       statementIds: [109, 111],
     });
-    const { startClose } = mockUseResearchReturn({ displayState: "open" as const });
 
     await renderHome("detect");
+    syncDetectInput(mockDetectDuplicate.input_statement);
     fireEvent.change(screen.getByLabelText("Politický výrok"), {
       target: { value: "Upravený výrok na ďalšie porovnanie." },
     });
 
-    expect(reset).toHaveBeenCalledTimes(1);
-    expect(resetPreparedAggregateResearch).toHaveBeenCalledTimes(1);
-    expect(startClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Text výroku sa zmenil/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analyzovať" })).toBeEnabled();
   });
 
@@ -356,6 +416,7 @@ describe("detect page flow", () => {
     });
 
     await renderHome("detect");
+    syncDetectInput("Ukrajina je Rusko.");
 
     await waitFor(() => {
       expect(prepare).toHaveBeenCalledWith([201]);
@@ -369,11 +430,12 @@ describe("detect page flow", () => {
     });
 
     await renderHome("detect");
+    syncDetectInput(mockDetectNew.input_statement);
 
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("blocks detect surface while aggregate preparation is in progress", async () => {
+  it("keeps detect results visible while aggregate preparation is in progress", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -384,14 +446,12 @@ describe("detect page flow", () => {
     mockUseResearchReturn({ displayState: "closed" as const });
 
     await renderHome("detect");
+    syncDetectInput("Ukrajina je Rusko.");
 
     expect(
-      screen.getByRole("progressbar", { name: "Priebeh detekcie" }),
+      screen.getByText(/Súhrnný prieskum sa pripravuje spolu s článkami a externými zdrojmi/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Pripravujem súhrnný prieskum a súvisiace zdroje/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
   });
 
   it("does not block the detect surface while aggregate research is idle", async () => {
@@ -404,6 +464,7 @@ describe("detect page flow", () => {
     });
 
     await renderHome("detect");
+    syncDetectInput("Ukrajina je Rusko.");
 
     expect(screen.queryByRole("progressbar", { name: "Priebeh detekcie" })).not.toBeInTheDocument();
     expect(screen.queryByText(/Porovnávam výrok s databázou overených tvrdení/i)).not.toBeInTheDocument();
@@ -426,6 +487,7 @@ describe("detect page flow", () => {
     const { openPreparedResearch } = mockUseResearchReturn();
 
     await renderHome("detect");
+    syncDetectInput(mockDetectDuplicate.input_statement);
 
     await waitFor(() => {
       expect(openPreparedResearch).toHaveBeenCalledWith(
@@ -451,6 +513,7 @@ describe("detect page flow", () => {
     const { openPreparedResearch } = mockUseResearchReturn();
 
     await renderHome("detect");
+    syncDetectInput(historyEntry.query);
 
     fireEvent.click(screen.getByRole("button", { name: "História" }));
     fireEvent.click(screen.getByRole("button", { name: /Ukrajina je Rusko/i }));
@@ -478,6 +541,7 @@ describe("detect page flow", () => {
     });
 
     await renderHome("detect");
+    syncDetectInput(mockDetectDuplicate.input_statement);
 
     expect(screen.getByText(/Nájdený duplicitný výrok/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Skúsiť pripraviť prieskum znova" }));
@@ -494,6 +558,7 @@ describe("detect page flow", () => {
     });
 
     await renderHome("detect");
+    syncDetectInput(mockDetectDuplicate.input_statement);
 
     fireEvent.click(screen.getByRole("button", { name: "Pridať výrok" }));
     expect(

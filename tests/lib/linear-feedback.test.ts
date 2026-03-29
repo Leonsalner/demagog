@@ -268,4 +268,37 @@ describe("linear-feedback", () => {
     expect(requestBody.variables.input.issueId).toBe("issue-123");
     expect(requestBody.variables.input.projectId).toBeUndefined();
   });
+
+  it("times out stalled Linear requests with a bounded error", async () => {
+    fetchMock.mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal as AbortSignal | undefined;
+          signal?.addEventListener("abort", () => {
+            const abortError = new Error("Aborted");
+            abortError.name = "AbortError";
+            reject(abortError);
+          });
+        }),
+    );
+
+    vi.useFakeTimers();
+
+    try {
+      const pending = expect(
+        submitLinearFeedbackCustomerRequest(feedbackPayload),
+      ).rejects.toEqual(
+        expect.objectContaining<Partial<LinearFeedbackError>>({
+          message: "Linear request timed out",
+          status: 504,
+        }),
+      );
+
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

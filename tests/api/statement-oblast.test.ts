@@ -54,4 +54,15 @@ describe("POST /api/statements/oblast", () => {
       "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
     );
   });
+
+  it("returns 502 when Gemini suggestion fails", async () => {
+    vi.mocked(suggestStatementOblast).mockRejectedValue(new Error("Gemini unavailable"));
+
+    const response = await POST(createRequest({ query: "Testovací výrok" }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Oblast suggestion unavailable",
+    });
+  });
 });

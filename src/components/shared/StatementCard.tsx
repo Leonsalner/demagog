@@ -145,6 +145,7 @@ export default function StatementCard({
   classification,
   onOpenResearch,
   isActive = false,
+  disableResearch = false,
 }: StatementCardProps) {
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
   const articleRef = useRef<HTMLElement | null>(null);
@@ -252,8 +253,9 @@ export default function StatementCard({
         <div className="mt-4">
           <button
             type="button"
+            disabled={disableResearch}
             onClick={() => onOpenResearch(statement.id)}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-accent-hover)] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
           >
             Preskúmať
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">

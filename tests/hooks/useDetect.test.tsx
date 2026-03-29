@@ -201,7 +201,7 @@ describe("useDetect", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it("times out at 8s and falls back to NEW_CLAIM instead of surfacing an error", async () => {
+  it("times out at 8s and switches to background verification without surfacing an error", async () => {
     vi.mocked(fetch).mockImplementation(
       () =>
         new Promise<Response>((_, reject) => {
@@ -219,13 +219,10 @@ describe("useDetect", () => {
     });
 
     expect(result.current.error).toBeNull();
-    expect(result.current.result).toEqual({
-      input_statement: "Pošlú nás na vojnu",
-      matches: [],
-      overall_status: "NEW_CLAIM",
-      query_time_ms: 8_000,
-    });
+    expect(result.current.result).toBeNull();
     expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("verifying_in_background");
+    expect(result.current.verifyingStatement).toBe("Pošlú nás na vojnu");
   });
 
   it("clears the loading UI even when the aborted fetch never settles", async () => {
@@ -240,12 +237,9 @@ describe("useDetect", () => {
 
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(result.current.result).toEqual({
-      input_statement: "Pošlú nás na vojnu",
-      matches: [],
-      overall_status: "NEW_CLAIM",
-      query_time_ms: 8_000,
-    });
+    expect(result.current.result).toBeNull();
+    expect(result.current.uiState).toBe("verifying_in_background");
+    expect(result.current.verifyingStatement).toBe("Pošlú nás na vojnu");
   });
 
   it("runs hidden background detect after visible timeout and surfaces late match via notice", async () => {
@@ -301,13 +295,16 @@ describe("useDetect", () => {
       await detectPromise;
     });
 
-    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.result).toBeNull();
+    expect(result.current.uiState).toBe("verifying_in_background");
     expect(result.current.lateMatchNotice).toBeNull();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
     });
 
+    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
+    expect(result.current.uiState).toBe("complete");
     expect(result.current.lateMatchNotice).toEqual({
       status: "RELATED_ONLY",
       result: expect.objectContaining({
@@ -488,7 +485,7 @@ describe("useDetect", () => {
       await detectPromise;
     });
 
-    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.result).toBeNull();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
@@ -615,7 +612,7 @@ describe("useDetect", () => {
       await vi.advanceTimersByTimeAsync(8_000);
     });
 
-    expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.result).toBeNull();
     expect(result.current.lateMatchNotice).toBeNull();
 
     await act(async () => {
@@ -623,7 +620,9 @@ describe("useDetect", () => {
       await vi.advanceTimersByTimeAsync(8_000);
     });
 
-    expect(result.current.result?.input_statement).toBe("Second statement");
+    expect(result.current.result).toBeNull();
+    expect(result.current.uiState).toBe("verifying_in_background");
+    expect(result.current.verifyingStatement).toBe("Second statement");
     expect(result.current.lateMatchNotice).toBeNull();
 
     await act(async () => {

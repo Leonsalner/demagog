@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ oblast: null }, { status: 200 });
   }
 
-  const oblast = await suggestStatementOblast(query);
-  return NextResponse.json({ oblast }, { status: 200 });
+  try {
+    const oblast = await suggestStatementOblast(query);
+    return NextResponse.json({ oblast }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: "Oblast suggestion unavailable" }, { status: 502 });
+  }
 }

@@ -22,10 +22,32 @@ vi.mock("@/hooks/useResearch", () => ({
   useResearch: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+}));
+
 const { useSearch } = await import("@/hooks/useSearch");
 const { useDetect } = await import("@/hooks/useDetect");
 const { usePreparedAggregateResearch } = await import("@/hooks/usePreparedAggregateResearch");
 const { useResearch } = await import("@/hooks/useResearch");
+const { usePathname, useSearchParams, useRouter } = await import("next/navigation");
+
+function createReadonlySearchParams(value = "") {
+  return new URLSearchParams(value) as never;
+}
+
+function createRouterMock() {
+  return {
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  } as never;
+}
 
 const emptyFilters: FilterState = {
   strana: null,
@@ -120,6 +142,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const search = vi.fn();
   const showNewest = vi.fn().mockResolvedValue(undefined);
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
+  const clearModelFilters = vi.fn().mockReturnValue(emptyFilters);
+  const applySearchUrlState = vi.fn();
 
   vi.mocked(useSearch).mockReturnValue({
     results: null,
@@ -146,6 +170,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     restore: vi.fn(),
     showNewest,
     loadFilters,
+    clearModelFilters,
+    applySearchUrlState,
     ...overrides,
   });
 }
@@ -155,6 +181,8 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    uiState: "idle",
+    verifyingStatement: null,
     lateMatchNotice: null,
     dismissLateMatchNotice: vi.fn(),
     applyLateMatchResult: vi.fn(),
@@ -286,6 +314,12 @@ function renderHome(activeTab: "search" | "detect", navbarBottom: number) {
   );
 }
 
+function syncDetectInput(value: string) {
+  fireEvent.change(screen.getByLabelText("Politický výrok"), {
+    target: { value },
+  });
+}
+
 describe("research workspace overlay", () => {
   beforeEach(() => {
     class ResizeObserverMock {
@@ -297,6 +331,9 @@ describe("research workspace overlay", () => {
     vi.stubGlobal("fetch", vi.fn());
     window.scrollTo = vi.fn();
     vi.clearAllMocks();
+    vi.mocked(usePathname).mockReturnValue("/");
+    vi.mocked(useSearchParams).mockReturnValue(createReadonlySearchParams());
+    vi.mocked(useRouter).mockReturnValue(createRouterMock());
 
     mockUsePreparedAggregateResearchReturn();
     mockUseResearchReturn();
@@ -328,7 +365,7 @@ describe("research workspace overlay", () => {
       );
     });
 
-    expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Prieskum" })).not.toBeInTheDocument();
   });
 
   it("keeps quick detect Preskúmať deferred on mobile and positions the dialog below the navbar", async () => {
@@ -342,6 +379,7 @@ describe("research workspace overlay", () => {
     renderHome("detect", 136);
 
     await screen.findByText(/Nájdené súvisiace výroky/i);
+    syncDetectInput(buildFastDetectResult().input_statement);
     fireEvent.click(screen.getByRole("button", { name: "Preskúmať" }));
 
     await waitFor(() => {
@@ -351,7 +389,7 @@ describe("research workspace overlay", () => {
       );
     });
 
-    expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Prieskum" })).not.toBeInTheDocument();
   });
 
   it("blocks detect until aggregate research is ready, auto-opens it, and reuses the prepared payload", async () => {
@@ -391,12 +429,13 @@ describe("research workspace overlay", () => {
     });
 
     const view = renderHome("detect", 104);
+    syncDetectInput(buildThoroughDetectResult().input_statement);
 
     await waitFor(() => {
       expect(openPreparedResearch).toHaveBeenCalled();
     });
 
-    await screen.findByRole("dialog", { name: "Research workspace" });
+    await screen.findByRole("dialog", { name: "Prieskum" });
     expect(screen.getByTestId("research-workspace-overlay")).toHaveStyle({ top: "104px" });
 
     fireEvent.click(screen.getByRole("button", { name: "Zavrieť prieskum" }));
@@ -434,7 +473,7 @@ describe("research workspace overlay", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Research workspace" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Prieskum" })).not.toBeInTheDocument();
     });
     expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
 
@@ -472,6 +511,6 @@ describe("research workspace overlay", () => {
       </FooterHelperVisibilityProvider>,
     );
 
-    await screen.findByRole("dialog", { name: "Research workspace" });
+    await screen.findByRole("dialog", { name: "Prieskum" });
   });
 });

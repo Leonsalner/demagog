@@ -157,4 +157,30 @@ describe("SearchResults", () => {
 
     expect(onOpenResearch).toHaveBeenCalledWith(1);
   });
+
+  it("renders cleanly when results transition from null to populated", () => {
+    const { rerender } = render(
+      <SearchResults
+        results={null}
+        relatedResults={undefined}
+        queryUnderstanding={undefined}
+        query="ukrajina"
+        onPageChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText("Hlavný výsledok")).not.toBeInTheDocument();
+
+    rerender(
+      <SearchResults
+        results={buildResults()}
+        relatedResults={buildResults().related_results}
+        queryUnderstanding={buildResults().query_understanding}
+        query="ukrajina"
+        onPageChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Hlavný výsledok")).toBeInTheDocument();
+  });
 });

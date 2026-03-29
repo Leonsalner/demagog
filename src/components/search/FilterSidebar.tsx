@@ -203,7 +203,7 @@ export default function FilterSidebar({
       <div className="space-y-6">
         {filterLoadError ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
-            Filter data unavailable. Zobrazujú sa náhradné hodnoty.
+            Nepodarilo sa načítať filtre. Skúste stránku obnoviť.
           </div>
         ) : null}
 

@@ -410,7 +410,7 @@ describe("useSearch", () => {
     expect(result.current.error).toBe("Nepodarilo sa načítať výsledky vyhľadávania.");
   });
 
-  it("marks filter load fallback as non-blocking when the filters request fails", async () => {
+  it("surfaces filter load failures without injecting mock filters", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue({
       ok: false,
@@ -423,8 +423,123 @@ describe("useSearch", () => {
       await result.current.loadFilters();
     });
 
-    expect(result.current.availableFilters).not.toBeNull();
+    expect(result.current.availableFilters).toBeNull();
     expect(result.current.filterLoadError).toBe(true);
+  });
+
+  it("ignores stale search responses when a newer request finishes first", async () => {
+    const fetchMock = vi.mocked(fetch);
+    const firstResponse = createDeferredResponse();
+    const secondResponse = createDeferredResponse();
+
+    fetchMock
+      .mockImplementationOnce(() => firstResponse.promise)
+      .mockImplementationOnce(() => secondResponse.promise);
+
+    const { result } = renderHook(() => useSearch());
+
+    await act(async () => {
+      result.current.setQuery("prvy dotaz");
+    });
+
+    let firstSearch!: Promise<void>;
+    act(() => {
+      firstSearch = result.current.search({ nextPage: 1, submit: true });
+    });
+
+    await act(async () => {
+      result.current.setQuery("druhy dotaz");
+    });
+
+    let secondSearch!: Promise<void>;
+    act(() => {
+      secondSearch = result.current.search({ nextPage: 1, submit: true });
+    });
+
+    secondResponse.resolve({
+      ok: true,
+      json: async () => buildResponse({ query_time_ms: 17 }),
+    } as Response);
+
+    await act(async () => {
+      await secondSearch;
+    });
+
+    firstResponse.resolve({
+      ok: true,
+      json: async () =>
+        buildResponse({
+          results: [
+            {
+              id: 99,
+              vyrok: "Stary vysledok",
+              vyhodnotenie: "Nepravda",
+              odovodnenie: "Stary vysledok",
+              datum: "2026-01-02",
+              meno: "Peter Pellegrini",
+              strana: "Hlas",
+              similarity: 0.72,
+            },
+          ],
+          query_time_ms: 99,
+        }),
+    } as Response);
+
+    await act(async () => {
+      await firstSearch;
+    });
+
+    expect(result.current.results?.query_time_ms).toBe(17);
+    expect(result.current.results?.results[0]?.id).toBe(1);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("reports a timeout when the search request is aborted by the controller", async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    fetchMock.mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal as AbortSignal | undefined;
+          signal?.addEventListener("abort", () => {
+            const abortError = new Error("Aborted");
+            abortError.name = "AbortError";
+            reject(abortError);
+          });
+        }),
+    );
+
+    vi.useFakeTimers();
+
+    try {
+      const { result } = renderHook(() => useSearch());
+
+      await act(async () => {
+        result.current.setQuery("zdrzany dotaz");
+      });
+
+      let pendingSearch!: Promise<void>;
+      act(() => {
+        pendingSearch = result.current.search({ nextPage: 1, submit: true });
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(25_000);
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        await pendingSearch;
+      });
+
+      expect(result.current.results).toBeNull();
+      expect(result.current.error).toBe(
+        "Vyhľadávanie trvalo príliš dlho. Skúste to prosím znova.",
+      );
+      expect(result.current.loading).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("loads the newest results without marking the view as a submitted search", async () => {

@@ -10,7 +10,11 @@ import StatementFormFields, {
   type StatementFormState,
   type StatementFormStatus,
 } from "@/components/add/StatementFormFields";
-import { normalizeSourceUrl, validateSourceUrl } from "@/lib/source-url";
+import {
+  normalizeStatementFormPayload,
+  validateStatementForm,
+  type StatementFormErrors,
+} from "@/lib/statement-form";
 
 const OBLAST_AUTO_DETECT_DEBOUNCE_MS = 700;
 const MIN_OBLAST_AUTO_DETECT_LENGTH = 20;
@@ -23,6 +27,7 @@ function AddStatementForm() {
   const [status, setStatus] = useState<StatementFormStatus>("idle");
   const [savedId, setSavedId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<StatementFormErrors>({});
   const [sourceUrlErrors, setSourceUrlErrors] = useState<Record<number, string>>({});
   const [isDetectingOblast, setIsDetectingOblast] = useState(false);
   const [oblastDetectCycle, setOblastDetectCycle] = useState(0);
@@ -156,6 +161,18 @@ function AddStatementForm() {
     field: K,
     value: StatementFormState[K],
   ) {
+    if (field in fieldErrors) {
+      setFieldErrors((current) => {
+        if (!(field in current)) {
+          return current;
+        }
+
+        const nextErrors = { ...current };
+        delete nextErrors[field as keyof StatementFormErrors];
+        return nextErrors;
+      });
+    }
+
     if (field === "oblast") {
       const nextOblast = String(value).trim();
       const hadManualOverride = oblastWasManualRef.current;
@@ -206,9 +223,9 @@ function AddStatementForm() {
   }
 
   function handleSourceUrlBlur(index: number) {
-    const currentUrl = form.sources[index]?.url ?? "";
-    const normalizedUrl = normalizeSourceUrl(currentUrl);
-    const validation = validateSourceUrl(normalizedUrl);
+    const normalizedForm = normalizeStatementFormPayload(form);
+    const sourceUrlError = validateStatementForm(normalizedForm).sourceUrlErrors[index];
+    const normalizedUrl = normalizedForm.sources[index]?.url ?? "";
 
     setForm((current) => {
       const source = current.sources[index];
@@ -239,8 +256,8 @@ function AddStatementForm() {
     setSourceUrlErrors((current) => {
       const nextErrors = { ...current };
 
-      if (validation.status === "invalid") {
-        nextErrors[index] = "Zadajte platný odkaz.";
+      if (sourceUrlError) {
+        nextErrors[index] = sourceUrlError;
       } else {
         delete nextErrors[index];
       }
@@ -252,35 +269,21 @@ function AddStatementForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const invalidSourceIndexes = form.sources.flatMap((source, index) => {
-      const hasStartedRow = source.label.trim() || source.url.trim();
+    const normalizedForm = normalizeStatementFormPayload(form);
+    const validation = validateStatementForm(normalizedForm);
 
-      if (!hasStartedRow) {
-        return [];
-      }
-
-      return validateSourceUrl(source.url).status === "valid" ? [] : [index];
-    });
-
-    if (invalidSourceIndexes.length > 0) {
-      setSourceUrlErrors(
-        Object.fromEntries(
-          invalidSourceIndexes.map((index) => [index, "Zadajte platný odkaz."]),
-        ),
-      );
+    if (validation.errorMessage) {
+      setFieldErrors(validation.fieldErrors);
+      setSourceUrlErrors(validation.sourceUrlErrors);
       setStatus("error");
-      setErrorMessage("Skontrolujte odkazy pri zdrojoch.");
+      setErrorMessage(validation.errorMessage);
       return;
     }
 
     setStatus("saving");
     setErrorMessage(null);
+    setFieldErrors({});
     setSourceUrlErrors({});
-
-    const normalizedSources = form.sources.map((source) => ({
-      ...source,
-      url: normalizeSourceUrl(source.url),
-    }));
 
     try {
       const response = await fetch("/api/statements", {
@@ -288,10 +291,7 @@ function AddStatementForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...form,
-          sources: normalizedSources,
-        }),
+        body: JSON.stringify(normalizedForm),
       });
       const payload = (await response.json()) as {
         id?: number;
@@ -307,6 +307,7 @@ function AddStatementForm() {
       invalidateOblastDetection();
       oblastWasManualRef.current = false;
       lastAutoDetectedOblastRef.current = null;
+      setFieldErrors({});
       setSourceUrlErrors({});
       setForm(createInitialStatementFormState());
     } catch (error) {
@@ -324,13 +325,13 @@ function AddStatementForm() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
             <div className="max-w-3xl">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
-                Analyst Entry
+                Nový výrok
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[2.2rem]">
                 Pridať nový výrok
               </h1>
               <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                Vyplň znenie výroku, základný kontext a podklady k analýze.
+                Vyplňte znenie výroku, základný kontext a podklady k analýze.
                 Záznam sa uloží okamžite, doplní sa dátum analýzy a embedding sa
                 dopočíta na pozadí pre neskoršie vyhľadávanie a porovnávanie.
               </p>
@@ -385,12 +386,13 @@ function AddStatementForm() {
               form={form}
               status={status}
               errorMessage={errorMessage}
+              fieldErrors={fieldErrors}
               idPrefix="add-page"
               primaryActionLabel={status === "saving" ? "Ukladám..." : "Uložiť výrok"}
               oblastHint={
                 isDetectingOblast
                   ? "Rozpoznávam oblasť z výroku…"
-                  : "Oblasť doplníme automaticky z textu výroku, môžeš ju kedykoľvek upraviť."
+                  : "Oblasť doplníme automaticky z textu výroku, môžete ju kedykoľvek upraviť."
               }
               sourceUrlErrors={sourceUrlErrors}
               onSubmit={handleSubmit}

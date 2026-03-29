@@ -185,7 +185,7 @@ describe("FeedbackWidget", () => {
 
   it("auto-closes after a successful submission", async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-2" }), {
+      new Response(JSON.stringify({ status: "submitted" }), {
         status: 201,
         headers: {
           "Content-Type": "application/json",
@@ -216,7 +216,7 @@ describe("FeedbackWidget", () => {
   it("shows success message after submission", async () => {
     vi.useFakeTimers();
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-4" }), {
+      new Response(JSON.stringify({ status: "submitted" }), {
         status: 201,
         headers: {
           "Content-Type": "application/json",

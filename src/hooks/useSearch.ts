@@ -224,7 +224,6 @@ export function useSearch() {
   const [query, setQueryState] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
-  const [submittedOwnership, setSubmittedOwnership] = useState<SearchFilterOwnershipState>(emptyFilterOwnership());
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -239,21 +238,42 @@ export function useSearch() {
   const availableFiltersRef = useRef<FiltersResponse | null>(null);
   const filterOwnershipRef = useRef<SearchFilterOwnershipState>(emptyFilterOwnership());
   const filtersRef = useRef<FilterState>(emptyFilters);
+  const queryRef = useRef("");
+  const submittedQueryRef = useRef("");
   const submittedFiltersRef = useRef<FilterState>(emptyFilters);
+  const submittedOwnershipRef = useRef<SearchFilterOwnershipState>(emptyFilterOwnership());
   const requestSequenceRef = useRef(0);
-  const filterLoadAbortRef = useRef<AbortController | null>(null);
+  const requestAbortControllerRef = useRef<AbortController | null>(null);
+  const requestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      filterLoadAbortRef.current?.abort();
+      requestAbortControllerRef.current?.abort();
+      if (requestTimeoutRef.current !== null) {
+        clearTimeout(requestTimeoutRef.current);
+      }
     };
   }, []);
 
   const syncFilterOwnership = useCallback((ownership: SearchFilterOwnershipState) => {
     filterOwnershipRef.current = ownership;
     setFilterOwnership(ownership);
+  }, []);
+
+  const syncSubmittedOwnership = useCallback((ownership: SearchFilterOwnershipState) => {
+    submittedOwnershipRef.current = ownership;
+  }, []);
+
+  const syncQuery = useCallback((nextQuery: string) => {
+    queryRef.current = nextQuery;
+    setQueryState(nextQuery);
+  }, []);
+
+  const syncSubmittedQuery = useCallback((nextQuery: string) => {
+    submittedQueryRef.current = nextQuery;
+    setSubmittedQuery(nextQuery);
   }, []);
 
   const syncFilters = useCallback((filters: FilterState) => {
@@ -266,19 +286,62 @@ export function useSearch() {
     setSubmittedFilters(filters);
   }, []);
 
+  const clearRequestState = useCallback(() => {
+    requestAbortControllerRef.current?.abort();
+    requestAbortControllerRef.current = null;
+
+    if (requestTimeoutRef.current !== null) {
+      clearTimeout(requestTimeoutRef.current);
+      requestTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startRequest = useCallback((timeoutMs: number = 25_000) => {
+    clearRequestState();
+
+    const controller = new AbortController();
+    requestAbortControllerRef.current = controller;
+    requestSequenceRef.current += 1;
+    const requestId = requestSequenceRef.current;
+    requestTimeoutRef.current = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    return { controller, requestId };
+  }, [clearRequestState]);
+
+  const finishRequest = useCallback((requestId: number) => {
+    if (requestSequenceRef.current !== requestId) {
+      return;
+    }
+
+    if (requestTimeoutRef.current !== null) {
+      clearTimeout(requestTimeoutRef.current);
+      requestTimeoutRef.current = null;
+    }
+
+    requestAbortControllerRef.current = null;
+  }, []);
+
   const loadFilters = useCallback(async () => {
     if (availableFiltersRef.current) {
       return availableFiltersRef.current;
     }
+    const { controller, requestId } = startRequest();
+    let didTimeout = false;
 
-    filterLoadAbortRef.current?.abort();
-    const controller = new AbortController();
-    filterLoadAbortRef.current = controller;
+    if (requestTimeoutRef.current !== null) {
+      clearTimeout(requestTimeoutRef.current);
+    }
+    requestTimeoutRef.current = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, 25_000);
 
     try {
       if (USE_MOCK) {
         availableFiltersRef.current = mockFilters;
-        if (isMountedRef.current) {
+        if (requestSequenceRef.current === requestId && isMountedRef.current) {
           setAvailableFilters(mockFilters);
           setFilterLoadError(false);
         }
@@ -294,29 +357,37 @@ export function useSearch() {
       }
 
       const data: FiltersResponse = await response.json();
+      if (requestSequenceRef.current !== requestId) {
+        return null;
+      }
       availableFiltersRef.current = data;
-      if (filterLoadAbortRef.current === controller && isMountedRef.current) {
+      if (isMountedRef.current) {
         setAvailableFilters(data);
         setFilterLoadError(false);
       }
       return data;
-    } catch {
-      if (controller.signal.aborted) {
-        return availableFiltersRef.current ?? mockFilters;
+    } catch (caughtError) {
+      if (requestSequenceRef.current !== requestId) {
+        return null;
       }
 
-      availableFiltersRef.current = mockFilters;
-      if (filterLoadAbortRef.current === controller && isMountedRef.current) {
-        setAvailableFilters(mockFilters);
+      if (
+        ((caughtError instanceof Error && caughtError.name === "AbortError") || controller.signal.aborted) &&
+        !didTimeout
+      ) {
+        return null;
+      }
+
+      availableFiltersRef.current = null;
+      if (isMountedRef.current) {
+        setAvailableFilters(null);
         setFilterLoadError(true);
       }
-      return mockFilters;
+      return null;
     } finally {
-      if (filterLoadAbortRef.current === controller) {
-        filterLoadAbortRef.current = null;
-      }
+      finishRequest(requestId);
     }
-  }, []);
+  }, [finishRequest, startRequest]);
 
   const search = useCallback(
     async ({
@@ -335,9 +406,10 @@ export function useSearch() {
       setHasSearched(true);
       setIsDefaultBrowseView(false);
 
-      const activeQuery = submit ? query : submittedQuery;
+      const activeQuery = submit ? queryRef.current : submittedQueryRef.current;
       const activeFilters = submit ? filtersRef.current : submittedFiltersRef.current;
-      const activeOwnership = overrideOwnership ?? (submit ? filterOwnershipRef.current : submittedOwnership);
+      const activeOwnership =
+        overrideOwnership ?? (submit ? filterOwnershipRef.current : submittedOwnershipRef.current);
 
       const cleanedFilters = clearModelOwnedFilters(activeFilters, activeOwnership);
       const cleanedOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
@@ -354,14 +426,20 @@ export function useSearch() {
       );
       const request = buildRequestBody(activeQuery, cleanedFilters, nextPage);
       const requestKey = `${source}:${requestSequenceRef.current + 1}`;
-      requestSequenceRef.current += 1;
+      const { controller, requestId } = startRequest();
+      let didTimeout = false;
 
-      setSubmittedQuery(activeQuery);
+      if (requestTimeoutRef.current !== null) {
+        clearTimeout(requestTimeoutRef.current);
+      }
+      requestTimeoutRef.current = setTimeout(() => {
+        didTimeout = true;
+        controller.abort();
+      }, 25_000);
+
+      syncSubmittedQuery(activeQuery);
       syncSubmittedFilters(cleanedFilters);
-      setSubmittedOwnership(cleanedOwnership);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      syncSubmittedOwnership(cleanedOwnership);
 
       try {
         let responseData: SearchResponse | null = null;
@@ -369,6 +447,9 @@ export function useSearch() {
         let resolvedFinalOwnership = cleanedOwnership;
 
         if (USE_MOCK) {
+          if (requestSequenceRef.current !== requestId) {
+            return;
+          }
           const mockResult = runMockSearch(request);
           setResults(mockResult);
           responseData = mockResult;
@@ -379,6 +460,7 @@ export function useSearch() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify(request),
+            signal: controller.signal,
           });
 
           if (!response.ok) {
@@ -386,6 +468,9 @@ export function useSearch() {
           }
 
           responseData = await response.json();
+          if (requestSequenceRef.current !== requestId) {
+            return;
+          }
           setResults(responseData);
         }
 
@@ -401,6 +486,9 @@ export function useSearch() {
         }
 
         if (submit) {
+          if (requestSequenceRef.current !== requestId) {
+            return;
+          }
           if (responseData === null) {
             throw new Error("Nepodarilo sa zostaviť výsledky vyhľadávania.");
           }
@@ -408,7 +496,7 @@ export function useSearch() {
           syncFilters(resolvedFinalFilters);
           syncSubmittedFilters(resolvedFinalFilters);
           syncFilterOwnership(resolvedFinalOwnership);
-          setSubmittedOwnership(resolvedFinalOwnership);
+          syncSubmittedOwnership(resolvedFinalOwnership);
           setCompletedSearchSnapshot({
             requestKey,
             query: activeQuery,
@@ -423,32 +511,52 @@ export function useSearch() {
               page_size: responseData.page_size,
               query_time_ms: responseData.query_time_ms,
               has_more: responseData.has_more,
+              warnings: responseData.warnings,
               query_understanding: responseData.query_understanding,
             },
             source,
           });
         }
       } catch (caughtError) {
-        if (caughtError instanceof Error && caughtError.name === "AbortError") {
-          setError("Vyhľadávanie trvalo príliš dlho. Skúste to prosím znova.");
-        } else {
-          setResults(null);
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Nepodarilo sa načítať výsledky vyhľadávania.",
-          );
+        if (requestSequenceRef.current !== requestId) {
+          return;
         }
+
+        if (
+          ((caughtError instanceof Error && caughtError.name === "AbortError") || controller.signal.aborted) &&
+          didTimeout
+        ) {
+          setResults(null);
+          setError("Vyhľadávanie trvalo príliš dlho. Skúste to prosím znova.");
+          return;
+        }
+
+        if (
+          (caughtError instanceof Error && caughtError.name === "AbortError") ||
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        setResults(null);
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Nepodarilo sa načítať výsledky vyhľadávania.",
+        );
       } finally {
-        clearTimeout(timeoutId);
-        setLoading(false);
+        finishRequest(requestId);
+        if (requestSequenceRef.current === requestId) {
+          setLoading(false);
+        }
       }
     },
     [
+      finishRequest,
       page,
-      query,
-      submittedQuery,
-      submittedOwnership,
+      startRequest,
+      syncSubmittedOwnership,
+      syncSubmittedQuery,
       syncFilterOwnership,
       syncFilters,
       syncSubmittedFilters,
@@ -456,48 +564,44 @@ export function useSearch() {
   );
 
   const setFilters = useCallback((nextState: SetStateAction<FilterState>) => {
-    setFiltersState((currentFilters) => {
-      const nextFilters =
-        typeof nextState === "function" ? nextState(currentFilters) : nextState;
+    const currentFilters = filtersRef.current;
+    const nextFilters =
+      typeof nextState === "function" ? nextState(currentFilters) : nextState;
 
-      const hasAnyChange = extractedFilterKeys.some(
-        (key) => currentFilters[key] !== nextFilters[key],
-      );
+    const hasAnyChange = extractedFilterKeys.some(
+      (key) => currentFilters[key] !== nextFilters[key],
+    );
 
-      if (hasAnyChange) {
-        setFilterOwnership(() => {
-          const nextOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
-            (ownership, key) => {
-              ownership[key] = nextFilters[key] !== null ? "user" : "none";
-              return ownership;
-            },
-            emptyFilterOwnership(),
-          );
+    syncFilters(nextFilters);
 
-          filterOwnershipRef.current = nextOwnership;
-          filtersRef.current = nextFilters;
-          setManualFilterVersion((currentVersion) => currentVersion + 1);
-          return nextOwnership;
-        });
-      } else {
-        filtersRef.current = nextFilters;
-      }
+    if (!hasAnyChange) {
+      return;
+    }
 
-      return nextFilters;
-    });
-  }, []);
+    const nextOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+      (ownership, key) => {
+        ownership[key] = nextFilters[key] !== null ? "user" : "none";
+        return ownership;
+      },
+      emptyFilterOwnership(),
+    );
+
+    syncFilterOwnership(nextOwnership);
+    setManualFilterVersion((currentVersion) => currentVersion + 1);
+  }, [syncFilterOwnership, syncFilters]);
 
   const setQuery = useCallback((nextQuery: string) => {
-    setQueryState(nextQuery);
+    syncQuery(nextQuery);
 
     if (!nextQuery.trim()) {
+      clearRequestState();
       setHasSearched(false);
       setResults(null);
       setIsDefaultBrowseView(false);
       setError(null);
-      setSubmittedQuery("");
+      syncSubmittedQuery("");
       syncSubmittedFilters(emptyFilters);
-      setSubmittedOwnership(emptyFilterOwnership());
+      syncSubmittedOwnership(emptyFilterOwnership());
       syncFilters(emptyFilters);
       syncFilterOwnership(emptyFilterOwnership());
       setPage(1);
@@ -527,16 +631,79 @@ export function useSearch() {
 
       return nextOwnership;
     });
-  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+  }, [clearRequestState, syncFilterOwnership, syncFilters, syncSubmittedFilters, syncQuery, syncSubmittedOwnership, syncSubmittedQuery]);
+
+  const clearModelFilters = useCallback(() => {
+    const currentOwnership = filterOwnershipRef.current;
+    const hasModelOwnedFilters = extractedFilterKeys.some(
+      (key) => currentOwnership[key] === "model",
+    );
+
+    if (!hasModelOwnedFilters) {
+      return filtersRef.current;
+    }
+
+    const nextFilters = clearModelOwnedFilters(filtersRef.current, currentOwnership);
+    const nextOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+      (ownership, key) => {
+        ownership[key] = nextFilters[key] !== null ? "user" : "none";
+        return ownership;
+      },
+      emptyFilterOwnership(),
+    );
+
+    syncFilters(nextFilters);
+    syncSubmittedFilters(nextFilters);
+    syncFilterOwnership(nextOwnership);
+    syncSubmittedOwnership(nextOwnership);
+    setManualFilterVersion((currentVersion) => currentVersion + 1);
+
+    return nextFilters;
+  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters, syncSubmittedOwnership]);
+
+  const applySearchUrlState = useCallback((nextState: {
+    query: string;
+    filters: FilterState;
+    page: number;
+  }) => {
+    clearRequestState();
+
+    const nextOwnership = extractedFilterKeys.reduce<SearchFilterOwnershipState>(
+      (ownership, key) => {
+        ownership[key] = nextState.filters[key] !== null ? "user" : "none";
+        return ownership;
+      },
+      emptyFilterOwnership(),
+    );
+
+    syncQuery(nextState.query);
+    syncSubmittedQuery(nextState.query);
+    syncFilters(nextState.filters);
+    syncSubmittedFilters(nextState.filters);
+    syncFilterOwnership(nextOwnership);
+    syncSubmittedOwnership(nextOwnership);
+    setPage(nextState.page);
+    setError(null);
+    setIsDefaultBrowseView(false);
+  }, [
+    clearRequestState,
+    syncFilterOwnership,
+    syncFilters,
+    syncQuery,
+    syncSubmittedFilters,
+    syncSubmittedOwnership,
+    syncSubmittedQuery,
+  ]);
 
   const restore = useCallback((entry: SearchHistoryEntry) => {
+    clearRequestState();
     setIsDefaultBrowseView(false);
-    setQueryState(entry.query);
-    setSubmittedQuery(entry.query);
+    syncQuery(entry.query);
+    syncSubmittedQuery(entry.query);
     syncFilters(entry.filters);
     syncSubmittedFilters(entry.filters);
     syncFilterOwnership(entry.filterOwnership);
-    setSubmittedOwnership(entry.filterOwnership);
+    syncSubmittedOwnership(entry.filterOwnership);
     setPage(entry.response.page ?? 1);
     setHasSearched(true);
     setError(null);
@@ -549,6 +716,7 @@ export function useSearch() {
       page_size: entry.response.page_size,
       query_time_ms: entry.response.query_time_ms,
       has_more: entry.response.has_more,
+      warnings: entry.response.warnings,
       query_understanding: entry.response.query_understanding,
     });
     setCompletedSearchSnapshot({
@@ -565,15 +733,27 @@ export function useSearch() {
         page_size: entry.response.page_size,
         query_time_ms: entry.response.query_time_ms,
         has_more: entry.response.has_more,
+        warnings: entry.response.warnings,
         query_understanding: entry.response.query_understanding,
       },
       source: "restore",
     });
     requestSequenceRef.current += 1;
     setRestoreVersion((currentVersion) => currentVersion + 1);
-  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+  }, [clearRequestState, syncFilterOwnership, syncFilters, syncQuery, syncSubmittedFilters, syncSubmittedOwnership, syncSubmittedQuery]);
 
   const showNewest = useCallback(async () => {
+    const { controller, requestId } = startRequest();
+    let didTimeout = false;
+
+    if (requestTimeoutRef.current !== null) {
+      clearTimeout(requestTimeoutRef.current);
+    }
+    requestTimeoutRef.current = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, 25_000);
+
     setLoading(true);
     setError(null);
     setIsDefaultBrowseView(true);
@@ -587,6 +767,9 @@ export function useSearch() {
       let responseData: SearchResponse;
 
       if (USE_MOCK) {
+        if (requestSequenceRef.current !== requestId) {
+          return;
+        }
         responseData = runMockSearch(request);
       } else {
         const response = await fetch("/api/search", {
@@ -595,6 +778,7 @@ export function useSearch() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(request),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -604,16 +788,41 @@ export function useSearch() {
         responseData = await response.json();
       }
 
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
       setResults(responseData);
-      setSubmittedQuery("");
+      syncQuery("");
+      syncSubmittedQuery("");
       syncSubmittedFilters(emptyFilters);
-      setSubmittedOwnership(emptyFilterOwnership());
+      syncSubmittedOwnership(emptyFilterOwnership());
       syncFilters(emptyFilters);
       syncFilterOwnership(emptyFilterOwnership());
       setHasSearched(false);
       setPage(1);
       setCompletedSearchSnapshot(null);
     } catch (caughtError) {
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
+
+      if (
+        ((caughtError instanceof Error && caughtError.name === "AbortError") || controller.signal.aborted) &&
+        didTimeout
+      ) {
+        setResults(null);
+        setIsDefaultBrowseView(false);
+        setError("Načítanie najnovších výrokov trvalo príliš dlho. Skúste to prosím znova.");
+        return;
+      }
+
+      if (
+        (caughtError instanceof Error && caughtError.name === "AbortError") ||
+        controller.signal.aborted
+      ) {
+        return;
+      }
+
       setResults(null);
       setIsDefaultBrowseView(false);
       setError(
@@ -622,9 +831,12 @@ export function useSearch() {
           : "Nepodarilo sa načítať najnovšie výroky.",
       );
     } finally {
-      setLoading(false);
+      finishRequest(requestId);
+      if (requestSequenceRef.current === requestId) {
+        setLoading(false);
+      }
     }
-  }, [syncFilterOwnership, syncFilters, syncSubmittedFilters]);
+  }, [finishRequest, startRequest, syncFilterOwnership, syncFilters, syncQuery, syncSubmittedFilters, syncSubmittedOwnership, syncSubmittedQuery]);
 
   return {
     results,
@@ -645,9 +857,11 @@ export function useSearch() {
     hasSearched,
     setQuery,
     setFilters,
+    clearModelFilters,
     setPage,
     setError,
     search,
+    applySearchUrlState,
     restore,
     showNewest,
     loadFilters,

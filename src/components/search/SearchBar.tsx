@@ -12,6 +12,7 @@ interface SearchBarProps {
   onSearch: () => void;
   isVisible?: boolean;
   loading?: boolean;
+  isBrowseLoading?: boolean;
   filters?: FilterState;
   historyEntries?: SearchHistoryEntry[];
   onHistorySelect?: (entry: SearchHistoryEntry) => void;
@@ -406,6 +407,7 @@ export default function SearchBar({
   onSearch,
   isVisible = true,
   loading = false,
+  isBrowseLoading = false,
   filters,
   historyEntries = [],
   onHistorySelect,
@@ -415,6 +417,9 @@ export default function SearchBar({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hasSearchInput = value.trim().length > 0 || Boolean(filters && hasAnyFilters(filters));
+  const isActiveSearchLoading = loading && !isBrowseLoading;
+  const isSearchActionDisabled = !hasSearchInput || isActiveSearchLoading;
   const desktopHistoryWidth = useMemo(
     () => getAdaptiveHistoryWidth(historyEntries.map((entry) => entry.query), 420, 48, 680),
     [historyEntries],
@@ -485,7 +490,7 @@ export default function SearchBar({
             <button
               type="button"
               onClick={() => onChange("")}
-              disabled={loading}
+              disabled={isActiveSearchLoading}
               aria-label="Vymazať dopyt"
               className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed dark:text-slate-500 dark:hover:text-slate-300"
             >
@@ -509,10 +514,10 @@ export default function SearchBar({
           <button
             type="button"
             onClick={onSearch}
-            disabled={(!value.trim() && !(filters && hasAnyFilters(filters))) || loading}
+            disabled={isSearchActionDisabled}
             className="inline-flex h-14 flex-1 items-center justify-center rounded-xl bg-[var(--brand-accent)] px-6 text-base font-medium text-white shadow-sm transition hover:bg-[var(--brand-accent-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)] dark:disabled:bg-slate-700 dark:disabled:text-slate-400 md:min-w-36 md:flex-none"
           >
-            {loading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
+            {isActiveSearchLoading && value.trim() ? "Vyhľadáva sa..." : "Hľadať"}
           </button>
 
           {isMounted && historyEntries.length > 0 && (

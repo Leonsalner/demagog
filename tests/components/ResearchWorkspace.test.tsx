@@ -88,7 +88,7 @@ describe("ResearchWorkspace", () => {
       </div>,
     );
 
-    const dialog = await screen.findByRole("dialog", { name: /research workspace/i });
+    const dialog = await screen.findByRole("dialog", { name: /prieskum/i });
     const overlay = screen.getByTestId("research-workspace-overlay");
     const transformedWrapper = screen.getByTestId("transformed-wrapper");
 
@@ -173,7 +173,7 @@ describe("ResearchWorkspace", () => {
     );
 
     const windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-    await screen.findByRole("dialog", { name: /research workspace/i });
+    await screen.findByRole("dialog", { name: /prieskum/i });
     fireEvent.click(screen.getByRole("button", { name: /Ministerstvo zdravotníctva/i }));
 
     expect(windowOpenSpy).not.toHaveBeenCalled();
@@ -282,13 +282,13 @@ describe("ResearchWorkspace", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: "Skrytá analýza" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Výroky" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Výroky" }));
 
     expect(
       await screen.findByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Články" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Články" }));
 
     await waitFor(() => {
       expect(
@@ -422,7 +422,7 @@ describe("ResearchWorkspace", () => {
     );
 
     const overlay = screen.getByTestId("research-workspace-overlay");
-    const dialog = screen.getByRole("dialog", { name: /research workspace/i });
+    const dialog = screen.getByRole("dialog", { name: /prieskum/i });
 
     expect(overlay.className).toContain("opacity-0");
     expect(dialog.className).toContain("translate-y-[48px]");
@@ -479,7 +479,7 @@ describe("ResearchWorkspace", () => {
       </>,
     );
 
-    expect(screen.getByRole("dialog", { name: /research workspace/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /prieskum/i })).toBeInTheDocument();
 
     act(() => {
       rerender(
@@ -510,7 +510,7 @@ describe("ResearchWorkspace", () => {
     });
 
     const overlay = screen.getByTestId("research-workspace-overlay");
-    const dialog = screen.getByRole("dialog", { name: /research workspace/i });
+    const dialog = screen.getByRole("dialog", { name: /prieskum/i });
 
     expect(dialog.className).toContain("translate-y-[18px]");
     expect(overlay.className).toContain("opacity-100");

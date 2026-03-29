@@ -174,11 +174,11 @@ export async function POST(request: NextRequest) {
   try {
     parsedBody = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Neplatný JSON payload." }, { status: 400 });
   }
 
   if (!isRecord(parsedBody)) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json({ error: "Neplatné telo požiadavky." }, { status: 400 });
   }
 
   const vyrok = coerceTrimmedString(parsedBody.vyrok);
@@ -194,14 +194,14 @@ export async function POST(request: NextRequest) {
 
   if (!vyrok || !meno || !strana || !isVerdict(vyhodnotenie)) {
     return NextResponse.json(
-      { error: "Required fields: vyrok, meno, strana, vyhodnotenie" },
+      { error: "Povinné polia: výrok, meno, strana, vyhodnotenie." },
       { status: 400 },
     );
   }
 
   if (datum === undefined) {
     return NextResponse.json(
-      { error: "datum must use YYYY-MM-DD format" },
+      { error: "Pole dátum musí mať formát RRRR-MM-DD." },
       { status: 400 },
     );
   }
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
   if (error || !data || typeof data.id !== "number") {
     console.error("[statements] atomic insert failed:", error?.message);
     return NextResponse.json(
-      { error: "Failed to save statement" },
+      { error: "Nepodarilo sa uložiť výrok." },
       { status: 502 },
     );
   }

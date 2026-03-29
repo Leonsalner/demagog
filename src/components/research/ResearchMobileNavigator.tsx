@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import type { DetectionMatch, ResearchItem, ResearchWorkspaceMode, SidebarTab } from "@/types";
 
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 
 import { buildResearchSections } from "./research-sidebar-sections";
@@ -39,6 +41,15 @@ export default function ResearchMobileNavigator({
   onSelect,
   onSelectMatch,
 }: ResearchMobileNavigatorProps) {
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useDialogFocus({
+    isOpen,
+    dialogRef,
+    initialFocusRef: closeButtonRef,
+  });
+
   if (!isOpen) {
     return null;
   }
@@ -53,9 +64,11 @@ export default function ResearchMobileNavigator({
         onClick={onClose}
       >
         <section
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={getSheetTitle(mode, activeTab)}
+          tabIndex={-1}
           className="relative flex max-h-[78dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t border-slate-200 bg-white/98 shadow-[0_-24px_80px_-44px_rgba(15,23,42,0.45)] dark:border-slate-700/80 dark:bg-slate-950/98 animate-in slide-in-from-bottom duration-200"
           onClick={(event) => event.stopPropagation()}
           style={{
@@ -75,6 +88,7 @@ export default function ResearchMobileNavigator({
               </h2>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/90 bg-white/90 text-slate-500 transition hover:border-slate-300 hover:text-slate-800 dark:border-slate-700/80 dark:bg-slate-950/88 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
@@ -89,6 +103,11 @@ export default function ResearchMobileNavigator({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
             {showingStatements ? (
               <div className="space-y-2 px-2 pb-2">
+                {detectMatches.length === 0 ? (
+                  <p className="rounded-2xl bg-white px-3 py-3 text-sm text-slate-500 shadow-sm dark:bg-slate-950 dark:text-slate-400">
+                    Pre tento výrok sa nenašli súvisiace výroky.
+                  </p>
+                ) : null}
                 {detectMatches.map((match) => {
                   const isSelected = match.statement.id === selectedMatchId;
 
@@ -122,7 +141,13 @@ export default function ResearchMobileNavigator({
                 })}
               </div>
             ) : (
-              sections.map((section) => (
+              sections.length === 0 ? (
+                <div className="px-2 pb-4">
+                  <p className="rounded-2xl bg-white px-3 py-3 text-sm text-slate-500 shadow-sm dark:bg-slate-950 dark:text-slate-400">
+                    Pre tento výrok sa nenašli články ani externé zdroje.
+                  </p>
+                </div>
+              ) : sections.map((section) => (
                 <section key={section.heading} className="px-2 pb-4">
                   <h3 className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                     {section.heading}

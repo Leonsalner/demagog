@@ -142,7 +142,7 @@ describe("FilterSidebar", () => {
     );
 
     expect(
-      screen.getByText(/Filter data unavailable\. Zobrazujú sa náhradné hodnoty\./i),
+      screen.getByText(/Nepodarilo sa načítať filtre\. Skúste stránku obnoviť\./i),
     ).toBeInTheDocument();
   });
 

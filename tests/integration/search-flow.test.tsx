@@ -14,6 +14,12 @@ vi.mock("@/hooks/useDetect", () => ({
   useDetect: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useRouter: vi.fn(() => ({ replace: vi.fn() })),
+}));
+
 vi.mock("next/link", () => ({
   default: (props: {
     children?: ReactNode;
@@ -32,6 +38,22 @@ vi.mock("next/link", () => ({
 
 const { useSearch } = await import("@/hooks/useSearch");
 const { useDetect } = await import("@/hooks/useDetect");
+const { usePathname, useSearchParams, useRouter } = await import("next/navigation");
+
+function createReadonlySearchParams(value = "") {
+  return new URLSearchParams(value) as never;
+}
+
+function createRouterMock() {
+  return {
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  } as never;
+}
 
 function createSearchParams(mode?: string) {
   return Promise.resolve(mode ? { mode } : {}) as Promise<{
@@ -52,6 +74,11 @@ async function renderHomeTree(mode?: string) {
 }
 
 async function renderHome(mode?: string) {
+  vi.mocked(usePathname).mockReturnValue("/");
+  vi.mocked(useSearchParams).mockReturnValue(
+    createReadonlySearchParams(mode ? `mode=${mode}` : ""),
+  );
+  vi.mocked(useRouter).mockReturnValue(createRouterMock());
   return render(await renderHomeTree(mode));
 }
 
@@ -102,6 +129,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
   const search = vi.fn();
   const showNewest = vi.fn().mockResolvedValue(undefined);
   const loadFilters = vi.fn().mockResolvedValue(availableFilters);
+  const clearModelFilters = vi.fn().mockReturnValue(emptyFilters);
+  const applySearchUrlState = vi.fn();
 
   vi.mocked(useSearch).mockReturnValue({
     results: null,
@@ -128,6 +157,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     restore: vi.fn(),
     showNewest,
     loadFilters,
+    clearModelFilters,
+    applySearchUrlState,
     ...overrides,
   });
 
@@ -139,6 +170,8 @@ function mockUseSearchReturn(overrides?: Record<string, unknown>) {
     restore: vi.fn(),
     showNewest,
     loadFilters,
+    clearModelFilters,
+    applySearchUrlState,
   };
 }
 
@@ -147,6 +180,8 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     result: null,
     loading: false,
     error: null,
+    uiState: "idle",
+    verifyingStatement: null,
     lateMatchNotice: null,
     dismissLateMatchNotice: vi.fn(),
     applyLateMatchResult: vi.fn(),
@@ -274,6 +309,8 @@ describe("search page flow", () => {
       search: stableSearch,
       restore: vi.fn(),
       showNewest,
+      clearModelFilters: vi.fn().mockReturnValue(emptyFilters),
+      applySearchUrlState: vi.fn(),
     });
 
     await renderHome();
@@ -314,6 +351,8 @@ describe("search page flow", () => {
         search: vi.fn(),
         restore: vi.fn(),
         showNewest,
+        clearModelFilters: vi.fn().mockReturnValue(emptyFilters),
+        applySearchUrlState: vi.fn(),
       })
       .mockReturnValueOnce({
         results: null,
@@ -340,6 +379,8 @@ describe("search page flow", () => {
         search: vi.fn(),
         restore: vi.fn(),
         showNewest,
+        clearModelFilters: vi.fn().mockReturnValue(emptyFilters),
+        applySearchUrlState: vi.fn(),
       });
 
     const view = await renderHome();
@@ -380,11 +421,14 @@ describe("search page flow", () => {
         setPage,
         setError: vi.fn(),
         search,
-    restore: vi.fn(),
+        restore: vi.fn(),
         showNewest: vi.fn().mockResolvedValue(undefined),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
-        })      .mockReturnValueOnce({
+        clearModelFilters: vi.fn().mockReturnValue(emptyFilters),
+        applySearchUrlState: vi.fn(),
+      })
+      .mockReturnValueOnce({
         results: buildResults({
           query_understanding: {
             extracted_filters: {
@@ -430,11 +474,13 @@ describe("search page flow", () => {
         setPage,
         setError: vi.fn(),
         search,
-    restore: vi.fn(),
+        restore: vi.fn(),
         showNewest: vi.fn().mockResolvedValue(undefined),
         loadFilters: vi.fn().mockResolvedValue(availableFilters),
         filterLoadError: false,
-        });
+        clearModelFilters: vi.fn().mockReturnValue(emptyFilters),
+        applySearchUrlState: vi.fn(),
+      });
     const view = await renderHome();
     setPage.mockClear();
     search.mockClear();

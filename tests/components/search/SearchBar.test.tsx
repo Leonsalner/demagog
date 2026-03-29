@@ -167,16 +167,17 @@ describe("SearchBar history filter summary", () => {
   it("keeps search and history available during browse loading", () => {
     render(
       <SearchBar
-        value=""
+        value="konsolidácia"
         onChange={() => {}}
         onSearch={() => {}}
         loading
+        isBrowseLoading
         historyEntries={[sampleEntry]}
       />,
     );
 
     expect(screen.getByRole("button", { name: "História" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Hľadať" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Hľadať" })).toBeEnabled();
   });
 
   it("keeps the mobile history trigger inline with the search action row", () => {

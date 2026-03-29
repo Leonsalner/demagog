@@ -141,10 +141,10 @@ async function submitLinearGraphQLRequest<TData>(
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new LinearFeedbackError("Linear request timed out", 502);
+      throw new LinearFeedbackError("Linear request timed out", 504);
     }
 
-    throw error;
+    throw new LinearFeedbackError("Linear request failed", 502);
   } finally {
     clearTimeout(timeoutId);
   }
