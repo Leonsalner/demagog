@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     p_sources: sources.length > 0 ? sources : [],
   });
 
-  if (error || !data) {
+  if (error || !data || typeof data.id !== "number") {
     console.error("[statements] atomic insert failed:", error?.message);
     return NextResponse.json(
       { error: "Failed to save statement" },

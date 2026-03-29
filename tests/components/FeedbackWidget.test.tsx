@@ -137,6 +137,9 @@ describe("FeedbackWidget", () => {
     renderWidget();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "bug" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Správa sa práve odosiela." },
     });
@@ -166,6 +169,9 @@ describe("FeedbackWidget", () => {
     renderWidget();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "bug" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Táto správa sa má zachovať." },
     });
@@ -190,6 +196,9 @@ describe("FeedbackWidget", () => {
     renderWidget();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Ďakujem za túto funkciu." },
     });
@@ -197,8 +206,8 @@ describe("FeedbackWidget", () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByText("Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame."),
-      ).toHaveLength(2);
+        screen.getByRole("dialog", { name: "Napíšte nám" }),
+      ).toHaveTextContent("Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame.");
     });
 
     expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toBeInTheDocument();
@@ -218,6 +227,9 @@ describe("FeedbackWidget", () => {
     renderWidget();
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Test správa." },
     });
@@ -228,9 +240,9 @@ describe("FeedbackWidget", () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getAllByText("Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame."),
-    ).toHaveLength(2);
+    expect(screen.getByRole("dialog", { name: "Napíšte nám" })).toHaveTextContent(
+      "Ďakujeme. Vašu správu sme prijali a starostlivo si ju prečítame.",
+    );
   });
 
   it("clicking the navbar button while the panel is open does not immediately reopen", async () => {

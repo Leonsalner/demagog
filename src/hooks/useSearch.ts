@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
 import { mockFilters, mockStatements } from "@/lib/mock-data";
 import type {
   FilterState,
@@ -241,6 +241,15 @@ export function useSearch() {
   const filtersRef = useRef<FilterState>(emptyFilters);
   const submittedFiltersRef = useRef<FilterState>(emptyFilters);
   const requestSequenceRef = useRef(0);
+  const filterLoadAbortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      filterLoadAbortRef.current?.abort();
+    };
+  }, []);
 
   const syncFilterOwnership = useCallback((ownership: SearchFilterOwnershipState) => {
     filterOwnershipRef.current = ownership;
@@ -262,29 +271,50 @@ export function useSearch() {
       return availableFiltersRef.current;
     }
 
+    filterLoadAbortRef.current?.abort();
+    const controller = new AbortController();
+    filterLoadAbortRef.current = controller;
+
     try {
       if (USE_MOCK) {
         availableFiltersRef.current = mockFilters;
-        setAvailableFilters(mockFilters);
-        setFilterLoadError(false);
+        if (isMountedRef.current) {
+          setAvailableFilters(mockFilters);
+          setFilterLoadError(false);
+        }
         return mockFilters;
       }
 
-      const response = await fetch("/api/filters", { cache: "no-store" });
+      const response = await fetch("/api/filters", {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) {
         throw new Error("Nepodarilo sa načítať filtre.");
       }
 
       const data: FiltersResponse = await response.json();
       availableFiltersRef.current = data;
-      setAvailableFilters(data);
-      setFilterLoadError(false);
+      if (filterLoadAbortRef.current === controller && isMountedRef.current) {
+        setAvailableFilters(data);
+        setFilterLoadError(false);
+      }
       return data;
     } catch {
+      if (controller.signal.aborted) {
+        return availableFiltersRef.current ?? mockFilters;
+      }
+
       availableFiltersRef.current = mockFilters;
-      setAvailableFilters(mockFilters);
-      setFilterLoadError(true);
+      if (filterLoadAbortRef.current === controller && isMountedRef.current) {
+        setAvailableFilters(mockFilters);
+        setFilterLoadError(true);
+      }
       return mockFilters;
+    } finally {
+      if (filterLoadAbortRef.current === controller) {
+        filterLoadAbortRef.current = null;
+      }
     }
   }, []);
 

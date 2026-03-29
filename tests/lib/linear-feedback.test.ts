@@ -105,6 +105,7 @@ describe("linear-feedback", () => {
         Authorization: "linear-api-key",
       },
       body: expect.any(String),
+      signal: expect.any(AbortSignal),
     });
     expect(fetchMock).toHaveBeenNthCalledWith(2, "https://api.linear.app/graphql", {
       method: "POST",
@@ -113,6 +114,7 @@ describe("linear-feedback", () => {
         Authorization: "linear-api-key",
       },
       body: expect.any(String),
+      signal: expect.any(AbortSignal),
     });
 
     const [, upsertRequestInit] = fetchMock.mock.calls[0];

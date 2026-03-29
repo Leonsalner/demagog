@@ -30,6 +30,23 @@ type DetectResearchRow = {
   embedding: number[] | null;
 };
 
+function isDetectResearchRow(value: unknown): value is DetectResearchRow {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.id === "number" &&
+    typeof row.vyrok === "string" &&
+    typeof row.vyhodnotenie === "string" &&
+    typeof row.meno === "string" &&
+    typeof row.strana === "string" &&
+    typeof row.url === "string" &&
+    (row.embedding === null || Array.isArray(row.embedding))
+  );
+}
+
 type BatchArticleMatchRow = {
   embedding_idx: number;
   id: number;
@@ -205,7 +222,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Statements not found" }, { status: 404 });
   }
 
-  const statementRows = statements as DetectResearchRow[];
+  const statementRows = statements.filter(isDetectResearchRow);
   const statementRefs = new Map(
     statementRows.map((statement) => [statement.id, buildResearchStatementRef(statement)]),
   );

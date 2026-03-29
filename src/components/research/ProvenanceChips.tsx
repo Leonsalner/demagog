@@ -82,7 +82,6 @@ export default function ProvenanceChips({
       setIsMobile(event.matches);
     };
 
-    setIsMobile(mediaQuery.matches);
     mediaQuery.addEventListener("change", handleChange);
 
     return () => {

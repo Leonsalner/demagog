@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { PreparedAggregateResearchStatus } from "@/hooks/usePreparedAggregateResearch";
 import { formatSlovakFurtherResults } from "@/lib/utils";
 import type { DetectResponse, DetectionMatch } from "@/types";
@@ -100,11 +102,31 @@ export default function DetectionResults({
   onOpenPreparedResearch,
   onOpenAddStatement,
 }: DetectionResultsProps) {
-  const visibleMatches = sortMatches(
-    result.matches.filter((match) => match.classification !== "UNRELATED"),
+  const visibleMatches = useMemo(
+    () =>
+      sortMatches(
+        result.matches.filter((match) => match.classification !== "UNRELATED"),
+      ).map((match) => ({
+        ...match,
+        statementWithSimilarity: {
+          ...match.statement,
+          similarity: match.similarity,
+        },
+      })),
+    [result.matches],
   );
-  const hiddenMatches = sortMatches(
-    result.matches.filter((match) => match.classification === "UNRELATED"),
+  const hiddenMatches = useMemo(
+    () =>
+      sortMatches(
+        result.matches.filter((match) => match.classification === "UNRELATED"),
+      ).map((match) => ({
+        ...match,
+        statementWithSimilarity: {
+          ...match.statement,
+          similarity: match.similarity,
+        },
+      })),
+    [result.matches],
   );
   const status = detectStatusConfig[result.overall_status];
   const showPrimaryAddButton = result.overall_status === "NEW_CLAIM" && onOpenAddStatement;
@@ -243,7 +265,7 @@ export default function DetectionResults({
           {visibleMatches.map((match) => (
             <StatementCard
               key={`${match.classification}-${match.statement.id}`}
-              statement={{ ...match.statement, similarity: match.similarity }}
+              statement={match.statementWithSimilarity}
               classification={match.classification}
               show_similarity
               onOpenResearch={onOpenStatementResearch}
@@ -261,7 +283,7 @@ export default function DetectionResults({
             {hiddenMatches.map((match) => (
               <StatementCard
                 key={`${match.classification}-${match.statement.id}`}
-                statement={{ ...match.statement, similarity: match.similarity }}
+                statement={match.statementWithSimilarity}
                 classification={match.classification}
                 show_similarity
                 onOpenResearch={onOpenStatementResearch}

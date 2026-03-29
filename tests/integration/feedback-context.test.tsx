@@ -159,6 +159,9 @@ describe("feedback context integration", () => {
     renderHarness("search");
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Prosím skontrolujte výsledky." },
     });
@@ -194,6 +197,9 @@ describe("feedback context integration", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "bug" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Toto sa týka vyhľadávania." },
     });
@@ -218,6 +224,9 @@ describe("feedback context integration", () => {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Tento výrok treba lepšie prepojiť." },
     });
@@ -251,6 +260,9 @@ describe("feedback context integration", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "other" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Na add stránke chýba vysvetlenie." },
     });

@@ -176,7 +176,7 @@ describe("SearchBar history filter summary", () => {
     );
 
     expect(screen.getByRole("button", { name: "História" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Hľadať" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Hľadať" })).toBeDisabled();
   });
 
   it("keeps the mobile history trigger inline with the search action row", () => {

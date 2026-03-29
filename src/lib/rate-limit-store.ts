@@ -11,12 +11,36 @@ interface RateLimitResult {
 }
 
 const store = new Map<string, RateLimitEntry>();
+const MAX_STORE_SIZE = 10_000;
 
 function cleanUpStaleEntries(): void {
   const now = Date.now();
   for (const [key, entry] of store.entries()) {
     if (entry.resetAt <= now) {
       store.delete(key);
+    }
+  }
+}
+
+function enforceStoreSizeLimit(): void {
+  if (store.size <= MAX_STORE_SIZE) {
+    return;
+  }
+
+  cleanUpStaleEntries();
+
+  if (store.size <= MAX_STORE_SIZE) {
+    return;
+  }
+
+  const overflowCount = store.size - MAX_STORE_SIZE;
+  let removed = 0;
+
+  for (const key of store.keys()) {
+    store.delete(key);
+    removed += 1;
+    if (removed >= overflowCount) {
+      break;
     }
   }
 }
@@ -34,6 +58,7 @@ export function checkRateLimit(
   if (!entry || entry.resetAt <= now) {
     const resetAt = now + windowMs;
     store.set(key, { count: 1, resetAt });
+    enforceStoreSizeLimit();
     return {
       allowed: true,
       remaining: limit - 1,
