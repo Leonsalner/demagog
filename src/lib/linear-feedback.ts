@@ -6,6 +6,7 @@ import {
 import { isRecord } from "@/lib/utils";
 
 const LINEAR_GRAPHQL_ENDPOINT = "https://api.linear.app/graphql";
+const LINEAR_REQUEST_TIMEOUT_MS = 15_000;
 const DEFAULT_ANONYMOUS_CUSTOMER_EXTERNAL_ID = "demagog-anonymous-feedback";
 const DEFAULT_ANONYMOUS_CUSTOMER_NAME = "Demagog Anonymous Feedback";
 
@@ -96,6 +97,12 @@ export function getLinearFeedbackConfigError(): string | null {
   return null;
 }
 
+const linearFeedbackConfigError = getLinearFeedbackConfigError();
+
+if (linearFeedbackConfigError) {
+  console.warn(`[linear-feedback] ${linearFeedbackConfigError}`);
+}
+
 function describeGraphQLErrors(errors: unknown[]): string {
   const messages = errors
     .map((error) => {
@@ -115,17 +122,32 @@ async function submitLinearGraphQLRequest<TData>(
   query: string,
   variables: Record<string, unknown>,
 ): Promise<TData> {
-  const response = await fetch(LINEAR_GRAPHQL_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: config.apiKey,
-    },
-    body: JSON.stringify({
-      query,
-      variables,
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LINEAR_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(LINEAR_GRAPHQL_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: config.apiKey,
+      },
+      body: JSON.stringify({
+        query,
+        variables,
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new LinearFeedbackError("Linear request timed out", 504);
+    }
+
+    throw new LinearFeedbackError("Linear request failed", 502);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

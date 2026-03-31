@@ -181,7 +181,7 @@ describe("POST /api/detect logic", () => {
     );
   });
 
-  it("returns NEW_CLAIM when classification fails", async () => {
+  it("returns 502 when classification fails", async () => {
     const rows = [
       buildRow(1, 0.91),
       buildRow(2, 0.71),
@@ -200,12 +200,10 @@ describe("POST /api/detect logic", () => {
     );
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBe("no-match");
-    expect(data).toMatchObject({
-      input_statement: "Nova formulacia tvrdenia",
-      matches: [],
-      overall_status: "NEW_CLAIM",
+    expect(response.status).toBe(502);
+    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBeNull();
+    expect(data).toEqual({
+      error: "Classification error",
     });
     expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
   });
@@ -346,7 +344,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "top_k must be between 1 and 20",
+      error: "Parameter top_k musí byť medzi 1 a 20.",
     });
   });
 
@@ -404,7 +402,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "top_k must be between 1 and 20",
+      error: "Parameter top_k musí byť medzi 1 a 20.",
     });
   });
 
@@ -440,7 +438,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Statement too long (max 2000 chars)",
+      error: "Výrok je príliš dlhý. Maximum je 2000 znakov.",
     });
   });
 
@@ -453,7 +451,7 @@ describe("POST /api/detect logic", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Statement is required",
+      error: "Výrok je povinný.",
     });
   });
 
@@ -482,7 +480,7 @@ describe("POST /api/detect logic", () => {
     expect(supabase.rpc).not.toHaveBeenCalledWith("match_articles", expect.anything());
   });
 
-  it("degrades query-specific post-validation failures to NEW_CLAIM", async () => {
+  it("returns 502 when query-specific post-validation fails", async () => {
     const rows = [buildRow(1, 0.92)];
     const sourcesQuery = {
       select: vi.fn().mockReturnThis(),
@@ -519,12 +517,10 @@ describe("POST /api/detect logic", () => {
     );
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBe("no-match");
-    expect(data).toMatchObject({
-      input_statement: "Pošlú nás na vojnu",
-      matches: [],
-      overall_status: "NEW_CLAIM",
+    expect(response.status).toBe(502);
+    expect(response.headers.get("X-Demagog-Detect-Fallback")).toBeNull();
+    expect(data).toEqual({
+      error: "Classification error",
     });
   });
 

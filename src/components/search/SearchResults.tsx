@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import StatementCard from "@/components/shared/StatementCard";
 import { formatSlovakResultCount } from "@/lib/utils";
@@ -126,11 +126,21 @@ export default function SearchResults({
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const onOpenResearchRef = useRef(onOpenResearch);
   const activeIndexRef = useRef(activeIndex);
+  const totalPages = results
+    ? Math.max(1, Math.ceil(results.total_count / results.page_size))
+    : 1;
+  const pagination = useMemo(
+    () => (results ? buildPagination(results.page, totalPages) : []),
+    [results, totalPages],
+  );
+
+  useEffect(() => {
+    onOpenResearchRef.current = onOpenResearch;
+  }, [onOpenResearch]);
 
   useEffect(() => {
     if (!isVisible) return;
 
-    onOpenResearchRef.current = onOpenResearch;
     activeIndexRef.current = activeIndex;
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -171,9 +181,6 @@ export default function SearchResults({
   if (!results) {
     return null;
   }
-
-  const totalPages = Math.max(1, Math.ceil(results.total_count / results.page_size));
-  const pagination = buildPagination(results.page, totalPages);
   const relatedPoliticianNames =
     queryUnderstanding?.related_politicians.map((politician) => politician.meno) ?? [];
   const relatedHeading =

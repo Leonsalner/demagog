@@ -137,12 +137,11 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const result = await submitLinearFeedbackCustomerRequest(payload);
+    await submitLinearFeedbackCustomerRequest(payload);
 
     return NextResponse.json(
       {
         status: "submitted",
-        linearRequestId: result.id,
       },
       { status: 201 },
     );

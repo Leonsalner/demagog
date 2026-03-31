@@ -67,7 +67,7 @@ describe("POST /api/statements", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "Required fields: vyrok, meno, strana, vyhodnotenie",
+      error: "Povinné polia: výrok, meno, strana, vyhodnotenie.",
     });
   });
 
@@ -84,7 +84,7 @@ describe("POST /api/statements", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: "datum must use YYYY-MM-DD format",
+      error: "Pole dátum musí mať formát RRRR-MM-DD.",
     });
   });
 
@@ -222,7 +222,7 @@ describe("POST /api/statements", () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
-      error: "Failed to save statement",
+      error: "Nepodarilo sa uložiť výrok.",
     });
   });
 });

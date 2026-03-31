@@ -195,7 +195,6 @@ describe("POST /api/feedback", () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
       status: "submitted",
-      linearRequestId: "need-123",
     });
     expect(submitLinearFeedbackCustomerRequest).toHaveBeenCalledWith({
       category: "improvement",

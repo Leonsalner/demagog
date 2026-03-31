@@ -4,6 +4,7 @@ import type React from "react";
 
 import { OBLAST_OPTIONS } from "@/lib/statement-topics";
 import { validateSourceUrl } from "@/lib/source-url";
+import type { StatementFormErrors } from "@/lib/statement-form";
 import { cn, VERDICTS } from "@/lib/utils";
 import type { Verdict } from "@/types";
 
@@ -167,6 +168,7 @@ type StatementFormFieldsProps = {
   form: StatementFormState;
   status: StatementFormStatus;
   errorMessage: string | null;
+  fieldErrors?: StatementFormErrors;
   idPrefix: string;
   primaryActionLabel: string;
   secondaryAction?: React.ReactNode;
@@ -190,6 +192,7 @@ export default function StatementFormFields({
   form,
   status,
   errorMessage,
+  fieldErrors = {},
   idPrefix,
   primaryActionLabel,
   secondaryAction,
@@ -201,6 +204,9 @@ export default function StatementFormFields({
   onSourceUrlBlur,
   updateSourceField,
 }: StatementFormFieldsProps) {
+  const invalidFieldClassName =
+    "border-red-300 bg-red-50/70 text-red-950 placeholder:text-red-400 focus:border-red-500 focus:ring-red-500/15 dark:border-red-900/80 dark:bg-red-950/25 dark:text-red-100 dark:placeholder:text-red-500 dark:focus:border-red-500 dark:focus:ring-red-500/20";
+
   return (
     <form onSubmit={onSubmit} className="grid gap-6">
       <div>
@@ -212,8 +218,18 @@ export default function StatementFormFields({
           rows={5}
           required
           placeholder="Plné znenie politického výroku..."
-          className={`${FIELD_BASE_CLASS} min-h-44 px-5 py-4 text-base leading-7`}
+          aria-invalid={fieldErrors.vyrok ? "true" : "false"}
+          className={cn(
+            FIELD_BASE_CLASS,
+            "min-h-44 px-5 py-4 text-base leading-7",
+            fieldErrors.vyrok && invalidFieldClassName,
+          )}
         />
+        {fieldErrors.vyrok ? (
+          <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+            {fieldErrors.vyrok}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
@@ -226,8 +242,14 @@ export default function StatementFormFields({
             required
             autoComplete="name"
             placeholder="Robert Fico"
-            className={FIELD_BASE_CLASS}
+            aria-invalid={fieldErrors.meno ? "true" : "false"}
+            className={cn(FIELD_BASE_CLASS, fieldErrors.meno && invalidFieldClassName)}
           />
+          {fieldErrors.meno ? (
+            <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+              {fieldErrors.meno}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -239,8 +261,14 @@ export default function StatementFormFields({
             required
             autoComplete="organization"
             placeholder="SMER-SD"
-            className={FIELD_BASE_CLASS}
+            aria-invalid={fieldErrors.strana ? "true" : "false"}
+            className={cn(FIELD_BASE_CLASS, fieldErrors.strana && invalidFieldClassName)}
           />
+          {fieldErrors.strana ? (
+            <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+              {fieldErrors.strana}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -259,7 +287,9 @@ export default function StatementFormFields({
               className={cn(
                 SELECT_BASE_CLASS,
                 !form.vyhodnotenie && "text-slate-500 dark:text-slate-400",
+                fieldErrors.vyhodnotenie && invalidFieldClassName,
               )}
+              aria-invalid={fieldErrors.vyhodnotenie ? "true" : "false"}
             >
               <option value="">Vybrať hodnotenie</option>
               {VERDICTS.map((verdict) => (
@@ -272,6 +302,11 @@ export default function StatementFormFields({
               <SelectChevronIcon />
             </ControlIcon>
           </div>
+          {fieldErrors.vyhodnotenie ? (
+            <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+              {fieldErrors.vyhodnotenie}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -325,12 +360,19 @@ export default function StatementFormFields({
               className={cn(
                 DATE_BASE_CLASS,
                 !form.datum && "text-slate-500 dark:text-slate-400",
+                fieldErrors.datum && invalidFieldClassName,
               )}
+              aria-invalid={fieldErrors.datum ? "true" : "false"}
             />
             <ControlIcon>
               <CalendarIcon />
             </ControlIcon>
           </div>
+          {fieldErrors.datum ? (
+            <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+              {fieldErrors.datum}
+            </p>
+          ) : null}
         </div>
       </div>
 

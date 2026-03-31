@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { VERDICT_THEME } from "@/lib/verdict-theme";
 import type { FilterState, Verdict } from "@/types";
+import type { SearchFilterOwnershipState } from "@/types/history";
 
 interface ActiveFiltersProps {
   filters: FilterState;
+  filterOwnership: SearchFilterOwnershipState;
   onChange: (filters: FilterState) => void;
+  onClearModelFilters?: () => void;
 }
 
 type ActiveChip = {
@@ -13,30 +16,42 @@ type ActiveChip = {
   value: string;
   label: string;
   isVerdict?: boolean;
+  origin: "user" | "model" | "none";
 };
 
 const CHIP_ANIMATION_MS = 220;
 const FILTER_ROW_EXPAND_LEAD_MS = 140;
 
-export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps) {
+export default function ActiveFilters({
+  filters,
+  filterOwnership,
+  onChange,
+  onClearModelFilters,
+}: ActiveFiltersProps) {
   const activeChips = useMemo(() => {
     const nextChips: ActiveChip[] = [];
 
     if (filters.vyhodnotenie) {
       filters.vyhodnotenie.forEach((v) => {
-        nextChips.push({ key: "vyhodnotenie", value: v, label: v, isVerdict: true });
+        nextChips.push({
+          key: "vyhodnotenie",
+          value: v,
+          label: v,
+          isVerdict: true,
+          origin: filterOwnership.vyhodnotenie,
+        });
       });
     }
 
     if (filters.strana) {
       filters.strana.forEach((s) => {
-        nextChips.push({ key: "strana", value: s, label: s });
+        nextChips.push({ key: "strana", value: s, label: s, origin: filterOwnership.strana });
       });
     }
 
     if (filters.meno) {
       filters.meno.forEach((m) => {
-        nextChips.push({ key: "meno", value: m, label: m });
+        nextChips.push({ key: "meno", value: m, label: m, origin: filterOwnership.meno });
       });
     }
 
@@ -45,6 +60,7 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
         key: "datum_od",
         value: filters.datum_od,
         label: `Od: ${filters.datum_od}`,
+        origin: filterOwnership.datum_od,
       });
     }
 
@@ -53,11 +69,12 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
         key: "datum_do",
         value: filters.datum_do,
         label: `Do: ${filters.datum_do}`,
+        origin: filterOwnership.datum_do,
       });
     }
 
     return nextChips;
-  }, [filters]);
+  }, [filterOwnership, filters]);
 
   const [closingIds, setClosingIds] = useState<string[]>([]);
   const [previousChipCount, setPreviousChipCount] = useState(activeChips.length);
@@ -88,6 +105,7 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
   const visibleChips = activeChips.filter(
     (chip) => !closingIds.includes(`${chip.key}-${chip.value}`),
   );
+  const modelChipCount = visibleChips.filter((chip) => chip.origin === "model").length;
   const shouldShowContainer = activeChips.length > 0 || closingIds.length > 0;
   const shouldDelayEntry = previousChipCount === 0 && activeChips.length > 0;
 
@@ -151,6 +169,10 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
                   chipClass = `inline-flex min-w-0 items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium shadow-sm ${VERDICT_THEME[chip.value as Verdict].chipActive}`;
                 }
 
+                if (chip.origin === "model") {
+                  chipClass = `${chipClass} ring-1 ring-[var(--brand-accent)]/25`;
+                }
+
                 return (
                   <span
                     key={chipId}
@@ -164,6 +186,11 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
                   >
                     <span className={chipClass}>
                       <span className="overflow-hidden whitespace-nowrap">{chip.label}</span>
+                      {chip.origin === "model" ? (
+                        <span className="rounded-full bg-white/85 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-accent)] dark:bg-slate-950/85 dark:text-[var(--brand-accent-dark)]">
+                          AI
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeFilter(chip.key, chip.value)}
@@ -193,6 +220,15 @@ export default function ActiveFilters({ filters, onChange }: ActiveFiltersProps)
               className="ml-2 text-sm font-medium text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Zrušiť filtre
+            </button>
+          ) : null}
+          {modelChipCount > 0 && onClearModelFilters ? (
+            <button
+              type="button"
+              onClick={onClearModelFilters}
+              className="text-sm font-medium text-[var(--brand-accent)] transition hover:text-[var(--brand-accent-hover)] dark:text-[var(--brand-accent-dark)] dark:hover:text-[var(--brand-accent)]"
+            >
+              Zrušiť odporúčané filtre
             </button>
           ) : null}
         </div>

@@ -10,6 +10,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import DetectionResults from "@/components/detect/DetectionResults";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
@@ -28,9 +29,20 @@ import { usePreparedAggregateResearch } from "@/hooks/usePreparedAggregateResear
 import { useResearch } from "@/hooks/useResearch";
 import { useSearch } from "@/hooks/useSearch";
 import { createAggregateResearchRequest } from "@/lib/research-client";
+import {
+  areFilterStatesEqual,
+  hasSearchUrlState,
+  parseSearchUrlState,
+  serializeSearchUrlState,
+} from "@/lib/search-url-state";
 import { useSearchHistory, useDetectHistory, generateHistoryId } from "@/hooks/useLocalHistory";
 import type { FilterState } from "@/types";
-import type { SearchHistoryEntry, DetectHistoryEntry, ResearchPaneSelection } from "@/types/history";
+import type {
+  SearchFilterOwnershipState,
+  SearchHistoryEntry,
+  DetectHistoryEntry,
+  ResearchPaneSelection,
+} from "@/types/history";
 
 export type HomeTab = "search" | "detect";
 
@@ -42,14 +54,14 @@ function normalizeHistoryQuery(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function areFiltersEqual(left: FilterState, right: FilterState): boolean {
-  return (
-    left.strana === right.strana &&
-    left.vyhodnotenie === right.vyhodnotenie &&
-    left.meno === right.meno &&
-    left.datum_od === right.datum_od &&
-    left.datum_do === right.datum_do
-  );
+function createUserOwnedFilterState(filters: FilterState): SearchFilterOwnershipState {
+  return {
+    strana: filters.strana ? "user" : "none",
+    vyhodnotenie: filters.vyhodnotenie ? "user" : "none",
+    meno: filters.meno ? "user" : "none",
+    datum_od: filters.datum_od ? "user" : "none",
+    datum_do: filters.datum_do ? "user" : "none",
+  };
 }
 
 function findRecentHistoryEntryId(
@@ -71,6 +83,9 @@ function findRecentHistoryEntryId(
 }
 
 export default function HomePageClient({ activeTab }: HomePageClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [detectStatement, setDetectStatement] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -91,12 +106,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     query,
     submittedQuery,
     submittedFilters,
+    filterOwnership,
     filters,
     page,
     availableFilters,
     filterLoadError,
     completedSearchSnapshot,
-    restoreVersion,
     manualFilterVersion,
     isDefaultBrowseView,
     hasSearched,
@@ -104,6 +119,8 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     setFilters,
     setPage,
     search,
+    clearModelFilters,
+    applySearchUrlState,
     restore: restoreSearch,
     showNewest,
     loadFilters,
@@ -112,11 +129,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     result: detectResult,
     loading: detectLoading,
     error: detectError,
+    uiState: detectUiState,
+    verifyingStatement,
     lateMatchNotice,
     dismissLateMatchNotice,
     detect,
     restore: restoreDetect,
-    reset: resetDetect,
   } = useDetect();
   const {
     status: preparedAggregateResearchStatus,
@@ -153,11 +171,18 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const previousTabForResearchRef = useRef<HomeTab | null>(null);
   const lastSavedSearchRequestKeyRef = useRef<string | null>(null);
   const lastSavedDetectSnapshotKeyRef = useRef<string | null>(null);
-  const lastHandledSearchRestoreVersionRef = useRef(0);
   const lastHandledManualFilterVersionRef = useRef(0);
   const [isHydratingSearchRestore, setIsHydratingSearchRestore] = useState(false);
   const [isHydratingDetectRestore, setIsHydratingDetectRestore] = useState(false);
+  const parsedSearchUrlState = useMemo(() => parseSearchUrlState(searchParams), [searchParams]);
+  const searchUrlKey = searchParams.toString();
+  const [hydratedSearchUrlKey, setHydratedSearchUrlKey] = useState<string | null>(() =>
+    hasSearchUrlState(parsedSearchUrlState) ? null : searchUrlKey,
+  );
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters]);
+  const lastAppliedSearchUrlKeyRef = useRef<string | null>(null);
+  const hasHydratedSearchUrl =
+    !hasSearchUrlState(parsedSearchUrlState) || hydratedSearchUrlKey === searchUrlKey;
   const feedbackContext = useMemo(
     () => ({
       pageType: "home" as const,
@@ -173,6 +198,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const markPreparedResearchOpened = useEffectEvent((key: string | null) => {
     setAutoOpenedPreparedResearchKey(key);
   });
+  const markSearchUrlHydrated = useEffectEvent((urlKey: string) => {
+    setHydratedSearchUrlKey(urlKey);
+  });
 
   useEffect(() => {
     void loadFilters();
@@ -183,6 +211,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       activeTab !== "search" ||
       availableFilters === null ||
       loading ||
+      !hasHydratedSearchUrl ||
       isHydratingSearchRestore ||
       query.trim() !== "" ||
       hasSearched ||
@@ -197,6 +226,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     activeTab,
     availableFilters,
     hasSearched,
+    hasHydratedSearchUrl,
     isHydratingSearchRestore,
     loading,
     error,
@@ -211,6 +241,89 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     },
     [openStatementResearch]
   );
+
+  useEffect(() => {
+    if (lastAppliedSearchUrlKeyRef.current === searchUrlKey) {
+      queueMicrotask(() => {
+        markSearchUrlHydrated(searchUrlKey);
+      });
+      return;
+    }
+
+    lastAppliedSearchUrlKeyRef.current = searchUrlKey;
+
+    if (!hasSearchUrlState(parsedSearchUrlState)) {
+      if (query.trim() || hasSearched || results !== null) {
+        setQuery("");
+      }
+      queueMicrotask(() => {
+        markSearchUrlHydrated(searchUrlKey);
+      });
+      return;
+    }
+
+    const userOwnership = createUserOwnedFilterState(parsedSearchUrlState.filters);
+    applySearchUrlState({
+      query: parsedSearchUrlState.query,
+      filters: parsedSearchUrlState.filters,
+      page: parsedSearchUrlState.page,
+    });
+    queueMicrotask(() => {
+      markSearchUrlHydrated(searchUrlKey);
+    });
+    void search({
+      nextPage: parsedSearchUrlState.page,
+      submit: true,
+      overrideOwnership: userOwnership,
+      source: "submit",
+    });
+  }, [
+    applySearchUrlState,
+    hasSearched,
+    parsedSearchUrlState,
+    query,
+    results,
+    search,
+    searchUrlKey,
+    setQuery,
+  ]);
+
+  useEffect(() => {
+    if (!hasHydratedSearchUrl) {
+      return;
+    }
+
+    const params = serializeSearchUrlState({
+      mode: activeTab,
+      query: isDefaultBrowseView ? "" : submittedQuery,
+      filters: isDefaultBrowseView ? {
+        strana: null,
+        vyhodnotenie: null,
+        meno: null,
+        datum_od: null,
+        datum_do: null,
+      } : submittedFilters,
+      page: isDefaultBrowseView ? 1 : page,
+    });
+    const nextKey = params.toString();
+
+    if (nextKey === searchParams.toString()) {
+      return;
+    }
+
+    lastAppliedSearchUrlKeyRef.current = nextKey;
+    router.replace(nextKey ? `${pathname}?${nextKey}` : pathname, { scroll: false });
+  }, [
+    activeTab,
+    hasHydratedSearchUrl,
+    isDefaultBrowseView,
+    page,
+    pathname,
+    router,
+    searchParams,
+    submittedFilters,
+    submittedQuery,
+  ]);
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
@@ -328,16 +441,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     },
     [],
   );
-
-  useEffect(() => {
-    if (restoreVersion <= lastHandledSearchRestoreVersionRef.current) {
-      return;
-    }
-
-    lastHandledSearchRestoreVersionRef.current = restoreVersion;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mark restore hydration for the next render cycle
-    setIsHydratingSearchRestore(true);
-  }, [restoreVersion]);
 
   useEffect(() => {
     if (!isHydratingSearchRestore) {
@@ -527,7 +630,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       isHydratingSearchRestore ||
       loading ||
       !hasSearched ||
-      areFiltersEqual(filters, submittedFilters)
+      areFilterStatesEqual(filters, submittedFilters)
     ) {
       return;
     }
@@ -574,6 +677,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const isDetectDirty =
+    detectResult !== null &&
+    normalizeHistoryQuery(detectStatement) !== normalizeHistoryQuery(detectResult.input_statement);
+
   const matchedStatementIds = useMemo(
     () =>
       detectResult?.matches
@@ -584,6 +691,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const preparedAggregateResearchKey = preparedAggregateStatementIds.join(",");
   const shouldPrepareAggregateResearch =
     !!detectResult &&
+    !isDetectDirty &&
     detectResult.overall_status !== "NEW_CLAIM" &&
     matchedStatementIds.length > 0;
   const shouldAutoOpenPreparedResearch =
@@ -592,13 +700,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     preparedAggregateResearchData !== null &&
     preparedAggregateStatementIds.length > 0 &&
     autoOpenedPreparedResearchKey !== preparedAggregateResearchKey;
-  const isAggregatePreparationBlocking =
-    activeTab === "detect" &&
-    !!detectResult &&
-    shouldPrepareAggregateResearch &&
-    researchDisplayState === "closed" &&
-    (preparedAggregateResearchStatus === "preparing" || shouldAutoOpenPreparedResearch);
-
   useEffect(() => {
     const previousTab = previousTabForResearchRef.current;
 
@@ -673,14 +774,9 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     };
   }, [isHydratingDetectRestore]);
 
-  const handleDetectReset = () => {
+  const handleDetectDirty = () => {
     setIsAddModalOpen(false);
-    setAutoOpenedPreparedResearchKey(null);
-    resetDetect();
-    resetPreparedAggregateResearch();
-    if (researchDisplayState !== "closed") {
-      startCloseResearch();
-    }
+    dismissLateMatchNotice();
   };
 
   const handleDetect = (statement: string) => {
@@ -691,7 +787,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     if (researchDisplayState !== "closed") {
       startCloseResearch();
     }
-    void detect(statement, "fast");
+    void detect(statement, "thorough");
   };
 
   const isStatementResearchPending =
@@ -699,13 +795,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
   const hasDetectPanelLoading =
     detectLoading ||
-    isAggregatePreparationBlocking ||
     (activeTab === "detect" && isStatementResearchPending);
   const detectLoadingPhase = isStatementResearchPending
     ? "statement-research"
-    : isAggregatePreparationBlocking
-      ? "aggregate"
-      : "detect";
+    : "detect";
   const isPreparedResearchHandoff =
     preparedAggregateResearchStatus === "ready" &&
     researchDisplayState === "entering" &&
@@ -733,9 +826,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     : "Načítavam výsledky vyhľadávania...";
   const detectLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
-    : isAggregatePreparationBlocking
-      ? "Pripravujem súhrnný prieskum a súvisiace zdroje..."
-      : "Porovnávam výrok s databázou overených tvrdení...";
+    : "Porovnávam výrok s databázou overených tvrdení...";
   const addModalInitialStatement = detectResult?.input_statement ?? detectStatement;
 
   const handleOpenPreparedResearch = () => {
@@ -752,6 +843,18 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
   const handleResearchUiStateChange = useCallback((activeTab: "articles" | "statements", selection: ResearchPaneSelection) => {
     setResearchUiState({ activeTab, selection });
   }, []);
+
+  const handleClearModelFilters = useCallback(() => {
+    const nextFilters = clearModelFilters();
+    const nextOwnership = createUserOwnedFilterState(nextFilters);
+    setPage(1);
+    void search({
+      nextPage: 1,
+      submit: true,
+      overrideOwnership: nextOwnership,
+      source: "auto-filter-refine",
+    });
+  }, [clearModelFilters, search, setPage]);
 
   const handleLateMatchToastAction = useCallback(() => {
     if (isAddModalOpen) {
@@ -786,6 +889,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 onSearch={handleSearch}
                 isVisible={activeTab === "search"}
                 loading={loading}
+                isBrowseLoading={loading && isDefaultBrowseView}
                 filters={filters}
                 historyEntries={searchHistoryEntries}
                 onHistorySelect={handleSearchHistorySelect}
@@ -840,10 +944,20 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
 
                 <div className="hidden lg:block">
-                  <ActiveFilters filters={filters} onChange={setFilters} />
+                  <ActiveFilters
+                    filters={filters}
+                    filterOwnership={filterOwnership}
+                    onChange={setFilters}
+                    onClearModelFilters={handleClearModelFilters}
+                  />
                 </div>
                 <div className="lg:hidden">
-                  <ActiveFilters filters={filters} onChange={setFilters} />
+                  <ActiveFilters
+                    filters={filters}
+                    filterOwnership={filterOwnership}
+                    onChange={setFilters}
+                    onClearModelFilters={handleClearModelFilters}
+                  />
                 </div>
 
                 {isSearchPanelLoading ? (
@@ -962,11 +1076,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
               onSubmit={handleDetect}
               isVisible={activeTab === "detect"}
               loading={isDetectPanelLoading}
-              onReset={handleDetectReset}
               historyEntries={detectHistoryEntries}
               onHistorySelect={handleDetectHistorySelect}
               onHistoryRemove={removeDetectEntry}
               onHistoryClear={clearDetectHistory}
+              onDirty={handleDetectDirty}
+              isStale={isDetectDirty}
             />
 
             <div className="min-h-[320px]">
@@ -999,6 +1114,17 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
+              {!isDetectPanelLoading && detectUiState === "verifying_in_background" ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Overenie ešte prebieha
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                    Výrok <span className="font-semibold">{verifyingStatement}</span> sa stále kontroluje v rozšírenom režime. Výsledok zatiaľ neoznačíme ako nový, kým sa overenie definitívne neskončí.
+                  </p>
+                </div>
+              ) : null}
+
               {!isDetectPanelLoading && !detectResult ? (
                 <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
@@ -1017,14 +1143,19 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 <DetectionResults
                   result={detectResult}
                   onOpenStatementResearch={(statementId) => {
-                    void openStatementResearch(statementId, { revealWhenReady: false });
+                    if (!isDetectDirty) {
+                      void openStatementResearch(statementId, { revealWhenReady: false });
+                    }
                   }}
                   researchPreparationStatus={preparedAggregateResearchStatus}
                   onPrepareResearchRetry={() => {
-                    void retryPreparedAggregateResearch();
+                    if (!isDetectDirty) {
+                      void retryPreparedAggregateResearch();
+                    }
                   }}
-                  onOpenPreparedResearch={handleOpenPreparedResearch}
-                  onOpenAddStatement={() => setIsAddModalOpen(true)}
+                  onOpenPreparedResearch={!isDetectDirty ? handleOpenPreparedResearch : undefined}
+                  onOpenAddStatement={!isDetectDirty ? () => setIsAddModalOpen(true) : undefined}
+                  isStale={isDetectDirty}
                 />
               ) : null}
             </div>

@@ -117,8 +117,15 @@ export async function POST(request: NextRequest) {
   }
 
   const ids = body.ids;
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return NextResponse.json({ error: "ids must be a non-empty array" }, { status: 400 });
+  if (
+    !Array.isArray(ids) ||
+    ids.length === 0 ||
+    !ids.every((id) => Number.isInteger(id) && id > 0)
+  ) {
+    return NextResponse.json(
+      { error: "ids must be a non-empty array of positive integers" },
+      { status: 400 },
+    );
   }
 
   if (ids.length > MAX_IDS_PER_REQUEST) {
@@ -192,19 +199,26 @@ export async function POST(request: NextRequest) {
     const persistResults = await Promise.allSettled(
       updates.map((u) => supabase.from("statement_sources").update({ title: u.title }).eq("id", u.id))
     );
-    const persistErrors = persistResults
-      .map((r, i) => ({ update: updates[i], result: r }))
-      .filter((x): x is { update: { id: number; title: string }; result: PromiseRejectedResult } => x.result.status === "rejected");
+    const persistErrors = persistResults.flatMap((result, index) => {
+      const update = updates[index];
+
+      if (result.status === "rejected") {
+        return [{ id: update.id, error: logger.errorInfo(result.reason) }];
+      }
+
+      if (result.value.error) {
+        return [{ id: update.id, error: logger.errorInfo(result.value.error) }];
+      }
+
+      return [];
+    });
 
     if (persistErrors.length > 0) {
       logger.warn("source_title_persist_failed", "persist", {
         route: "/api/sources/enrich",
         failed_count: persistErrors.length,
         total_count: updates.length,
-        errors: persistErrors.map((e) => ({
-          id: e.update.id,
-          error: logger.errorInfo(e.result.reason),
-        })),
+        errors: persistErrors,
       });
     }
   }

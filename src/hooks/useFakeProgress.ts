@@ -31,9 +31,7 @@ function interpolate(start: number, end: number, rawProgress: number, easing = e
   return start + (end - start) * easing(clamped);
 }
 
-function getPhaseProgress(phase: FakeProgressPhase, elapsedMs: number) {
-  void phase;
-
+function getPhaseProgress(_phase: FakeProgressPhase, elapsedMs: number) {
   const cappedElapsed = Math.max(0, elapsedMs);
   if (cappedElapsed <= LINEAR_DURATION_MS) {
     return interpolate(

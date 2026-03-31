@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   DetectResponse,
@@ -12,6 +19,7 @@ import type {
 } from "@/types";
 import { APP_NAVBAR_ID } from "@/lib/layout";
 import type { WorkspaceDisplayState } from "@/hooks/useResearch";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import type { ResearchPaneSelection } from "@/types/history";
 
 import DetectStatusBar from "./DetectStatusBar";
@@ -121,6 +129,7 @@ export default function ResearchWorkspace({
   const [isMobileNavigatorOpen, setIsMobileNavigatorOpen] = useState(false);
   const [navbarOffset, setNavbarOffset] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousDisplayStateRef = useRef<WorkspaceDisplayState>(displayState);
   const frameIdRef = useRef<number | null>(null);
   const panelDelayTimeoutIdRef = useRef<number | null>(null);
@@ -143,6 +152,27 @@ export default function ResearchWorkspace({
     () => getVisibleArticleItems(workspaceMode, data?.items ?? [], detectMatches),
     [data, detectMatches, workspaceMode],
   );
+  const activeSidebarTab: SidebarTab =
+    workspaceMode === "aggregate" &&
+    detectMatches.length > 0 &&
+    visibleArticleItems.length === 0 &&
+    sidebarTab === "articles"
+      ? "statements"
+      : sidebarTab;
+  const emptyPaneMessage =
+    workspaceMode === "aggregate" && visibleArticleItems.length === 0 && detectMatches.length === 0
+      ? "Pre tento výrok sa nenašli články ani súvisiace výroky."
+      : activeSidebarTab === "statements" && detectMatches.length === 0
+        ? "Pre tento výrok sa nenašli súvisiace výroky."
+        : activeSidebarTab === "articles" && visibleArticleItems.length === 0
+          ? "Pre tento výrok sa nenašli články ani externé zdroje."
+          : "Vyberte položku z ľavého panelu.";
+
+  useDialogFocus({
+    isOpen: isRendered,
+    dialogRef,
+    initialFocusRef: closeButtonRef,
+  });
 
   /* eslint-disable react-hooks/set-state-in-effect -- restore from snapshot state */
   useLayoutEffect(() => {
@@ -164,14 +194,14 @@ export default function ResearchWorkspace({
     const items = data?.items ?? [];
 
     if (selection?.type === "statement-match") {
-      if (sidebarTab === "statements" && isSelectionValid(selection, items, detectMatches)) {
+      if (activeSidebarTab === "statements" && isSelectionValid(selection, items, detectMatches)) {
         return selection;
       }
     } else if (selection?.type === "research-item") {
       const isVisibleItem = visibleArticleItems.some((item) => item.id === selection.id);
 
       if (
-        sidebarTab === "articles" &&
+        activeSidebarTab === "articles" &&
         isSelectionValid(selection, items, detectMatches) &&
         isVisibleItem
       ) {
@@ -179,8 +209,8 @@ export default function ResearchWorkspace({
       }
     }
 
-    return getDefaultSelectionForTab(sidebarTab, workspaceMode, items, detectMatches);
-  }, [data, detectMatches, selection, sidebarTab, visibleArticleItems, workspaceMode]);
+    return getDefaultSelectionForTab(activeSidebarTab, workspaceMode, items, detectMatches);
+  }, [activeSidebarTab, data, detectMatches, selection, visibleArticleItems, workspaceMode]);
   const selectedItem = useMemo(() => {
     if (!resolvedSelection) {
       return null;
@@ -221,10 +251,10 @@ export default function ResearchWorkspace({
 
   useEffect(() => {
     if (!isRestoringRef.current && onUiStateChange) {
-      onUiStateChange(sidebarTab, resolvedSelection);
+      onUiStateChange(activeSidebarTab, resolvedSelection);
     }
     isRestoringRef.current = false;
-  }, [sidebarTab, resolvedSelection, onUiStateChange]);
+  }, [activeSidebarTab, resolvedSelection, onUiStateChange]);
 
   const handleClose = useCallback(() => {
     setSidebarTab("articles");
@@ -411,7 +441,7 @@ export default function ResearchWorkspace({
         return;
       }
 
-      if (isAddModalOpen) {
+      if (isAddModalOpen || isMobileNavigatorOpen) {
         return;
       }
 
@@ -420,7 +450,7 @@ export default function ResearchWorkspace({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleClose, isAddModalOpen, isRendered]);
+  }, [handleClose, isAddModalOpen, isMobileNavigatorOpen, isRendered]);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -454,7 +484,7 @@ export default function ResearchWorkspace({
   const workspaceTitle = workspaceMode === "aggregate" ? "Súhrnný prieskum" : "Prieskum výroku";
   const mobileNavigatorLabel =
     workspaceMode === "aggregate"
-      ? sidebarTab === "articles"
+      ? activeSidebarTab === "articles"
         ? "Zdroje"
         : "Výroky"
       : "Zdroje";
@@ -483,7 +513,8 @@ export default function ResearchWorkspace({
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Research workspace"
+          aria-label="Prieskum"
+          tabIndex={-1}
           className={`relative z-10 flex h-full max-h-full w-full max-w-[1500px] flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl transition-[transform,opacity] ${panelTimingClass} dark:border-slate-800 dark:bg-slate-950 ${
             isPanelShown
               ? "translate-y-0 scale-100 opacity-100"
@@ -495,12 +526,13 @@ export default function ResearchWorkspace({
           {!isMobileViewport && (workspaceMode === "statement" || !detectResult) ? (
             <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Research Workspace</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Prieskum</p>
                 <h1 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {workspaceTitle}
                 </h1>
               </div>
               <button
+                ref={closeButtonRef}
                 type="button"
                 onClick={handleClose}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
@@ -528,7 +560,7 @@ export default function ResearchWorkspace({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                      {workspaceMode === "aggregate" ? "Kontrolovaný výrok" : "Research Workspace"}
+                      {workspaceMode === "aggregate" ? "Kontrolovaný výrok" : "Prieskum"}
                     </p>
                     <h1 className="mt-1 line-clamp-2 text-base font-semibold text-slate-900 dark:text-slate-100">
                       {workspaceMode === "aggregate" && detectResult
@@ -546,6 +578,7 @@ export default function ResearchWorkspace({
                     ) : null}
                   </div>
                   <button
+                    ref={closeButtonRef}
                     type="button"
                     onClick={handleClose}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
@@ -558,20 +591,27 @@ export default function ResearchWorkspace({
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   {workspaceMode === "aggregate" ? (
-                    <div className="relative grid flex-1 grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80">
+                    <div
+                      className="relative grid flex-1 grid-cols-2 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1 dark:border-slate-700/70 dark:bg-slate-800/80"
+                      role="tablist"
+                      aria-label="Prepínanie sekcií prieskumu"
+                    >
                       <span
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-y-1 left-1 z-0 w-1/2 rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
                         style={{
                           transform:
-                            sidebarTab === "articles" ? "translateX(0)" : "translateX(100%)",
+                            activeSidebarTab === "articles" ? "translateX(0)" : "translateX(100%)",
                         }}
                       />
                       <button
                         type="button"
                         onClick={() => handleTabChange("articles")}
+                        role="tab"
+                        aria-selected={activeSidebarTab === "articles"}
+                        aria-controls="research-mobile-panel-articles"
                         className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                          sidebarTab === "articles"
+                          activeSidebarTab === "articles"
                             ? "text-slate-900 dark:text-slate-100"
                             : "text-slate-500 dark:text-slate-400"
                         }`}
@@ -581,8 +621,11 @@ export default function ResearchWorkspace({
                       <button
                         type="button"
                         onClick={() => handleTabChange("statements")}
+                        role="tab"
+                        aria-selected={activeSidebarTab === "statements"}
+                        aria-controls="research-mobile-panel-statements"
                         className={`relative z-10 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                          sidebarTab === "statements"
+                          activeSidebarTab === "statements"
                             ? "text-slate-900 dark:text-slate-100"
                             : "text-slate-500 dark:text-slate-400"
                         }`}
@@ -635,6 +678,7 @@ export default function ResearchWorkspace({
                   {!loading && !error ? (
                     <ResearchPane
                       item={selectedItem}
+                      emptyMessage={emptyPaneMessage}
                       onNavigateToStatement={(statementId) => {
                         setSidebarTab("statements");
                         setSelection({ type: "statement-match", statementId });
@@ -648,7 +692,7 @@ export default function ResearchWorkspace({
                 isOpen={isMobileNavigatorOpen}
                 onClose={() => setIsMobileNavigatorOpen(false)}
                 mode={data?.mode ?? "statement"}
-                activeTab={sidebarTab}
+                activeTab={activeSidebarTab}
                 items={visibleArticleItems}
                 detectMatches={detectMatches}
                 selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
@@ -669,7 +713,7 @@ export default function ResearchWorkspace({
                 <ResearchSidebar
                   mode={data?.mode ?? "statement"}
                   items={data?.items ?? []}
-                  activeTab={sidebarTab}
+                  activeTab={activeSidebarTab}
                   onTabChange={handleTabChange}
                   selectedId={resolvedSelection?.type === "research-item" ? resolvedSelection.id : null}
                   onSelect={(itemId) => {
@@ -716,6 +760,7 @@ export default function ResearchWorkspace({
                 {!loading && !error ? (
                   <ResearchPane
                     item={selectedItem}
+                    emptyMessage={emptyPaneMessage}
                     onNavigateToStatement={(statementId) => {
                       setSidebarTab("statements");
                       setSelection({ type: "statement-match", statementId });

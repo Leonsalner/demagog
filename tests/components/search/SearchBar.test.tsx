@@ -167,10 +167,11 @@ describe("SearchBar history filter summary", () => {
   it("keeps search and history available during browse loading", () => {
     render(
       <SearchBar
-        value=""
+        value="konsolidácia"
         onChange={() => {}}
         onSearch={() => {}}
         loading
+        isBrowseLoading
         historyEntries={[sampleEntry]}
       />,
     );

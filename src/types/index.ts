@@ -95,6 +95,7 @@ export interface SearchResponse {
   has_more?: boolean;
   related_results?: Statement[];
   related_articles?: Article[];
+  warnings?: ResponseWarning[];
   query_understanding?: {
     extracted_filters: QueryUnderstanding["filters"];
     related_politicians: QueryUnderstanding["related_politicians"];
@@ -130,7 +131,12 @@ export interface DetectResponse {
   overall_status: "DUPLICATE_FOUND" | "RELATED_ONLY" | "NEW_CLAIM";
   query_time_ms: number;
   related_articles?: Article[];
+  warnings?: ResponseWarning[];
 }
+
+export type ResponseWarning =
+  | "statement_sources_unavailable"
+  | "related_articles_unavailable";
 
 export interface FiltersResponse {
   strany: string[];
@@ -150,6 +156,7 @@ export interface StatementCardProps {
   classification?: DetectionMatch["classification"];
   onOpenResearch?: (statementId: number) => void;
   isActive?: boolean;
+  disableResearch?: boolean;
 }
 
 export interface FilterState {

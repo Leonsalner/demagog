@@ -17,6 +17,7 @@ import type {
   DetectMode,
   DetectResponse,
   DetectionMatch,
+  ResponseWarning,
   Statement,
   StatementSource,
   Verdict,
@@ -127,17 +128,29 @@ function buildNewClaimFallbackResponse(
 
 async function fetchSourcesForIds(
   supabase: ReturnType<typeof supabasePublic>,
-  ids: number[]
-): Promise<Map<number, StatementSource[]>> {
+  ids: number[],
+  logger: ReturnType<typeof createLogger>,
+): Promise<{ sourcesMap: Map<number, StatementSource[]>; warning?: ResponseWarning }> {
   if (ids.length === 0) {
-    return new Map();
+    return { sourcesMap: new Map() };
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("statement_sources")
     .select("id, statement_id, position, label, url, title")
     .in("statement_id", ids)
     .order("position");
+
+  if (error) {
+    logger.warn("statement_sources_fetch_failed", "fetch", {
+      route: "/api/detect",
+      statement_count: ids.length,
+    }, error);
+    return {
+      sourcesMap: new Map(),
+      warning: "statement_sources_unavailable",
+    };
+  }
 
   const map = new Map<number, StatementSource[]>();
 
@@ -147,7 +160,7 @@ async function fetchSourcesForIds(
     map.set(row.statement_id, list);
   }
 
-  return map;
+  return { sourcesMap: map };
 }
 
 function isRpcUnavailable(error: { code?: string | null } | null | undefined): boolean {
@@ -271,11 +284,11 @@ export async function POST(request: NextRequest) {
   try {
     parsedBody = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json({ error: "Neplatné telo požiadavky." }, { status: 400 });
   }
 
   if (!isRecord(parsedBody) || typeof parsedBody.statement !== "string") {
-    return NextResponse.json({ error: "Statement is required" }, { status: 400 });
+    return NextResponse.json({ error: "Výrok je povinný." }, { status: 400 });
   }
 
   const statement = parsedBody.statement.trim();
@@ -291,17 +304,17 @@ export async function POST(request: NextRequest) {
       rawTopK < 1 ||
       rawTopK > 20)
   ) {
-    return NextResponse.json({ error: "top_k must be between 1 and 20" }, { status: 400 });
+    return NextResponse.json({ error: "Parameter top_k musí byť medzi 1 a 20." }, { status: 400 });
   }
 
   const topK = typeof rawTopK === "number" ? rawTopK : 10;
 
   if (!statement) {
-    return NextResponse.json({ error: "Statement is required" }, { status: 400 });
+    return NextResponse.json({ error: "Výrok je povinný." }, { status: 400 });
   }
   if (statement.length > 2000) {
     return NextResponse.json(
-      { error: "Statement too long (max 2000 chars)" },
+      { error: "Výrok je príliš dlhý. Maximum je 2000 znakov." },
       { status: 400 }
     );
   }
@@ -359,123 +372,127 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Classification timeout")), 10000)
-      );
+    const warnings = new Set<ResponseWarning>();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Classification timeout")), 10000)
+    );
 
-      const classifications = await Promise.race([
-        classifyMatches(
-          statement,
-          rows.map((row) => ({
-            id: row.id,
-            vyrok: row.vyrok,
-            vyhodnotenie: row.vyhodnotenie,
-          })),
-          getGeminiModel(mode === "fast" ? "lite" : "pro")
-        ),
-        timeoutPromise,
-      ]);
+    const classifications = await Promise.race([
+      classifyMatches(
+        statement,
+        rows.map((row) => ({
+          id: row.id,
+          vyrok: row.vyrok,
+          vyhodnotenie: row.vyhodnotenie,
+        })),
+        getGeminiModel(mode === "fast" ? "lite" : "pro")
+      ),
+      timeoutPromise,
+    ]);
 
-      const classificationsById = new Map(
-        classifications.map((classification) => [classification.id, classification])
-      );
+    const classificationsById = new Map(
+      classifications.map((classification) => [classification.id, classification])
+    );
 
-      const rawMatches: DetectionMatch[] = rows
-        .map((row) => {
-          const classification = classificationsById.get(row.id);
+    const rawMatches: DetectionMatch[] = rows
+      .map((row) => {
+        const classification = classificationsById.get(row.id);
 
-          return {
-            statement: toStatement(row),
-            similarity: row.similarity,
-            classification: classification?.classification ?? "UNRELATED",
-          };
-        })
-        .sort((left, right) => {
-          const rankDiff =
-            classificationRank(left.classification) -
-            classificationRank(right.classification);
+        return {
+          statement: toStatement(row),
+          similarity: row.similarity,
+          classification: classification?.classification ?? "UNRELATED",
+        };
+      })
+      .sort((left, right) => {
+        const rankDiff =
+          classificationRank(left.classification) -
+          classificationRank(right.classification);
 
-          if (rankDiff !== 0) {
-            return rankDiff;
+        if (rankDiff !== 0) {
+          return rankDiff;
+        }
+
+        return right.similarity - left.similarity;
+      })
+      .slice(0, topK);
+
+    const { sourcesMap, warning } = await fetchSourcesForIds(
+      supabase,
+      rawMatches.map((m) => m.statement.id),
+      logger,
+    );
+    if (warning) {
+      warnings.add(warning);
+    }
+
+    const matches: DetectionMatch[] = rawMatches.map((match) => {
+      const sources = sourcesMap.get(match.statement.id);
+      return sources && sources.length > 0
+        ? { ...match, statement: { ...match.statement, sources } }
+        : match;
+    });
+
+    const overallStatus: DetectResponse["overall_status"] = matches.some(
+      (match) => match.classification === "DUPLICATE"
+    )
+      ? "DUPLICATE_FOUND"
+      : matches.some((match) => match.classification === "RELATED")
+        ? "RELATED_ONLY"
+        : "NEW_CLAIM";
+
+    let relatedArticles: Article[] | undefined;
+    if (overallStatus !== "NEW_CLAIM" && embedding) {
+      const articlesStartedAt = performance.now();
+      try {
+        const { data: articleData, error: articleError } = await supabase.rpc(
+          "match_articles",
+          {
+            query_embedding: embedding,
+            match_count: 10,
           }
+        );
 
-          return right.similarity - left.similarity;
-        })
-        .slice(0, topK);
-
-      const sourcesMap = await fetchSourcesForIds(
-        supabase,
-        rawMatches.map((m) => m.statement.id)
-      );
-
-      const matches: DetectionMatch[] = rawMatches.map((match) => {
-        const sources = sourcesMap.get(match.statement.id);
-        return sources && sources.length > 0
-          ? { ...match, statement: { ...match.statement, sources } }
-          : match;
-      });
-
-      const overallStatus: DetectResponse["overall_status"] = matches.some(
-        (match) => match.classification === "DUPLICATE"
-      )
-        ? "DUPLICATE_FOUND"
-        : matches.some((match) => match.classification === "RELATED")
-          ? "RELATED_ONLY"
-          : "NEW_CLAIM";
-
-      let relatedArticles: Article[] | undefined;
-      if (overallStatus !== "NEW_CLAIM" && embedding) {
-        const articlesStartedAt = performance.now();
-        try {
-          const { data: articleData, error: articleError } = await supabase.rpc(
-            "match_articles",
-            {
-              query_embedding: embedding,
-              match_count: 10,
-            }
-          );
-
-          if (!articleError) {
-            const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
-            relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
-              .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
-              .map(toArticle)
-              .filter((article) => article.text.length > 0);
-          }
-        } catch (err) {
+        if (articleError) {
+          warnings.add("related_articles_unavailable");
           logger.warn("article_match_failed", "fetch", {
             route: "/api/detect",
             duration_ms: Math.round(performance.now() - articlesStartedAt),
-          }, err);
+          }, articleError);
+        } else {
+          const ARTICLE_SIMILARITY_THRESHOLD = 0.3;
+          relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
+            .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
+            .map(toArticle)
+            .filter((article) => article.text.length > 0);
         }
+      } catch (err) {
+        logger.warn("article_match_failed", "fetch", {
+          route: "/api/detect",
+          duration_ms: Math.round(performance.now() - articlesStartedAt),
+        }, err);
       }
-
-      const response: DetectResponse = {
-        input_statement: statement,
-        matches,
-        overall_status: overallStatus,
-        query_time_ms: Math.round(performance.now() - start),
-        ...(relatedArticles && relatedArticles.length > 0
-          ? { related_articles: relatedArticles }
-          : {}),
-      };
-
-      const nextResponse = NextResponse.json(response);
-      nextResponse.headers.set("X-Correlation-ID", correlationId);
-      return nextResponse;
-    } catch (error) {
-      logger.warn("detect_classification_fallback", "catch", {
-        route: "/api/detect",
-        duration_ms: Math.round(performance.now() - start),
-      }, error);
-      return buildNewClaimFallbackResponse(statement, start, correlationId);
     }
+
+    const response: DetectResponse = {
+      input_statement: statement,
+      matches,
+      overall_status: overallStatus,
+      query_time_ms: Math.round(performance.now() - start),
+      ...(relatedArticles && relatedArticles.length > 0
+        ? { related_articles: relatedArticles }
+        : {}),
+      ...(warnings.size > 0 ? { warnings: Array.from(warnings) } : {}),
+    };
+
+    const nextResponse = NextResponse.json(response);
+    nextResponse.headers.set("X-Correlation-ID", correlationId);
+    return nextResponse;
   } catch (error) {
-    logger.warn("detect_query_fallback", "catch", {
+    logger.warn("detect_classification_failed", "catch", {
       route: "/api/detect",
       duration_ms: Math.round(performance.now() - start),
     }, error);
-    return buildNewClaimFallbackResponse(statement, start, correlationId);
+    return NextResponse.json({ error: "Classification error" }, { status: 502 });
   }
 }

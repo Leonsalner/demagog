@@ -19,6 +19,7 @@ import type {
   Article,
   QueryUnderstanding,
   MultiValueFilter,
+  ResponseWarning,
   SearchRequest,
   SearchResponse,
   Statement,
@@ -689,17 +690,29 @@ async function fetchAvailableQueryValues(
 
 async function fetchSourcesForIds(
   supabase: ReturnType<typeof supabasePublic>,
-  ids: number[]
-): Promise<Map<number, StatementSource[]>> {
+  ids: number[],
+  logger: ReturnType<typeof createLogger>,
+): Promise<{ sourcesMap: Map<number, StatementSource[]>; warning?: ResponseWarning }> {
   if (ids.length === 0) {
-    return new Map();
+    return { sourcesMap: new Map() };
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("statement_sources")
     .select("id, statement_id, position, label, url, title")
     .in("statement_id", ids)
     .order("position");
+
+  if (error) {
+    logger.warn("statement_sources_fetch_failed", "fetch", {
+      route: "/api/search",
+      statement_count: ids.length,
+    }, error);
+    return {
+      sourcesMap: new Map(),
+      warning: "statement_sources_unavailable",
+    };
+  }
 
   const map = new Map<number, StatementSource[]>();
 
@@ -709,7 +722,7 @@ async function fetchSourcesForIds(
     map.set(row.statement_id, list);
   }
 
-  return map;
+  return { sourcesMap: map };
 }
 
 export function resetSearchRouteStateForTests(): void {
@@ -1010,6 +1023,7 @@ export async function POST(request: NextRequest) {
     let relatedResults: Statement[] | undefined;
     let relatedArticles: Article[] | undefined;
     let queryUnderstanding: SearchResponse["query_understanding"] | undefined;
+    const warnings = new Set<ResponseWarning>();
 
     if (isDefaultBrowseQuery) {
       results = await fetchNewestStatements(supabase);
@@ -1139,7 +1153,13 @@ export async function POST(request: NextRequest) {
               { query_embedding: embedding, match_count: 5 }
             );
 
-            if (!articleError) {
+            if (articleError) {
+              warnings.add("related_articles_unavailable");
+              logger.warn("article_match_failed", "fetch", {
+                route: "/api/search",
+                duration_ms: Math.round(performance.now() - articlesStartedAt),
+              }, articleError);
+            } else {
               relatedArticles = ((articleData ?? []) as ArticleMatchRow[])
                 .filter((row) => row.similarity >= ARTICLE_SIMILARITY_THRESHOLD)
                 .map(toArticle)
@@ -1224,8 +1244,11 @@ export async function POST(request: NextRequest) {
       ...(relatedResults ?? []).map((s) => s.id),
     ];
     if (allIds.length > 0) {
-      const sourcesMap = await fetchSourcesForIds(supabase, allIds);
+      const { sourcesMap, warning } = await fetchSourcesForIds(supabase, allIds, logger);
       recordStageTiming(timings, "sources_ms", sourcesStartedAt);
+      if (warning) {
+        warnings.add(warning);
+      }
 
       results = attachSources(results, sourcesMap);
       if (relatedResults) {
@@ -1246,6 +1269,7 @@ export async function POST(request: NextRequest) {
       ...(relatedArticles && relatedArticles.length > 0
         ? { related_articles: relatedArticles }
         : {}),
+      ...(warnings.size > 0 ? { warnings: Array.from(warnings) } : {}),
       ...(queryUnderstanding ? { query_understanding: queryUnderstanding } : {}),
     };
 

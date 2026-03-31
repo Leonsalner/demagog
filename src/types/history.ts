@@ -31,7 +31,7 @@ export type SearchHistoryEntry = {
 
 export type SearchResponseSnapshot = Pick<
   SearchResponse,
-  "results" | "related_results" | "related_articles" | "total_count" | "page" | "page_size" | "query_time_ms" | "has_more" | "query_understanding"
+  "results" | "related_results" | "related_articles" | "total_count" | "page" | "page_size" | "query_time_ms" | "has_more" | "warnings" | "query_understanding"
 >;
 
 export type SearchHistoryResult = {

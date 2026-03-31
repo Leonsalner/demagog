@@ -11,13 +11,18 @@ import StatementMatchPane from "./StatementMatchPane";
 interface ResearchPaneProps {
   item: ResearchItem | DetectionMatch | null;
   onNavigateToStatement?: (statementId: number) => void;
+  emptyMessage?: string;
 }
 
-export default function ResearchPane({ item, onNavigateToStatement }: ResearchPaneProps) {
+export default function ResearchPane({
+  item,
+  onNavigateToStatement,
+  emptyMessage = "Vyberte položku z ľavého panelu.",
+}: ResearchPaneProps) {
   if (!item) {
     return (
       <div className="flex min-h-[280px] items-center justify-center rounded-3xl border border-slate-200 bg-slate-50 px-5 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400 sm:px-6">
-        Vyberte položku z ľavého panelu.
+        {emptyMessage}
       </div>
     );
   }

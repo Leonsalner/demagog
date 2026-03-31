@@ -18,6 +18,14 @@ vi.mock("@/hooks/useResearch", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  })),
   usePathname: vi.fn(() => "/"),
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }));
@@ -29,10 +37,21 @@ vi.mock("@/components/home/HomeOnboarding", () => ({
 const { useSearch } = await import("@/hooks/useSearch");
 const { useDetect } = await import("@/hooks/useDetect");
 const { useResearch } = await import("@/hooks/useResearch");
-const { usePathname, useSearchParams } = await import("next/navigation");
+const { usePathname, useSearchParams, useRouter } = await import("next/navigation");
 
 function createSearchParams(value = "") {
   return new URLSearchParams(value) as never;
+}
+
+function createRouterMock() {
+  return {
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  } as never;
 }
 
 function renderHarness(activeTab: "search" | "detect") {
@@ -66,7 +85,7 @@ describe("feedback context integration", () => {
       }),
     });
     fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ status: "submitted", linearRequestId: "need-3" }), {
+      new Response(JSON.stringify({ status: "submitted" }), {
         status: 201,
         headers: {
           "Content-Type": "application/json",
@@ -76,6 +95,7 @@ describe("feedback context integration", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.mocked(usePathname).mockReturnValue("/");
     vi.mocked(useSearchParams).mockReturnValue(createSearchParams());
+    vi.mocked(useRouter).mockReturnValue(createRouterMock());
     vi.mocked(useSearch).mockReturnValue({
       results: null,
       loading: false,
@@ -112,11 +132,21 @@ describe("feedback context integration", () => {
       restore: vi.fn(),
       showNewest: vi.fn().mockResolvedValue(undefined),
       loadFilters: vi.fn().mockResolvedValue(null),
+      clearModelFilters: vi.fn().mockReturnValue({
+        strana: null,
+        vyhodnotenie: null,
+        meno: null,
+        datum_od: null,
+        datum_do: null,
+      }),
+      applySearchUrlState: vi.fn(),
     });
     vi.mocked(useDetect).mockReturnValue({
       result: null,
       loading: false,
       error: null,
+      uiState: "idle",
+      verifyingStatement: null,
       lateMatchNotice: null,
       dismissLateMatchNotice: vi.fn(),
       applyLateMatchResult: vi.fn(),
@@ -159,6 +189,9 @@ describe("feedback context integration", () => {
     renderHarness("search");
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Prosím skontrolujte výsledky." },
     });
@@ -194,6 +227,9 @@ describe("feedback context integration", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "bug" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Toto sa týka vyhľadávania." },
     });
@@ -218,6 +254,9 @@ describe("feedback context integration", () => {
       target: { value: "Na severe Slovenska chýbajú asi tri stovky pediatrov." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "improvement" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Tento výrok treba lepšie prepojiť." },
     });
@@ -251,6 +290,9 @@ describe("feedback context integration", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Otvoriť spätnú väzbu" }));
+    fireEvent.change(screen.getByLabelText("O čo ide?"), {
+      target: { value: "other" },
+    });
     fireEvent.change(screen.getByLabelText("Správa"), {
       target: { value: "Na add stránke chýba vysvetlenie." },
     });

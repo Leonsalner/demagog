@@ -10,7 +10,8 @@ interface StatementInputProps {
   onSubmit: (statement: string) => void;
   isVisible?: boolean;
   loading: boolean;
-  onReset?: () => void;
+  onDirty?: () => void;
+  isStale?: boolean;
   historyEntries?: DetectHistoryEntry[];
   onHistorySelect?: (entry: DetectHistoryEntry) => void;
   onHistoryRemove?: (id: string) => void;
@@ -140,7 +141,8 @@ export default function StatementInput({
   onSubmit,
   isVisible = true,
   loading,
-  onReset,
+  onDirty,
+  isStale = false,
   historyEntries = [],
   onHistorySelect,
   onHistoryRemove,
@@ -182,6 +184,10 @@ export default function StatementInput({
   }
 
   function handleTextareaKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
     if (event.key !== "Enter" || event.shiftKey) {
       return;
     }
@@ -225,7 +231,7 @@ export default function StatementInput({
             onKeyDown={handleTextareaKeyDown}
             onChange={(event) => {
               onChange(event.target.value);
-              onReset?.();
+              onDirty?.();
             }}
             placeholder="Vložte politický výrok na overenie..."
             rows={3}
@@ -240,6 +246,12 @@ export default function StatementInput({
             {value.length} / {MAX_LENGTH}
           </div>
         </div>
+
+        {isStale ? (
+          <p className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-300">
+            Výsledky nižšie už nezodpovedajú aktuálnemu zneniu výroku. Spustite analýzu znova.
+          </p>
+        ) : null}
 
         <div className="mt-4 flex items-center gap-3">
           <button

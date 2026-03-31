@@ -34,18 +34,6 @@ async function extractDetectErrorMessage(response: Response): Promise<string> {
   return "Detekcia zlyhala.";
 }
 
-function buildTimeoutFallbackResponse(
-  statement: string,
-  queryTimeMs: number = DETECT_VISIBLE_TIMEOUT_MS,
-): DetectResponse {
-  return {
-    input_statement: statement,
-    matches: [],
-    overall_status: "NEW_CLAIM",
-    query_time_ms: queryTimeMs,
-  };
-}
-
 function buildMatch(
   statement: Statement,
   similarity: number,
@@ -151,11 +139,19 @@ export type DetectLateMatchNotice =
     }
   | null;
 
+export type DetectUiState =
+  | "idle"
+  | "detecting"
+  | "verifying_in_background"
+  | "complete";
+
 export function useDetect() {
   const [result, setResult] = useState<DetectResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lateMatchNotice, setLateMatchNotice] = useState<DetectLateMatchNotice>(null);
+  const [uiState, setUiState] = useState<DetectUiState>("idle");
+  const [verifyingStatement, setVerifyingStatement] = useState<string | null>(null);
 
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -220,6 +216,8 @@ export function useDetect() {
     setError(null);
     setResult(null);
     setLateMatchNotice(null);
+    setUiState("detecting");
+    setVerifyingStatement(null);
 
     const finalizeVisibleTimeoutFallback = () => {
       if (didVisibleFallback || requestIdRef.current !== requestId) {
@@ -228,9 +226,11 @@ export function useDetect() {
 
       didVisibleFallback = true;
       controller.abort();
-      setResult(buildTimeoutFallbackResponse(statement, DETECT_VISIBLE_TIMEOUT_MS));
+      setResult(null);
       setError(null);
       setLoading(false);
+      setUiState("verifying_in_background");
+      setVerifyingStatement(statement);
 
       startHiddenBackgroundDetect(statement, mode, requestId);
     };
@@ -256,8 +256,11 @@ export function useDetect() {
             return;
           }
 
+          setResult(hiddenResult);
+          setUiState("complete");
+          setVerifyingStatement(null);
+
           if (hiddenResult.overall_status !== "NEW_CLAIM") {
-            setResult(hiddenResult);
             setLateMatchNotice({
               status: hiddenResult.overall_status,
               result: hiddenResult,
@@ -265,7 +268,13 @@ export function useDetect() {
           }
         })
         .catch(() => {
-          // Silent fail - late matches not available
+          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
+            return;
+          }
+
+          setUiState("idle");
+          setVerifyingStatement(null);
+          setError("Overenie trvá príliš dlho. Skúste analýzu spustiť znova.");
         })
         .finally(() => {
           window.clearTimeout(hiddenTimeoutId);
@@ -282,6 +291,7 @@ export function useDetect() {
           return;
         }
         setResult(createMockResponse(statement, 10));
+        setUiState("complete");
         setLoading(false);
         return;
       }
@@ -297,6 +307,8 @@ export function useDetect() {
             visibleTimeoutRef.current = null;
           }
           setResult(data);
+          setUiState("complete");
+          setVerifyingStatement(null);
           return "resolved" as const;
         })
         .catch((error) => {
@@ -310,6 +322,8 @@ export function useDetect() {
           if (requestIdRef.current === requestId && !didVisibleFallback) {
             setResult(null);
             setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
+            setUiState("idle");
+            setVerifyingStatement(null);
           }
           return "errored" as const;
         });
@@ -334,6 +348,8 @@ export function useDetect() {
       }
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
+      setUiState("idle");
+      setVerifyingStatement(null);
     } finally {
       if (visibleTimeoutRef.current !== null) {
         window.clearTimeout(visibleTimeoutRef.current);
@@ -363,6 +379,8 @@ export function useDetect() {
     setError(null);
     setLoading(false);
     setLateMatchNotice(null);
+    setUiState("idle");
+    setVerifyingStatement(null);
   }, []);
 
   const restore = useCallback((entry: DetectHistoryEntry) => {
@@ -384,12 +402,16 @@ export function useDetect() {
     setError(null);
     setResult(entry.response);
     setLateMatchNotice(null);
+    setUiState("complete");
+    setVerifyingStatement(null);
   }, []);
 
   return {
     result,
     loading,
     error,
+    uiState,
+    verifyingStatement,
     lateMatchNotice,
     dismissLateMatchNotice,
     applyLateMatchResult,

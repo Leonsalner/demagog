@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { PreparedAggregateResearchStatus } from "@/hooks/usePreparedAggregateResearch";
 import { formatSlovakFurtherResults } from "@/lib/utils";
 import type { DetectResponse, DetectionMatch } from "@/types";
@@ -13,6 +15,7 @@ interface DetectionResultsProps {
   onPrepareResearchRetry?: () => void;
   onOpenPreparedResearch?: () => void;
   onOpenAddStatement?: () => void;
+  isStale?: boolean;
 }
 
 export const detectStatusConfig = {
@@ -99,24 +102,51 @@ export default function DetectionResults({
   onPrepareResearchRetry,
   onOpenPreparedResearch,
   onOpenAddStatement,
+  isStale = false,
 }: DetectionResultsProps) {
-  const visibleMatches = sortMatches(
-    result.matches.filter((match) => match.classification !== "UNRELATED"),
+  const visibleMatches = useMemo(
+    () =>
+      sortMatches(
+        result.matches.filter((match) => match.classification !== "UNRELATED"),
+      ).map((match) => ({
+        ...match,
+        statementWithSimilarity: {
+          ...match.statement,
+          similarity: match.similarity,
+        },
+      })),
+    [result.matches],
   );
-  const hiddenMatches = sortMatches(
-    result.matches.filter((match) => match.classification === "UNRELATED"),
+  const hiddenMatches = useMemo(
+    () =>
+      sortMatches(
+        result.matches.filter((match) => match.classification === "UNRELATED"),
+      ).map((match) => ({
+        ...match,
+        statementWithSimilarity: {
+          ...match.statement,
+          similarity: match.similarity,
+        },
+      })),
+    [result.matches],
   );
   const status = detectStatusConfig[result.overall_status];
   const showPrimaryAddButton = result.overall_status === "NEW_CLAIM" && onOpenAddStatement;
   const showSecondaryAddButton = result.overall_status !== "NEW_CLAIM" && onOpenAddStatement;
   const secondaryAddButtonClassName =
-    "inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-accent)]/25 bg-white/80 px-3.5 py-2 text-sm font-semibold text-[var(--brand-accent)] transition hover:border-[var(--brand-accent)]/45 hover:bg-white dark:border-[var(--brand-accent-dark)]/25 dark:bg-slate-950/55 dark:text-[var(--brand-accent-dark)] dark:hover:border-[var(--brand-accent-dark)]/45 dark:hover:bg-slate-950";
+    "inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-accent)]/25 bg-white/80 px-3.5 py-2 text-sm font-semibold text-[var(--brand-accent)] transition hover:border-[var(--brand-accent)]/45 hover:bg-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 dark:border-[var(--brand-accent-dark)]/25 dark:bg-slate-950/55 dark:text-[var(--brand-accent-dark)] dark:hover:border-[var(--brand-accent-dark)]/45 dark:hover:bg-slate-950 dark:disabled:border-slate-700 dark:disabled:bg-slate-900 dark:disabled:text-slate-400";
   const primaryResearchButtonClassName =
-    "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950";
+    "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:focus-visible:ring-offset-slate-950 dark:disabled:bg-slate-700 dark:disabled:text-slate-300";
 
   function renderStatusDetail() {
     if (result.overall_status === "NEW_CLAIM") {
-      return status.detail;
+      return isStale
+        ? "Po úprave textu sú tieto výsledky len orientačné. Pred pridaním výroku spustite analýzu znova."
+        : status.detail;
+    }
+
+    if (isStale) {
+      return "Text výroku sa zmenil. Zhody nižšie zostávajú z predchádzajúcej analýzy, kým nespustíte novú.";
     }
 
     if (researchPreparationStatus === "preparing") {
@@ -141,6 +171,7 @@ export default function DetectionResults({
           <button
             type="button"
             onClick={onOpenAddStatement}
+            disabled={isStale}
             className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${status.button}`}
           >
             <svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
@@ -160,7 +191,7 @@ export default function DetectionResults({
             Pripravujem súhrnný prieskum
           </div>
           {showSecondaryAddButton ? (
-            <button type="button" onClick={onOpenAddStatement} className={secondaryAddButtonClassName}>
+            <button type="button" onClick={onOpenAddStatement} disabled={isStale} className={secondaryAddButtonClassName}>
               Pridať výrok
             </button>
           ) : null}
@@ -174,12 +205,13 @@ export default function DetectionResults({
           <button
             type="button"
             onClick={onOpenPreparedResearch}
+            disabled={isStale}
             className={`${primaryResearchButtonClassName} ${status.primaryButton}`}
           >
             Otvoriť prieskum
           </button>
           {showSecondaryAddButton ? (
-            <button type="button" onClick={onOpenAddStatement} className={secondaryAddButtonClassName}>
+            <button type="button" onClick={onOpenAddStatement} disabled={isStale} className={secondaryAddButtonClassName}>
               Pridať výrok
             </button>
           ) : null}
@@ -193,12 +225,13 @@ export default function DetectionResults({
           <button
             type="button"
             onClick={onPrepareResearchRetry}
+            disabled={isStale}
             className={`${primaryResearchButtonClassName} ${status.primaryButton}`}
           >
             Skúsiť pripraviť prieskum znova
           </button>
           {showSecondaryAddButton ? (
-            <button type="button" onClick={onOpenAddStatement} className={secondaryAddButtonClassName}>
+            <button type="button" onClick={onOpenAddStatement} disabled={isStale} className={secondaryAddButtonClassName}>
               Pridať výrok
             </button>
           ) : null}
@@ -209,7 +242,7 @@ export default function DetectionResults({
     if (showSecondaryAddButton) {
       return (
         <div className="mt-4">
-          <button type="button" onClick={onOpenAddStatement} className={secondaryAddButtonClassName}>
+          <button type="button" onClick={onOpenAddStatement} disabled={isStale} className={secondaryAddButtonClassName}>
             Pridať výrok
           </button>
         </div>
@@ -243,10 +276,11 @@ export default function DetectionResults({
           {visibleMatches.map((match) => (
             <StatementCard
               key={`${match.classification}-${match.statement.id}`}
-              statement={{ ...match.statement, similarity: match.similarity }}
+              statement={match.statementWithSimilarity}
               classification={match.classification}
               show_similarity
               onOpenResearch={onOpenStatementResearch}
+              disableResearch={isStale}
             />
           ))}
         </div>
@@ -261,10 +295,11 @@ export default function DetectionResults({
             {hiddenMatches.map((match) => (
               <StatementCard
                 key={`${match.classification}-${match.statement.id}`}
-                statement={{ ...match.statement, similarity: match.similarity }}
+                statement={match.statementWithSimilarity}
                 classification={match.classification}
                 show_similarity
                 onOpenResearch={onOpenStatementResearch}
+                disableResearch={isStale}
               />
             ))}
           </div>

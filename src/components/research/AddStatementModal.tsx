@@ -8,6 +8,12 @@ import StatementFormFields, {
   type StatementFormState,
   type StatementFormStatus,
 } from "@/components/add/StatementFormFields";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
+import {
+  normalizeStatementFormPayload,
+  validateStatementForm,
+  type StatementFormErrors,
+} from "@/lib/statement-form";
 import ViewportPortal from "@/components/shared/ViewportPortal";
 
 const OBLAST_AUTO_DETECT_DEBOUNCE_MS = 700;
@@ -30,14 +36,25 @@ export default function AddStatementModal({
   const [status, setStatus] = useState<StatementFormStatus>("idle");
   const [savedId, setSavedId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<StatementFormErrors>({});
+  const [sourceUrlErrors, setSourceUrlErrors] = useState<Record<number, string>>({});
   const [isDetectingOblast, setIsDetectingOblast] = useState(false);
   const [oblastDetectCycle, setOblastDetectCycle] = useState(0);
+  const [isReviewConfirmed, setIsReviewConfirmed] = useState(false);
   const oblastWasManualRef = useRef(false);
   const oblastValueRef = useRef(form.oblast);
   const lastAutoDetectedOblastRef = useRef<string | null>(null);
   const detectRequestRef = useRef(0);
   const detectAbortRef = useRef<AbortController | null>(null);
   const detectTimeoutRef = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useDialogFocus({
+    isOpen,
+    dialogRef,
+    initialFocusRef: closeButtonRef,
+  });
 
   function invalidateOblastDetection() {
     detectRequestRef.current += 1;
@@ -64,6 +81,9 @@ export default function AddStatementModal({
     setStatus("idle");
     setSavedId(null);
     setErrorMessage(null);
+    setFieldErrors({});
+    setSourceUrlErrors({});
+    setIsReviewConfirmed(false);
   }, [initialStatement, isOpen]);
 
   useEffect(() => {
@@ -205,6 +225,18 @@ export default function AddStatementModal({
     field: K,
     value: StatementFormState[K],
   ) {
+    if (field in fieldErrors) {
+      setFieldErrors((current) => {
+        if (!(field in current)) {
+          return current;
+        }
+
+        const nextErrors = { ...current };
+        delete nextErrors[field as keyof StatementFormErrors];
+        return nextErrors;
+      });
+    }
+
     if (field === "oblast") {
       const nextOblast = String(value).trim();
       const hadManualOverride = oblastWasManualRef.current;
@@ -232,22 +264,85 @@ export default function AddStatementModal({
     field: keyof StatementFormState["sources"][number],
     value: string,
   ) {
+    if (field === "url") {
+      setSourceUrlErrors((current) => {
+        if (!(index in current)) {
+          return current;
+        }
+
+        const nextErrors = { ...current };
+        delete nextErrors[index];
+        return nextErrors;
+      });
+    }
+
     setForm((current) => ({
       ...current,
       sources: applySourceDraftChange(current.sources, index, field, value),
     }));
   }
 
+  function handleSourceUrlBlur(index: number) {
+    const normalizedForm = normalizeStatementFormPayload(form);
+    const nextSourceErrors = validateStatementForm(normalizedForm).sourceUrlErrors;
+
+    setForm((current) => {
+      const source = current.sources[index];
+
+      if (!source || normalizedForm.sources[index]?.url === source.url) {
+        return current;
+      }
+
+      return {
+        ...current,
+        sources: current.sources.map((currentSource, currentIndex) =>
+          currentIndex === index
+            ? { ...currentSource, url: normalizedForm.sources[index]?.url ?? currentSource.url }
+            : currentSource,
+        ),
+      };
+    });
+
+    setSourceUrlErrors((current) => {
+      const nextErrors = { ...current };
+      if (nextSourceErrors[index]) {
+        nextErrors[index] = nextSourceErrors[index];
+      } else {
+        delete nextErrors[index];
+      }
+      return nextErrors;
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalizedForm = normalizeStatementFormPayload(form);
+    const validation = validateStatementForm(normalizedForm);
+
+    if (!isReviewConfirmed) {
+      setStatus("error");
+      setErrorMessage("Pred uložením potvrďte, že ste výsledok skontrolovali.");
+      return;
+    }
+
+    if (validation.errorMessage) {
+      setFieldErrors(validation.fieldErrors);
+      setSourceUrlErrors(validation.sourceUrlErrors);
+      setStatus("error");
+      setErrorMessage(validation.errorMessage);
+      return;
+    }
+
     setStatus("saving");
     setErrorMessage(null);
+    setFieldErrors({});
+    setSourceUrlErrors({});
 
     try {
       const response = await fetch("/api/statements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(normalizedForm),
       });
       const payload = (await response.json()) as { id?: number; error?: string };
 
@@ -260,6 +355,8 @@ export default function AddStatementModal({
       invalidateOblastDetection();
       oblastWasManualRef.current = false;
       lastAutoDetectedOblastRef.current = null;
+      setFieldErrors({});
+      setSourceUrlErrors({});
       setForm(createInitialStatementFormState(initialStatement));
     } catch (error) {
       setStatus("error");
@@ -284,15 +381,17 @@ export default function AddStatementModal({
       >
         <div className="absolute inset-0" aria-hidden="true" onClick={onClose} />
         <section
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="add-statement-modal-title"
+          tabIndex={-1}
           className="relative z-10 max-h-full w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white shadow-[0_48px_140px_-58px_rgba(15,23,42,0.55)] dark:bg-slate-950 dark:shadow-[0_56px_150px_-56px_rgba(2,6,23,0.98)]"
         >
           <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 px-6 py-5 dark:border-slate-800/80 sm:px-8">
             <div className="max-w-3xl">
               <p className="text-xs uppercase tracking-[0.18em] text-[var(--brand-accent)] dark:text-[var(--brand-accent-dark)]">
-                Analyst Entry
+                Nový výrok
               </p>
               <h2
                 id="add-statement-modal-title"
@@ -305,6 +404,7 @@ export default function AddStatementModal({
               </p>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Zavrieť formulár"
@@ -358,6 +458,7 @@ export default function AddStatementModal({
                 form={form}
                 status={status}
                 errorMessage={errorMessage}
+                fieldErrors={fieldErrors}
                 idPrefix="workspace-add"
                 primaryActionLabel={status === "saving" ? "Ukladám..." : "Uložiť výrok"}
                 oblastHint={
@@ -377,8 +478,24 @@ export default function AddStatementModal({
                 note="Povinné polia zostávajú rovnaké, doplnkové polia sú označené ako voliteľné."
                 onSubmit={handleSubmit}
                 updateField={updateField}
+                onSourceUrlBlur={handleSourceUrlBlur}
                 updateSourceField={updateSourceField}
+                sourceUrlErrors={sourceUrlErrors}
               />
+              <label className="mt-4 flex items-start gap-3 rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={isReviewConfirmed}
+                  onChange={(event) => {
+                    setIsReviewConfirmed(event.target.checked);
+                    if (errorMessage === "Pred uložením potvrďte, že ste výsledok skontrolovali.") {
+                      setErrorMessage(null);
+                    }
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[var(--brand-accent)] focus:ring-[var(--brand-accent)] dark:border-slate-700 dark:bg-slate-950"
+                />
+                <span>Potvrdzujem, že som pred uložením skontroloval/-a výsledok detekcie a doplnil/-a potrebný kontext.</span>
+              </label>
             </div>
           )}
         </section>
