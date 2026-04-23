@@ -45,6 +45,10 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SECRET_KEY || getEnv("SUPABASE_SERVICE_KEY");
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -265,7 +269,7 @@ async function ensureIndex(supabase: SupabaseClientAny): Promise<void> {
 async function main(): Promise<void> {
   const { force, fromId, dryRun } = parseArgs();
 
-  const supabase = createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
+  const supabase = createClient<any>(getEnv("SUPABASE_URL"), getSupabaseServiceKey());
 
   const embeddingUrl = process.env.EMBEDDING_API_URL?.trim() || DEFAULT_EMBEDDING_URL;
   const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || DEFAULT_EMBEDDING_MODEL;

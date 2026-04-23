@@ -97,7 +97,7 @@ async function verifyAll(): Promise<void> {
   if (configError) {
     console.error("Supabase configuration error:");
     console.error(configError);
-    console.error("\nMake sure SUPABASE_URL and SUPABASE_SERVICE_KEY are set.");
+    console.error("\nMake sure SUPABASE_URL and SUPABASE_SECRET_KEY are set.");
     process.exit(1);
   }
 

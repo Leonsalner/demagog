@@ -101,9 +101,10 @@ The app depends on these Supabase RPC functions:
 Core runtime:
 
 - `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SERVICE_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_PUBLISHABLE_KEY`: recommended publishable key names
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `SUPABASE_ANON_KEY`: temporary legacy fallbacks only
+- `SUPABASE_SECRET_KEY`
+- `SUPABASE_SERVICE_KEY` or `SUPABASE_SERVICE_ROLE_KEY`: temporary legacy fallbacks only
 - `GEMINI_API_KEY`
 - `GEMINI_FLASH_MODEL`
 - `GEMINI_PRO_MODEL`
@@ -147,7 +148,7 @@ Optional / script-only:
 - The add flow is live in the app and is intended to save a new statement after review.
 - The feedback widget is mounted globally from `src/app/layout.tsx`.
 - 2048-dimensional vectors exceed pgvector's 2000d HNSW limit. Retrieval is designed around RPCs / sequential scans rather than HNSW indexing.
-- `scripts/import-data.ts` and `scripts/embed-statements.ts` specifically expect `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+- Data scripts expect `SUPABASE_URL` plus `SUPABASE_SECRET_KEY`; `SUPABASE_SERVICE_KEY` remains a temporary legacy fallback only.
 
 ## Planning References
 

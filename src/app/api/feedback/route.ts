@@ -147,7 +147,8 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof LinearFeedbackError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      const message = error.status === 503 ? error.message : "Failed to submit feedback";
+      return NextResponse.json({ error: message }, { status: error.status });
     }
 
     console.error(

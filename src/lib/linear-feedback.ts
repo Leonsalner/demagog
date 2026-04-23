@@ -103,20 +103,6 @@ if (linearFeedbackConfigError) {
   console.warn(`[linear-feedback] ${linearFeedbackConfigError}`);
 }
 
-function describeGraphQLErrors(errors: unknown[]): string {
-  const messages = errors
-    .map((error) => {
-      if (!isRecord(error) || typeof error.message !== "string") {
-        return null;
-      }
-
-      return error.message.trim();
-    })
-    .filter((message): message is string => Boolean(message));
-
-  return messages.length > 0 ? messages.join("; ") : "Linear rejected the feedback request";
-}
-
 async function submitLinearGraphQLRequest<TData>(
   config: LinearFeedbackConfig,
   query: string,
@@ -150,11 +136,7 @@ async function submitLinearGraphQLRequest<TData>(
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new LinearFeedbackError(
-      errorText.trim() || "Linear request failed",
-      502,
-    );
+    throw new LinearFeedbackError(`Linear request failed with status ${response.status}`, 502);
   }
 
   let responseBody: unknown;
@@ -169,7 +151,7 @@ async function submitLinearGraphQLRequest<TData>(
   }
 
   if (Array.isArray(responseBody.errors) && responseBody.errors.length > 0) {
-    throw new LinearFeedbackError(describeGraphQLErrors(responseBody.errors), 502);
+    throw new LinearFeedbackError("Linear rejected the feedback request", 502);
   }
 
   if (!isRecord(responseBody.data)) {

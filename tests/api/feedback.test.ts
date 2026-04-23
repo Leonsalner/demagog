@@ -150,9 +150,9 @@ describe("POST /api/feedback", () => {
     });
   });
 
-  it("returns 502 when the Linear submission fails", async () => {
+  it("returns a generic 502 when the Linear submission fails", async () => {
     vi.mocked(submitLinearFeedbackCustomerRequest).mockRejectedValue(
-      new LinearFeedbackError("Linear rejected the feedback request"),
+      new LinearFeedbackError("Issue not found"),
     );
 
     const response = await POST(
@@ -166,7 +166,27 @@ describe("POST /api/feedback", () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
-      error: "Linear rejected the feedback request",
+      error: "Failed to submit feedback",
+    });
+  });
+
+  it("returns a generic 504 when Linear times out", async () => {
+    vi.mocked(submitLinearFeedbackCustomerRequest).mockRejectedValue(
+      new LinearFeedbackError("Linear request timed out", 504),
+    );
+
+    const response = await POST(
+      createRequest(
+        JSON.stringify({
+          category: "other",
+          message: "Skúšobná správa.",
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(504);
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to submit feedback",
     });
   });
 

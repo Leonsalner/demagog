@@ -82,8 +82,7 @@ async function generateJsonText(options: {
     });
 
     if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Gemini API error (${response.status}): ${body}`);
+      throw new Error(`Gemini API error (${response.status})`);
     }
 
     const payload = (await response.json()) as GeminiResponse;

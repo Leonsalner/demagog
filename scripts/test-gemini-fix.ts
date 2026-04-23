@@ -11,7 +11,7 @@ for (const line of envFile.split("\n")) {
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 const KEY = (process.env.GEMINI_API_KEY || "").trim();
 if (!KEY) { console.error("No GEMINI_API_KEY"); process.exit(1); }
-console.log("Key loaded: " + KEY.slice(0,8) + "...");
+console.log("Gemini API key loaded.");
 
 const SYS = "Si jazykový korektor. Oprav IBA: a→š, e→ť, H→ň, G→Ň, d→Ť. Nemeň nič iné. JSON pole reťazcov.";
 
@@ -52,7 +52,7 @@ async function call(model: string, texts: string[]): Promise<string[]> {
     }),
   });
   console.log(model + " responded in " + (Date.now()-start) + "ms, status=" + r.status);
-  if(!r.ok){ const b=await r.text(); throw new Error(model+" "+r.status+": "+b.slice(0,200)); }
+  if(!r.ok){ throw new Error(model+" request failed with status "+r.status); }
   const p = (await r.json()) as GeminiPayload;
   const text = p.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {

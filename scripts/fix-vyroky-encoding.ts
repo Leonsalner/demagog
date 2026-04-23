@@ -359,7 +359,6 @@ async function callGemini(
     });
 
     if (!response.ok) {
-      const body = await response.text();
       if (
         (response.status === 429 || response.status >= 500) &&
         attempt < GEMINI_MAX_API_RETRIES
@@ -375,7 +374,7 @@ async function callGemini(
         return callGemini(prompt, systemInstruction, model, attempt + 1);
       }
 
-      throw new Error(`Gemini API error (${response.status}): ${body.slice(0, 300)}`);
+      throw new Error(`Gemini API error (${response.status})`);
     }
 
     const payload = (await response.json()) as GeminiResponse;
