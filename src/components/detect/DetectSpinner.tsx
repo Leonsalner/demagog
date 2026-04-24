@@ -18,12 +18,15 @@ export default function DetectSpinner() {
           className="stroke-slate-200 dark:stroke-slate-700"
           strokeWidth="5"
         />
-        <path
-          className="detect-spinner-wheel stroke-current"
-          d="M28 6a22 22 0 0 1 18.92 10.76"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
+        <g className="detect-spinner-wheel">
+          <path
+            className="stroke-current"
+            d="M28 6a22 22 0 0 1 18.92 10.76"
+            strokeWidth="5"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </g>
       </svg>
     </div>
   );
