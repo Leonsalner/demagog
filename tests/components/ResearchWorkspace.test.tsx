@@ -303,6 +303,65 @@ describe("ResearchWorkspace", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("allows switching to the articles tab when aggregate research has no article items", async () => {
+    render(
+      <>
+        <header
+          id={APP_NAVBAR_ID}
+          ref={(element) => {
+            if (element) {
+              Object.defineProperty(element, "getBoundingClientRect", {
+                configurable: true,
+                value: () => ({ bottom: 96 }),
+              });
+            }
+          }}
+        />
+        <ResearchWorkspace
+          displayState="open"
+          activeMode="aggregate"
+          data={{ mode: "aggregate", items: [] }}
+          loading={false}
+          error={null}
+          detectResult={{
+            input_statement: "Na severe Slovenska chýbajú pediatri.",
+            overall_status: "RELATED_ONLY",
+            query_time_ms: 120,
+            matches: [
+              {
+                classification: "RELATED",
+                similarity: 0.86,
+                statement: {
+                  id: 42,
+                  vyrok: "Pediatrov na severe ubúda.",
+                  vyhodnotenie: "Pravda",
+                  odovodnenie: "Podrobná analýza.",
+                  datum: "2024-01-20",
+                  meno: "Testovací politik",
+                  strana: "Test",
+                },
+              },
+            ],
+          }}
+          onClose={vi.fn()}
+        />
+      </>,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Výroky" }));
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Články" }));
+
+    expect(screen.getByRole("tab", { name: "Články" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByText("Pre tento výrok sa nenašli články ani externé zdroje.")).toHaveLength(2);
+    expect(
+      screen.queryByRole("heading", { level: 2, name: "Pediatrov na severe ubúda." }),
+    ).not.toBeInTheDocument();
+  });
+
   it("uses the mobile navigator sheet instead of the visible sidebar on small screens", async () => {
     matchMediaWidth = 390;
 

@@ -789,18 +789,31 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const isStatementResearchPending =
     researchMode === "statement" && isResearchPendingReveal && researchDisplayState === "closed";
-  const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
-  const hasDetectPanelLoading =
-    detectLoading ||
-    (activeTab === "detect" && isStatementResearchPending);
-  const detectLoadingPhase = isStatementResearchPending
-    ? "statement-research"
-    : "detect";
   const isPreparedResearchHandoff =
     preparedAggregateResearchStatus === "ready" &&
     researchDisplayState === "entering" &&
     researchMode === "aggregate" &&
     researchData === preparedAggregateResearchData;
+  const isAggregateResearchPreparing =
+    activeTab === "detect" &&
+    shouldPrepareAggregateResearch &&
+    (preparedAggregateResearchStatus === "idle" ||
+      preparedAggregateResearchStatus === "preparing");
+  const isAggregateResearchOpening =
+    activeTab === "detect" &&
+    shouldPrepareAggregateResearch &&
+    (shouldAutoOpenPreparedResearch || isPreparedResearchHandoff);
+  const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
+  const hasDetectPanelLoading =
+    detectLoading ||
+    (activeTab === "detect" && isStatementResearchPending) ||
+    isAggregateResearchPreparing ||
+    isAggregateResearchOpening;
+  const detectLoadingPhase = isStatementResearchPending
+    ? "statement-research"
+    : isAggregateResearchPreparing || isAggregateResearchOpening
+      ? "aggregate"
+    : "detect";
   const isDetectProgressCompleting =
     isPreparedResearchHandoff ||
     (!detectLoading &&
@@ -821,11 +834,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     : "Načítavam výsledky vyhľadávania...";
   const detectLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
-    : detectSlowStage === "very_slow"
-      ? "Stále overujeme. Výrok neoznačíme ako nový, kým sa kontrola nedokončí."
-      : detectSlowStage === "slow"
-        ? "Dôkladné overenie trvá dlhšie. Stále kontrolujeme možné zhody."
-        : "Kontrolujeme archív overených výrokov...";
+    : isAggregateResearchPreparing || isAggregateResearchOpening
+      ? researchLoadingMessage
+      : detectSlowStage === "very_slow"
+        ? "Stále overujeme. Výrok neoznačíme ako nový, kým sa kontrola nedokončí."
+        : detectSlowStage === "slow"
+          ? "Dôkladné overenie trvá dlhšie. Stále kontrolujeme možné zhody."
+          : "Kontrolujeme archív overených výrokov...";
   const addModalInitialStatement = detectResult?.input_statement ?? detectStatement;
 
   const handleOpenPreparedResearch = () => {

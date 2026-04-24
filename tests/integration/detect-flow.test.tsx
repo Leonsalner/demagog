@@ -449,7 +449,7 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("keeps detect results visible while aggregate preparation is in progress", async () => {
+  it("keeps detect loading visible while aggregate preparation is in progress", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -462,13 +462,12 @@ describe("detect page flow", () => {
     await renderHome("detect");
     syncDetectInput("Ukrajina je Rusko.");
 
-    expect(
-      screen.getByText(/Súhrnný prieskum sa pripravuje spolu s článkami a externými zdrojmi/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Detekcia prebieha" })).toBeInTheDocument();
+    expect(screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
-  it("does not block the detect surface while aggregate research is idle", async () => {
+  it("keeps detect loading visible before aggregate preparation starts", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -480,9 +479,9 @@ describe("detect page flow", () => {
     await renderHome("detect");
     syncDetectInput("Ukrajina je Rusko.");
 
-    expect(screen.queryByRole("status", { name: "Detekcia prebieha" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Kontrolujeme archív overených výrokov/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Detekcia prebieha" })).toBeInTheDocument();
+    expect(screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {
