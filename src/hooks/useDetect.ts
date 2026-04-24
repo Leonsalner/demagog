@@ -7,8 +7,10 @@ import { DetectMode, DetectResponse, DetectionMatch, Statement } from "@/types";
 import type { DetectHistoryEntry } from "@/types/history";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_DETECT_MOCK === "true";
-const DETECT_VISIBLE_TIMEOUT_MS = 8000;
-const DETECT_HIDDEN_TIMEOUT_MS = 10000;
+const DETECT_SLOW_NOTICE_MS = 8000;
+const DETECT_VERY_SLOW_NOTICE_MS = 16000;
+const DETECT_HARD_TIMEOUT_MS = 25000;
+const DETECT_TIMEOUT_ERROR = "Overenie sa nepodarilo dokončiť. Skúste analýzu spustiť znova.";
 
 function wait(ms: number) {
   return new Promise((resolve) => {
@@ -132,31 +134,40 @@ function createMockResponse(input: string, topK: number): DetectResponse {
   };
 }
 
-export type DetectLateMatchNotice =
-  | {
-      status: "DUPLICATE_FOUND" | "RELATED_ONLY";
-      result: DetectResponse;
-    }
-  | null;
-
 export type DetectUiState =
   | "idle"
   | "detecting"
-  | "verifying_in_background"
   | "complete";
+
+export type DetectSlowStage = "normal" | "slow" | "very_slow";
 
 export function useDetect() {
   const [result, setResult] = useState<DetectResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lateMatchNotice, setLateMatchNotice] = useState<DetectLateMatchNotice>(null);
   const [uiState, setUiState] = useState<DetectUiState>("idle");
-  const [verifyingStatement, setVerifyingStatement] = useState<string | null>(null);
+  const [slowStage, setSlowStage] = useState<DetectSlowStage>("normal");
 
   const requestIdRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const hiddenAbortControllerRef = useRef<AbortController | null>(null);
-  const visibleTimeoutRef = useRef<number | null>(null);
+  const slowNoticeTimeoutRef = useRef<number | null>(null);
+  const verySlowNoticeTimeoutRef = useRef<number | null>(null);
+  const hardTimeoutRef = useRef<number | null>(null);
+
+  const clearDetectTimers = useCallback(() => {
+    if (slowNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(slowNoticeTimeoutRef.current);
+      slowNoticeTimeoutRef.current = null;
+    }
+    if (verySlowNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(verySlowNoticeTimeoutRef.current);
+      verySlowNoticeTimeoutRef.current = null;
+    }
+    if (hardTimeoutRef.current !== null) {
+      window.clearTimeout(hardTimeoutRef.current);
+      hardTimeoutRef.current = null;
+    }
+  }, []);
 
   const runDetectRequest = useCallback(
     async (
@@ -180,17 +191,6 @@ export function useDetect() {
     [],
   );
 
-  const dismissLateMatchNotice = useCallback(() => {
-    setLateMatchNotice(null);
-  }, []);
-
-  const applyLateMatchResult = useCallback(() => {
-    if (lateMatchNotice) {
-      setResult(lateMatchNotice.result);
-      setLateMatchNotice(null);
-    }
-  }, [lateMatchNotice]);
-
   const detect = useCallback(async (statement: string, mode: DetectMode = "fast") => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
@@ -199,167 +199,92 @@ export function useDetect() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (hiddenAbortControllerRef.current) {
-      hiddenAbortControllerRef.current.abort();
-      hiddenAbortControllerRef.current = null;
-    }
-    if (visibleTimeoutRef.current !== null) {
-      window.clearTimeout(visibleTimeoutRef.current);
-      visibleTimeoutRef.current = null;
-    }
+    clearDetectTimers();
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    let didVisibleFallback = false;
+    let didHardTimeout = false;
 
     setLoading(true);
     setError(null);
     setResult(null);
-    setLateMatchNotice(null);
     setUiState("detecting");
-    setVerifyingStatement(null);
-
-    const finalizeVisibleTimeoutFallback = () => {
-      if (didVisibleFallback || requestIdRef.current !== requestId) {
-        return;
-      }
-
-      didVisibleFallback = true;
-      controller.abort();
-      setResult(null);
-      setError(null);
-      setLoading(false);
-      setUiState("verifying_in_background");
-      setVerifyingStatement(statement);
-
-      startHiddenBackgroundDetect(statement, mode, requestId);
-    };
-
-    const startHiddenBackgroundDetect = (
-      bgStatement: string,
-      bgMode: DetectMode,
-      bgRequestId: number,
-    ) => {
-      if (USE_MOCK) {
-        return;
-      }
-
-      const hiddenController = new AbortController();
-      hiddenAbortControllerRef.current = hiddenController;
-      const hiddenTimeoutId = window.setTimeout(() => {
-        hiddenController.abort();
-      }, DETECT_HIDDEN_TIMEOUT_MS);
-
-      void runDetectRequest(bgStatement, bgMode, hiddenController.signal)
-        .then((hiddenResult) => {
-          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
-            return;
-          }
-
-          setResult(hiddenResult);
-          setUiState("complete");
-          setVerifyingStatement(null);
-
-          if (hiddenResult.overall_status !== "NEW_CLAIM") {
-            setLateMatchNotice({
-              status: hiddenResult.overall_status,
-              result: hiddenResult,
-            });
-          }
-        })
-        .catch(() => {
-          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
-            return;
-          }
-
-          setUiState("idle");
-          setVerifyingStatement(null);
-          setError("Overenie trvá príliš dlho. Skúste analýzu spustiť znova.");
-        })
-        .finally(() => {
-          window.clearTimeout(hiddenTimeoutId);
-          if (hiddenAbortControllerRef.current === hiddenController) {
-            hiddenAbortControllerRef.current = null;
-          }
-        });
-    };
+    setSlowStage("normal");
 
     try {
       if (USE_MOCK) {
         await wait(1200);
-        if (requestIdRef.current !== requestId || didVisibleFallback) {
+        if (requestIdRef.current !== requestId) {
           return;
         }
         setResult(createMockResponse(statement, 10));
         setUiState("complete");
         setLoading(false);
+        setSlowStage("normal");
         return;
       }
 
-      const visibleRequestPromise = runDetectRequest(statement, mode, controller.signal)
-        .then((data) => {
-          if (requestIdRef.current !== requestId || didVisibleFallback) {
-            return "stale" as const;
-          }
+      slowNoticeTimeoutRef.current = window.setTimeout(() => {
+        if (requestIdRef.current === requestId) {
+          setSlowStage("slow");
+        }
+      }, DETECT_SLOW_NOTICE_MS);
 
-          if (visibleTimeoutRef.current !== null) {
-            window.clearTimeout(visibleTimeoutRef.current);
-            visibleTimeoutRef.current = null;
-          }
-          setResult(data);
-          setUiState("complete");
-          setVerifyingStatement(null);
-          return "resolved" as const;
-        })
-        .catch((error) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            if (requestIdRef.current === requestId && !didVisibleFallback) {
-              setError(null);
-            }
-            return "aborted" as const;
-          }
+      verySlowNoticeTimeoutRef.current = window.setTimeout(() => {
+        if (requestIdRef.current === requestId) {
+          setSlowStage("very_slow");
+        }
+      }, DETECT_VERY_SLOW_NOTICE_MS);
 
-          if (requestIdRef.current === requestId && !didVisibleFallback) {
-            setResult(null);
-            setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
-            setUiState("idle");
-            setVerifyingStatement(null);
-          }
-          return "errored" as const;
-        });
+      hardTimeoutRef.current = window.setTimeout(() => {
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
 
-      const visibleTimeoutPromise = new Promise<"timeout">((resolve) => {
-        visibleTimeoutRef.current = window.setTimeout(() => {
-          finalizeVisibleTimeoutFallback();
-          resolve("timeout");
-        }, DETECT_VISIBLE_TIMEOUT_MS);
-      });
+        didHardTimeout = true;
+        controller.abort();
+        setResult(null);
+        setError(DETECT_TIMEOUT_ERROR);
+        setUiState("idle");
+        setLoading(false);
+        setSlowStage("normal");
+        clearDetectTimers();
+      }, DETECT_HARD_TIMEOUT_MS);
 
-      await Promise.race([visibleRequestPromise, visibleTimeoutPromise]);
+      const data = await runDetectRequest(statement, mode, controller.signal);
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
+
+      clearDetectTimers();
+      setResult(data);
+      setUiState("complete");
+      setSlowStage("normal");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        if (requestIdRef.current === requestId && !didVisibleFallback) {
+        if (requestIdRef.current === requestId && !didHardTimeout) {
           setError(null);
         }
         return;
       }
-      if (requestIdRef.current !== requestId || didVisibleFallback) {
+      if (requestIdRef.current !== requestId) {
         return;
       }
+      clearDetectTimers();
       setResult(null);
       setError(error instanceof Error ? error.message : "Detekcia zlyhala.");
       setUiState("idle");
-      setVerifyingStatement(null);
+      setSlowStage("normal");
     } finally {
-      if (visibleTimeoutRef.current !== null) {
-        window.clearTimeout(visibleTimeoutRef.current);
-        visibleTimeoutRef.current = null;
-      }
-      if (requestIdRef.current === requestId && !didVisibleFallback) {
+      if (requestIdRef.current === requestId && !didHardTimeout) {
+        clearDetectTimers();
         setLoading(false);
       }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
-  }, [runDetectRequest]);
+  }, [clearDetectTimers, runDetectRequest]);
 
   const reset = useCallback(() => {
     requestIdRef.current += 1;
@@ -367,21 +292,13 @@ export function useDetect() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (hiddenAbortControllerRef.current) {
-      hiddenAbortControllerRef.current.abort();
-      hiddenAbortControllerRef.current = null;
-    }
-    if (visibleTimeoutRef.current !== null) {
-      window.clearTimeout(visibleTimeoutRef.current);
-      visibleTimeoutRef.current = null;
-    }
+    clearDetectTimers();
     setResult(null);
     setError(null);
     setLoading(false);
-    setLateMatchNotice(null);
     setUiState("idle");
-    setVerifyingStatement(null);
-  }, []);
+    setSlowStage("normal");
+  }, [clearDetectTimers]);
 
   const restore = useCallback((entry: DetectHistoryEntry) => {
     requestIdRef.current += 1;
@@ -389,32 +306,21 @@ export function useDetect() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (hiddenAbortControllerRef.current) {
-      hiddenAbortControllerRef.current.abort();
-      hiddenAbortControllerRef.current = null;
-    }
-    if (visibleTimeoutRef.current !== null) {
-      window.clearTimeout(visibleTimeoutRef.current);
-      visibleTimeoutRef.current = null;
-    }
+    clearDetectTimers();
 
     setLoading(false);
     setError(null);
     setResult(entry.response);
-    setLateMatchNotice(null);
     setUiState("complete");
-    setVerifyingStatement(null);
-  }, []);
+    setSlowStage("normal");
+  }, [clearDetectTimers]);
 
   return {
     result,
     loading,
     error,
     uiState,
-    verifyingStatement,
-    lateMatchNotice,
-    dismissLateMatchNotice,
-    applyLateMatchResult,
+    slowStage,
     detect,
     restore,
     reset,

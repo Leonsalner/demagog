@@ -13,6 +13,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import DetectionResults from "@/components/detect/DetectionResults";
+import DetectSpinner from "@/components/detect/DetectSpinner";
 import { usePublishFeedbackPageContext } from "@/components/feedback/FeedbackContext";
 import AddStatementModal from "@/components/research/AddStatementModal";
 import ResearchWorkspace from "@/components/research/ResearchWorkspace";
@@ -129,10 +130,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     result: detectResult,
     loading: detectLoading,
     error: detectError,
-    uiState: detectUiState,
-    verifyingStatement,
-    lateMatchNotice,
-    dismissLateMatchNotice,
+    slowStage: detectSlowStage,
     detect,
     restore: restoreDetect,
   } = useDetect();
@@ -776,7 +774,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const handleDetectDirty = () => {
     setIsAddModalOpen(false);
-    dismissLateMatchNotice();
   };
 
   const handleDetect = (statement: string) => {
@@ -792,18 +789,31 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
 
   const isStatementResearchPending =
     researchMode === "statement" && isResearchPendingReveal && researchDisplayState === "closed";
-  const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
-  const hasDetectPanelLoading =
-    detectLoading ||
-    (activeTab === "detect" && isStatementResearchPending);
-  const detectLoadingPhase = isStatementResearchPending
-    ? "statement-research"
-    : "detect";
   const isPreparedResearchHandoff =
     preparedAggregateResearchStatus === "ready" &&
     researchDisplayState === "entering" &&
     researchMode === "aggregate" &&
     researchData === preparedAggregateResearchData;
+  const isAggregateResearchPreparing =
+    activeTab === "detect" &&
+    shouldPrepareAggregateResearch &&
+    (preparedAggregateResearchStatus === "idle" ||
+      preparedAggregateResearchStatus === "preparing");
+  const isAggregateResearchOpening =
+    activeTab === "detect" &&
+    shouldPrepareAggregateResearch &&
+    (shouldAutoOpenPreparedResearch || isPreparedResearchHandoff);
+  const isSearchPanelLoading = loading || (activeTab === "search" && isStatementResearchPending);
+  const hasDetectPanelLoading =
+    detectLoading ||
+    (activeTab === "detect" && isStatementResearchPending) ||
+    isAggregateResearchPreparing ||
+    isAggregateResearchOpening;
+  const detectLoadingPhase = isStatementResearchPending
+    ? "statement-research"
+    : isAggregateResearchPreparing || isAggregateResearchOpening
+      ? "aggregate"
+    : "detect";
   const isDetectProgressCompleting =
     isPreparedResearchHandoff ||
     (!detectLoading &&
@@ -811,14 +821,12 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       shouldPrepareAggregateResearch);
   const {
     isVisible: isDetectProgressVisible,
-    progress: detectProgress,
   } = useFakeProgress({
     pending: hasDetectPanelLoading,
     completing: isDetectProgressCompleting,
     phase: detectLoadingPhase,
     completionDurationMs: 280,
   });
-  const roundedDetectProgress = Math.round(detectProgress);
   const isDetectPanelLoading = hasDetectPanelLoading || isDetectProgressVisible;
   const researchLoadingMessage = "Pripravujem prieskum výroku a súvisiace zdroje...";
   const searchLoadingMessage = isStatementResearchPending
@@ -826,7 +834,13 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
     : "Načítavam výsledky vyhľadávania...";
   const detectLoadingMessage = isStatementResearchPending
     ? researchLoadingMessage
-    : "Porovnávam výrok s databázou overených tvrdení...";
+    : isAggregateResearchPreparing || isAggregateResearchOpening
+      ? researchLoadingMessage
+      : detectSlowStage === "very_slow"
+        ? "Stále overujeme. Výrok neoznačíme ako nový, kým sa kontrola nedokončí."
+        : detectSlowStage === "slow"
+          ? "Dôkladné overenie trvá dlhšie. Stále kontrolujeme možné zhody."
+          : "Kontrolujeme archív overených výrokov...";
   const addModalInitialStatement = detectResult?.input_statement ?? detectStatement;
 
   const handleOpenPreparedResearch = () => {
@@ -855,13 +869,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
       source: "auto-filter-refine",
     });
   }, [clearModelFilters, search, setPage]);
-
-  const handleLateMatchToastAction = useCallback(() => {
-    if (isAddModalOpen) {
-      setIsAddModalOpen(false);
-    }
-    dismissLateMatchNotice();
-  }, [isAddModalOpen, dismissLateMatchNotice]);
 
   return (
     <div className="relative min-h-[400px]">
@@ -1085,28 +1092,10 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
             />
 
             <div className="min-h-[320px]">
-              {detectError ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                  {detectError}
-                </div>
-              ) : null}
-
               {isDetectPanelLoading ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700/60 dark:bg-slate-800/40">
                   <div className="flex min-h-[160px] flex-col items-center justify-center">
-                    <div
-                      className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700/70"
-                      role="progressbar"
-                      aria-label="Priebeh detekcie"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={roundedDetectProgress}
-                    >
-                      <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,var(--brand-accent),var(--brand-accent-hover))] shadow-[0_0_18px_rgba(217,88,48,0.35)] dark:bg-[linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))] dark:shadow-[0_0_18px_rgba(240,120,80,0.35)]"
-                        style={{ width: `${detectProgress}%` }}
-                      />
-                    </div>
+                    <DetectSpinner />
                     <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-200">
                       {detectLoadingMessage}
                     </p>
@@ -1114,18 +1103,32 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {!isDetectPanelLoading && detectUiState === "verifying_in_background" ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Overenie ešte prebieha
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                    Výrok <span className="font-semibold">{verifyingStatement}</span> sa stále kontroluje v rozšírenom režime. Výsledok zatiaľ neoznačíme ako nový, kým sa overenie definitívne neskončí.
-                  </p>
+              {!isDetectPanelLoading && detectError ? (
+                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-rose-200 bg-white px-6 text-center shadow-sm dark:border-rose-900/60 dark:bg-slate-800/40">
+                  <div className="max-w-xl">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Overenie sa nepodarilo dokončiť
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      {detectError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (detectStatement.trim()) {
+                          handleDetect(detectStatement);
+                        }
+                      }}
+                      disabled={!detectStatement.trim()}
+                      className="mt-5 inline-flex items-center justify-center rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(217,88,48,0.55)] transition hover:bg-[var(--brand-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
+                    >
+                      Skúsiť znova
+                    </button>
+                  </div>
                 </div>
               ) : null}
 
-              {!isDetectPanelLoading && !detectResult ? (
+              {!isDetectPanelLoading && !detectError && !detectResult ? (
                 <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-6 text-center dark:border-slate-700/40 dark:bg-slate-800/40">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -1139,7 +1142,7 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
                 </div>
               ) : null}
 
-              {!isDetectPanelLoading && detectResult ? (
+              {!isDetectPanelLoading && !detectError && detectResult ? (
                 <DetectionResults
                   result={detectResult}
                   onOpenStatementResearch={(statementId) => {
@@ -1189,54 +1192,6 @@ export default function HomePageClient({ activeTab }: HomePageClientProps) {
         onClose={() => setIsAddModalOpen(false)}
       />
 
-      {lateMatchNotice ? (
-        <ViewportPortal>
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 px-4 backdrop-blur-[2px]">
-            <div
-              className="w-full max-w-md rounded-[1.75rem] border border-emerald-200 bg-white px-6 py-5 shadow-[0_32px_80px_-28px_rgba(15,23,42,0.45)] dark:border-emerald-800/60 dark:bg-slate-950"
-              style={{
-                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)",
-                paddingLeft: "calc(env(safe-area-inset-left, 0px) + 1.5rem)",
-                paddingRight: "calc(env(safe-area-inset-right, 0px) + 1.5rem)",
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
-                  !
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                    Dodatočne sa našli podobné výroky
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {lateMatchNotice.status === "DUPLICATE_FOUND"
-                      ? "Po oneskorenom overení sa našli pravdepodobné duplicitné zhody a výsledky sa aktualizovali."
-                      : "Po oneskorenom overení sa našli súvisiace výroky a výsledky sa aktualizovali."}
-                  </p>
-                  <div className="mt-4 flex gap-2">
-                    {isAddModalOpen ? (
-                      <button
-                        type="button"
-                        onClick={handleLateMatchToastAction}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-accent)] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgba(217,88,48,0.55)] transition hover:bg-[var(--brand-accent-hover)] dark:bg-[var(--brand-accent)] dark:hover:bg-[var(--brand-accent-dark)]"
-                      >
-                        Prejsť na zhody
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={dismissLateMatchNotice}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                    >
-                      Zavrieť
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ViewportPortal>
-      ) : null}
     </div>
   );
 }

@@ -1,6 +1,23 @@
 import { act, renderHook } from "@testing-library/react";
 
 import { useDetect } from "@/hooks/useDetect";
+import type { DetectResponse } from "@/types";
+
+function createDetectResponse(
+  inputStatement: string,
+  overallStatus: DetectResponse["overall_status"] = "NEW_CLAIM",
+): DetectResponse {
+  return {
+    input_statement: inputStatement,
+    matches: [],
+    overall_status: overallStatus,
+    query_time_ms: 12,
+  };
+}
+
+function createResponse(data: DetectResponse): Response {
+  return new Response(JSON.stringify(data), { status: 200 });
+}
 
 describe("useDetect", () => {
   beforeEach(() => {
@@ -28,18 +45,13 @@ describe("useDetect", () => {
 
     expect(result.current.result).toBeNull();
     expect(result.current.error).toBe("Embedding service unavailable");
+    expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("idle");
+    expect(result.current.slowStage).toBe("normal");
   });
 
   it("accepts a valid NEW_CLAIM response instead of surfacing a generic error", async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        input_statement: "Pošlú nás na vojnu",
-        matches: [],
-        overall_status: "NEW_CLAIM",
-        query_time_ms: 18,
-      }),
-    } as Response);
+    vi.mocked(fetch).mockResolvedValue(createResponse(createDetectResponse("Pošlú nás na vojnu")));
 
     const { result } = renderHook(() => useDetect());
 
@@ -49,18 +61,12 @@ describe("useDetect", () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.result?.overall_status).toBe("NEW_CLAIM");
+    expect(result.current.uiState).toBe("complete");
+    expect(result.current.slowStage).toBe("normal");
   });
 
   it("defaults detect requests to the fast mode", async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        input_statement: "Testovaci vyrok",
-        matches: [],
-        overall_status: "NEW_CLAIM",
-        query_time_ms: 12,
-      }),
-    } as Response);
+    vi.mocked(fetch).mockResolvedValue(createResponse(createDetectResponse("Testovaci vyrok")));
 
     const { result } = renderHook(() => useDetect());
 
@@ -84,15 +90,7 @@ describe("useDetect", () => {
   it("ignores a stale detect response when a newer request is in flight", async () => {
     vi.mocked(fetch).mockImplementation(async () => {
       await vi.advanceTimersByTimeAsync(100);
-      return new Response(
-        JSON.stringify({
-          input_statement: "Second statement",
-          matches: [],
-          overall_status: "NEW_CLAIM",
-          query_time_ms: 12,
-        }),
-        { status: 200 },
-      );
+      return createResponse(createDetectResponse("Second statement"));
     });
 
     const { result } = renderHook(() => useDetect());
@@ -121,26 +119,18 @@ describe("useDetect", () => {
       const detectPromise = result.current.detect("Test statement");
       await Promise.resolve();
       result.current.reset();
-      resolveFirst(
-        new Response(
-          JSON.stringify({
-            input_statement: "Test statement",
-            matches: [],
-            overall_status: "NEW_CLAIM",
-            query_time_ms: 12,
-          }),
-          { status: 200 },
-        ),
-      );
+      resolveFirst(createResponse(createDetectResponse("Test statement")));
       await detectPromise;
       await Promise.resolve();
     });
 
     expect(result.current.result).toBeNull();
     expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("idle");
+    expect(result.current.slowStage).toBe("normal");
   });
 
-  it("aborted detect does not set error", async () => {
+  it("aborted detect does not set error after reset", async () => {
     vi.useRealTimers();
     let rejectFetch: (error: Error) => void;
     const fetchPromise = new Promise<Response>((_, reject) => {
@@ -171,12 +161,7 @@ describe("useDetect", () => {
   });
 
   it("loading returns to false after reset cancels in-flight request", async () => {
-    let resolveFirst: (value: Response) => void;
-    const deferred = new Promise<Response>((resolve) => {
-      resolveFirst = resolve;
-    });
-
-    vi.mocked(fetch).mockReturnValue(deferred as unknown as Promise<Response>);
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
 
     const { result } = renderHook(() => useDetect());
 
@@ -184,48 +169,13 @@ describe("useDetect", () => {
       void result.current.detect("First statement");
       await Promise.resolve();
       result.current.reset();
-      resolveFirst(
-        new Response(
-          JSON.stringify({
-            input_statement: "First statement",
-            matches: [],
-            overall_status: "NEW_CLAIM",
-            query_time_ms: 12,
-          }),
-          { status: 200 },
-        ),
-      );
-      await vi.advanceTimersByTimeAsync(0);
     });
 
     expect(result.current.loading).toBe(false);
+    expect(result.current.slowStage).toBe("normal");
   });
 
-  it("times out at 8s and switches to background verification without surfacing an error", async () => {
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((_, reject) => {
-          const abortError = new DOMException("Aborted", "AbortError");
-          setTimeout(() => reject(abortError), 11_000);
-        }),
-    );
-
-    const { result } = renderHook(() => useDetect());
-
-    await act(async () => {
-      const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(8_000);
-      await detectPromise;
-    });
-
-    expect(result.current.error).toBeNull();
-    expect(result.current.result).toBeNull();
-    expect(result.current.loading).toBe(false);
-    expect(result.current.uiState).toBe("verifying_in_background");
-    expect(result.current.verifyingStatement).toBe("Pošlú nás na vojnu");
-  });
-
-  it("clears the loading UI even when the aborted fetch never settles", async () => {
+  it("keeps a slow request loading and shows the slow stage after 8s without starting a second fetch", async () => {
     vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
 
     const { result } = renderHook(() => useDetect());
@@ -235,298 +185,38 @@ describe("useDetect", () => {
       await vi.advanceTimersByTimeAsync(8_000);
     });
 
-    expect(result.current.loading).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
     expect(result.current.result).toBeNull();
-    expect(result.current.uiState).toBe("verifying_in_background");
-    expect(result.current.verifyingStatement).toBe("Pošlú nás na vojnu");
+    expect(result.current.uiState).toBe("detecting");
+    expect(result.current.slowStage).toBe("slow");
   });
 
-  it("runs hidden background detect after visible timeout and surfaces late match via notice", async () => {
-    let callCount = 0;
-
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((resolve, reject) => {
-          callCount += 1;
-
-          if (callCount === 1) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Pošlú nás na vojnu",
-                    matches: [
-                      {
-                        classification: "RELATED",
-                        similarity: 0.77,
-                        statement: {
-                          id: 1,
-                          vyrok: "Pošlú nás do vojny",
-                          vyhodnotenie: "Pravda",
-                          odovodnenie: "Odôvodnenie",
-                          datum: "2026-01-01",
-                          meno: "Politik",
-                          strana: "Strana",
-                        },
-                      },
-                    ],
-                    overall_status: "RELATED_ONLY",
-                    query_time_ms: 620,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_000,
-          );
-        }),
-    );
+  it("shows the very slow stage after 16s while keeping the original request alive", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
 
     const { result } = renderHook(() => useDetect());
 
     await act(async () => {
-      const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(8_000);
-      await detectPromise;
+      void result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(16_000);
     });
 
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.loading).toBe(true);
     expect(result.current.result).toBeNull();
-    expect(result.current.uiState).toBe("verifying_in_background");
-    expect(result.current.lateMatchNotice).toBeNull();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
-    });
-
-    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
-    expect(result.current.uiState).toBe("complete");
-    expect(result.current.lateMatchNotice).toEqual({
-      status: "RELATED_ONLY",
-      result: expect.objectContaining({
-        overall_status: "RELATED_ONLY",
-      }),
-    });
+    expect(result.current.uiState).toBe("detecting");
+    expect(result.current.slowStage).toBe("very_slow");
   });
 
-  it("dismisses late match notice", async () => {
-    let callCount = 0;
-
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((resolve, reject) => {
-          callCount += 1;
-
-          if (callCount === 1) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Pošlú nás na vojnu",
-                    matches: [],
-                    overall_status: "RELATED_ONLY",
-                    query_time_ms: 620,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_000,
-          );
-        }),
-    );
-
-    const { result } = renderHook(() => useDetect());
-
-    await act(async () => {
-      const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(8_000);
-      await detectPromise;
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
-    });
-
-    expect(result.current.lateMatchNotice).not.toBeNull();
-
-    act(() => {
-      result.current.dismissLateMatchNotice();
-    });
-
-    expect(result.current.lateMatchNotice).toBeNull();
-  });
-
-  it("applies late match result and clears notice", async () => {
-    let callCount = 0;
-
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((resolve, reject) => {
-          callCount += 1;
-
-          if (callCount === 1) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Pošlú nás na vojnu",
-                    matches: [
-                      {
-                        classification: "DUPLICATE",
-                        similarity: 0.92,
-                        statement: {
-                          id: 1,
-                          vyrok: "Pošlú nás do vojny",
-                          vyhodnotenie: "Pravda",
-                          odovodnenie: "Odôvodnenie",
-                          datum: "2026-01-01",
-                          meno: "Politik",
-                          strana: "Strana",
-                        },
-                      },
-                    ],
-                    overall_status: "DUPLICATE_FOUND",
-                    query_time_ms: 620,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_000,
-          );
-        }),
-    );
-
-    const { result } = renderHook(() => useDetect());
-
-    await act(async () => {
-      const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(8_000);
-      await detectPromise;
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
-    });
-
-    expect(result.current.lateMatchNotice?.status).toBe("DUPLICATE_FOUND");
-
-    act(() => {
-      result.current.applyLateMatchResult();
-    });
-
-    expect(result.current.result?.overall_status).toBe("DUPLICATE_FOUND");
-    expect(result.current.lateMatchNotice).toBeNull();
-  });
-
-  it("applies late hidden matches automatically before the notice is dismissed", async () => {
-    let callCount = 0;
-
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((resolve, reject) => {
-          callCount += 1;
-
-          if (callCount === 1) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Pošlú nás na vojnu",
-                    matches: [
-                      {
-                        classification: "RELATED",
-                        similarity: 0.78,
-                        statement: {
-                          id: 2,
-                          vyrok: "Pošlú nás na front",
-                          vyhodnotenie: "Nepravda",
-                          odovodnenie: "Odôvodnenie",
-                          datum: "2026-02-01",
-                          meno: "Politik",
-                          strana: "Strana",
-                        },
-                      },
-                    ],
-                    overall_status: "RELATED_ONLY",
-                    query_time_ms: 730,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_000,
-          );
-        }),
-    );
-
-    const { result } = renderHook(() => useDetect());
-
-    await act(async () => {
-      const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(8_000);
-      await detectPromise;
-    });
-
-    expect(result.current.result).toBeNull();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
-    });
-
-    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
-    expect(result.current.lateMatchNotice?.status).toBe("RELATED_ONLY");
-  });
-
-  it("does not overwrite a successful visible detect result with a stale timeout fallback", async () => {
+  it("completes normally when the single request resolves after the slow threshold", async () => {
     vi.mocked(fetch).mockImplementation(
       () =>
         new Promise<Response>((resolve) => {
           setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Pošlú nás na vojnu",
-                    matches: [
-                      {
-                        classification: "RELATED",
-                        similarity: 0.81,
-                        statement: {
-                          id: 3,
-                          vyrok: "Pošlú nás do konfliktu",
-                          vyhodnotenie: "Zavádzajúce",
-                          odovodnenie: "Odôvodnenie",
-                          datum: "2026-02-03",
-                          meno: "Politik",
-                          strana: "Strana",
-                        },
-                      },
-                    ],
-                    overall_status: "RELATED_ONLY",
-                    query_time_ms: 2_400,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_400,
+            () => resolve(createResponse(createDetectResponse("Pošlú nás na vojnu", "RELATED_ONLY"))),
+            12_000,
           );
         }),
     );
@@ -535,73 +225,49 @@ describe("useDetect", () => {
 
     await act(async () => {
       const detectPromise = result.current.detect("Pošlú nás na vojnu");
-      await vi.advanceTimersByTimeAsync(2_400);
+      await vi.advanceTimersByTimeAsync(12_000);
       await detectPromise;
     });
 
+    expect(fetch).toHaveBeenCalledTimes(1);
     expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(8_000);
-    });
-
-    expect(result.current.result?.overall_status).toBe("RELATED_ONLY");
-    expect(result.current.result?.matches).toHaveLength(1);
-    expect(result.current.lateMatchNotice).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("complete");
+    expect(result.current.slowStage).toBe("normal");
   });
 
-  it("newer detect request invalidates previous hidden request", async () => {
-    let callCount = 0;
+  it("hard-times out the single request and surfaces a retryable error", async () => {
+    vi.mocked(fetch).mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
 
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu");
+      await vi.advanceTimersByTimeAsync(25_000);
+      await detectPromise;
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.result).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("idle");
+    expect(result.current.slowStage).toBe("normal");
+    expect(result.current.error).toBe("Overenie sa nepodarilo dokončiť. Skúste analýzu spustiť znova.");
+  });
+
+  it("newer detect request invalidates previous slow timers and stale responses", async () => {
+    const resolvers: Array<(response: Response) => void> = [];
     vi.mocked(fetch).mockImplementation(
       () =>
-        new Promise<Response>((resolve, reject) => {
-          callCount += 1;
-
-          if (callCount === 1) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          if (callCount === 2) {
-            setTimeout(
-              () =>
-                resolve(
-                  new Response(
-                    JSON.stringify({
-                      input_statement: "First statement",
-                      matches: [],
-                      overall_status: "RELATED_ONLY",
-                      query_time_ms: 620,
-                    }),
-                    { status: 200 },
-                  ),
-                ),
-              2_000,
-            );
-            return;
-          }
-
-          if (callCount === 3) {
-            setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 11_000);
-            return;
-          }
-
-          setTimeout(
-            () =>
-              resolve(
-                new Response(
-                  JSON.stringify({
-                    input_statement: "Second statement",
-                    matches: [],
-                    overall_status: "DUPLICATE_FOUND",
-                    query_time_ms: 620,
-                  }),
-                  { status: 200 },
-                ),
-              ),
-            2_000,
-          );
+        new Promise<Response>((resolve) => {
+          resolvers.push(resolve);
         }),
     );
 
@@ -612,25 +278,83 @@ describe("useDetect", () => {
       await vi.advanceTimersByTimeAsync(8_000);
     });
 
+    expect(result.current.slowStage).toBe("slow");
     expect(result.current.result).toBeNull();
-    expect(result.current.lateMatchNotice).toBeNull();
 
     await act(async () => {
       result.current.detect("Second statement");
-      await vi.advanceTimersByTimeAsync(8_000);
+      resolvers[0](createResponse(createDetectResponse("First statement", "RELATED_ONLY")));
+      await Promise.resolve();
     });
 
     expect(result.current.result).toBeNull();
-    expect(result.current.uiState).toBe("verifying_in_background");
-    expect(result.current.verifyingStatement).toBe("Second statement");
-    expect(result.current.lateMatchNotice).toBeNull();
+    expect(result.current.slowStage).toBe("normal");
+    expect(result.current.uiState).toBe("detecting");
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000);
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(result.current.slowStage).toBe("slow");
+
+    await act(async () => {
+      resolvers[1](createResponse(createDetectResponse("Second statement", "DUPLICATE_FOUND")));
+      await Promise.resolve();
     });
 
     expect(result.current.result?.input_statement).toBe("Second statement");
     expect(result.current.result?.overall_status).toBe("DUPLICATE_FOUND");
-    expect(result.current.lateMatchNotice?.status).toBe("DUPLICATE_FOUND");
+    expect(result.current.slowStage).toBe("normal");
+  });
+
+  it("reset clears slow timers and the slow stage", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      void result.current.detect("First statement");
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(result.current.slowStage).toBe("slow");
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("idle");
+    expect(result.current.slowStage).toBe("normal");
+  });
+
+  it("restore clears slow timers and shows restored result", async () => {
+    vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => {}));
+
+    const { result } = renderHook(() => useDetect());
+    const restoredResponse = createDetectResponse("Restored statement", "RELATED_ONLY");
+
+    await act(async () => {
+      void result.current.detect("First statement");
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    act(() => {
+      result.current.restore({
+        id: "detect-1",
+        kind: "detect",
+        query: "Restored statement",
+        response: restoredResponse,
+        createdAt: "2026-04-24T00:00:00.000Z",
+        preparedAggregate: null,
+        openResearch: null,
+      });
+    });
+
+    expect(result.current.result).toBe(restoredResponse);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.uiState).toBe("complete");
+    expect(result.current.slowStage).toBe("normal");
   });
 });

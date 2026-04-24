@@ -152,13 +152,7 @@ export default function ResearchWorkspace({
     () => getVisibleArticleItems(workspaceMode, data?.items ?? [], detectMatches),
     [data, detectMatches, workspaceMode],
   );
-  const activeSidebarTab: SidebarTab =
-    workspaceMode === "aggregate" &&
-    detectMatches.length > 0 &&
-    visibleArticleItems.length === 0 &&
-    sidebarTab === "articles"
-      ? "statements"
-      : sidebarTab;
+  const activeSidebarTab: SidebarTab = sidebarTab;
   const emptyPaneMessage =
     workspaceMode === "aggregate" && visibleArticleItems.length === 0 && detectMatches.length === 0
       ? "Pre tento výrok sa nenašli články ani súvisiace výroky."
@@ -167,6 +161,15 @@ export default function ResearchWorkspace({
         : activeSidebarTab === "articles" && visibleArticleItems.length === 0
           ? "Pre tento výrok sa nenašli články ani externé zdroje."
           : "Vyberte položku z ľavého panelu.";
+
+  useEffect(() => {
+    if (workspaceMode !== "aggregate" || detectMatches.length === 0 || visibleArticleItems.length > 0) {
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- default no-article aggregate research to matches while keeping manual tab changes possible
+    setSidebarTab((currentTab) => (currentTab === "articles" ? "statements" : currentTab));
+  }, [data, detectMatches.length, visibleArticleItems.length, workspaceMode]);
 
   useDialogFocus({
     isOpen: isRendered,
@@ -598,10 +601,12 @@ export default function ResearchWorkspace({
                     >
                       <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-y-1 left-1 z-0 w-1/2 rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
+                        className="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
                         style={{
                           transform:
-                            activeSidebarTab === "articles" ? "translateX(0)" : "translateX(100%)",
+                            activeSidebarTab === "articles"
+                              ? "translateX(0)"
+                              : "translateX(100%)",
                         }}
                       />
                       <button

@@ -50,7 +50,7 @@ export default function ResearchSidebar({
           >
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-1 left-1 z-0 w-1/2 rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
+              className="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-[0.9rem] bg-white shadow-[0_10px_26px_-18px_rgba(15,23,42,0.45)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform dark:bg-slate-950 dark:shadow-[0_12px_30px_-18px_rgba(2,6,23,0.95)]"
               style={{
                 transform:
                   activeTab === "articles"

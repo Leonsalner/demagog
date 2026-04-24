@@ -157,10 +157,7 @@ function mockUseDetectReturn(overrides?: Record<string, unknown>) {
     loading: false,
     error: null,
     uiState: "idle",
-    verifyingStatement: null,
-    lateMatchNotice: null,
-    dismissLateMatchNotice: vi.fn(),
-    applyLateMatchResult: vi.fn(),
+    slowStage: "normal",
     detect,
     restore: vi.fn(),
     reset,
@@ -355,9 +352,26 @@ describe("detect page flow", () => {
     await renderHome("detect");
 
     expect(
-      screen.getByText(/Porovnávam výrok s databázou overených tvrdení/i),
+      screen.getByText(/Kontrolujeme archív overených výrokov/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Priebeh detekcie" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Detekcia prebieha" })).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "Priebeh detekcie" })).not.toBeInTheDocument();
+  });
+
+  it("renders a retryable detect error panel without the empty placeholder", async () => {
+    const { detect } = mockUseDetectReturn({
+      error: "Overenie sa nepodarilo dokončiť. Skúste analýzu spustiť znova.",
+    });
+
+    await renderHome("detect");
+    fireEvent.change(screen.getByLabelText("Politický výrok"), {
+      target: { value: "Pošlú nás na vojnu." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Skúsiť znova" }));
+
+    expect(screen.getByText("Overenie sa nepodarilo dokončiť")).toBeInTheDocument();
+    expect(screen.queryByText(/Výsledky detekcie sa zobrazia tu/i)).not.toBeInTheDocument();
+    expect(detect).toHaveBeenCalledWith("Pošlú nás na vojnu.", "thorough");
   });
 
   it("renders duplicate and related result states", async () => {
@@ -435,7 +449,7 @@ describe("detect page flow", () => {
     expect(prepare).not.toHaveBeenCalled();
   });
 
-  it("keeps detect results visible while aggregate preparation is in progress", async () => {
+  it("keeps detect loading visible while aggregate preparation is in progress", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -448,13 +462,12 @@ describe("detect page flow", () => {
     await renderHome("detect");
     syncDetectInput("Ukrajina je Rusko.");
 
-    expect(
-      screen.getByText(/Súhrnný prieskum sa pripravuje spolu s článkami a externými zdrojmi/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Detekcia prebieha" })).toBeInTheDocument();
+    expect(screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
-  it("does not block the detect surface while aggregate research is idle", async () => {
+  it("keeps detect loading visible before aggregate preparation starts", async () => {
     mockUseDetectReturn({
       result: buildWeakDetectResult(),
     });
@@ -466,9 +479,9 @@ describe("detect page flow", () => {
     await renderHome("detect");
     syncDetectInput("Ukrajina je Rusko.");
 
-    expect(screen.queryByRole("progressbar", { name: "Priebeh detekcie" })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Porovnávam výrok s databázou overených tvrdení/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Nájdené súvisiace výroky/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Detekcia prebieha" })).toBeInTheDocument();
+    expect(screen.getByText(/Pripravujem prieskum výroku a súvisiace zdroje/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Nájdené súvisiace výroky/i)).not.toBeInTheDocument();
   });
 
   it("auto-opens prepared aggregate research when the data is ready", async () => {

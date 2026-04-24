@@ -221,6 +221,38 @@ a {
   }
 }
 
+@keyframes detectSpinnerWheel {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(720deg);
+  }
+}
+
+@keyframes detectSpinnerPulse {
+  0%,
+  100% {
+    opacity: 0.58;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.detect-spinner-wheel {
+  animation: detectSpinnerWheel 1600ms linear infinite;
+  transform-origin: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detect-spinner-wheel {
+    animation: detectSpinnerPulse 1800ms ease-in-out infinite;
+  }
+}
+
 .animate-feedback-reveal {
   animation: feedbackPanelReveal 240ms ease-out forwards;
 }

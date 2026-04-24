@@ -176,7 +176,7 @@ export default function ActiveFilters({
                 return (
                   <span
                     key={chipId}
-                    className={`inline-grid overflow-hidden align-middle [grid-template-columns:1fr] ${
+                    className={`-m-px inline-grid overflow-hidden p-px align-middle [grid-template-columns:1fr] ${
                       isClosing
                         ? "animate-[activeFilterChipExit_220ms_cubic-bezier(0.64,0,0.78,0)_forwards]"
                         : shouldDelayEntry

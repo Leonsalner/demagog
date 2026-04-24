@@ -58,6 +58,7 @@ const LEXICAL_DETECT_CANDIDATE_LIMIT = 120;
 const LEXICAL_DETECT_ROWS_PER_TERM = 40;
 const FAST_DETECT_RETRIEVAL_COUNT = 10;
 const THOROUGH_DETECT_RETRIEVAL_COUNT = 60;
+const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 10000;
 const matchStatementsRpcCache = createRpcAvailabilityCache();
 const DETECT_FALLBACK_IGNORED_TERMS = new Set([
   "asi",
@@ -124,6 +125,18 @@ function buildNewClaimFallbackResponse(
   }
   nextResponse.headers.set("X-Demagog-Detect-Fallback", "no-match");
   return nextResponse;
+}
+
+function getClassificationTimeoutMs(): number {
+  const configured = process.env.DETECT_CLASSIFICATION_TIMEOUT_MS;
+  if (!configured) {
+    return DEFAULT_CLASSIFICATION_TIMEOUT_MS;
+  }
+
+  const parsed = Number.parseInt(configured, 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_CLASSIFICATION_TIMEOUT_MS;
 }
 
 async function fetchSourcesForIds(
@@ -374,7 +387,7 @@ export async function POST(request: NextRequest) {
   try {
     const warnings = new Set<ResponseWarning>();
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Classification timeout")), 10000)
+      setTimeout(() => reject(new Error("Classification timeout")), getClassificationTimeoutMs())
     );
 
     const classifications = await Promise.race([
@@ -385,7 +398,7 @@ export async function POST(request: NextRequest) {
           vyrok: row.vyrok,
           vyhodnotenie: row.vyhodnotenie,
         })),
-        getGeminiModel(mode === "fast" ? "lite" : "pro")
+        getGeminiModel("lite")
       ),
       timeoutPromise,
     ]);
