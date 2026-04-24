@@ -1,0 +1,3516 @@
+{
+  "startedAt": "2026-04-24T14:26:48.528Z",
+  "finishedAt": "2026-04-24T14:36:15.841Z",
+  "candidateCount": 30,
+  "classifierTimeoutMs": 45000,
+  "groqDelayMs": 12000,
+  "groqMaxRetries": 3,
+  "variants": [
+    {
+      "id": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "label": "Gemini Flash Lite"
+    },
+    {
+      "id": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "label": "Groq Llama 4 Scout 17B"
+    },
+    {
+      "id": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "label": "Groq Llama 3.3 70B Versatile"
+    },
+    {
+      "id": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "label": "Groq Llama 3.1 8B Instant"
+    },
+    {
+      "id": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "label": "Groq GPT OSS 120B"
+    }
+  ],
+  "cases": [
+    {
+      "id": "known-pediatrics-exact",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "note": "Seeded from existing live API test; should find duplicate or related archive result."
+    },
+    {
+      "id": "known-pediatrics-paraphrase",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "note": "Paraphrase of the known pediatrics statement."
+    },
+    {
+      "id": "known-consolidation-paraphrase",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "note": "Seeded from scripts/test-queries.ts as a rephrased known archive statement."
+    },
+    {
+      "id": "war-claim-user-repro",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "note": "User-reported repro that previously found a result."
+    },
+    {
+      "id": "oncology-related",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "note": "Seeded from existing live API test; should find same-topic related archive result."
+    },
+    {
+      "id": "eu-soldiers-ukraine",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "note": "Politician-style security claim; useful to inspect retrieval/classification, not gold-labeled."
+    },
+    {
+      "id": "mars-new-claim",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "note": "Seeded from existing live API test as novel/non-Slovak-politics claim."
+    },
+    {
+      "id": "synthetic-hydrogen-fire-stations",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "note": "Made-up politician-style claim expected to have no direct archive match."
+    },
+    {
+      "id": "doctors-growth",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "note": "Politician-style health claim; useful for model comparison but not gold-labeled."
+    },
+    {
+      "id": "ukraine-aid",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "note": "Politician-style foreign/security claim; likely archive-adjacent but not gold-labeled."
+    }
+  ],
+  "retrievals": [
+    {
+      "caseId": "known-pediatrics-exact",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1435,
+      "candidateCount": 10,
+      "topCandidate": {
+        "id": 6710,
+        "vyrok": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Personálna situácia v slovenskom zdravotníctve je dlhodobo problematická. O chýbajúcom zdravotníckom personále hovoria viaceré inštitúcie vrátane Komory sestier či ministerstva zdravotníctva. Podľa odhadov ministerstva zdravotníctva chýba na Slovensku minimálne2-tisíc lekárov a 4-tisíc sestier, pričom niektoré odhady hovoria až o 14-tisícoch chýbajúcich sestier. Výrok Michala Trubana preto hodnotíme ako nepravdivý.\n\nBývalá ministerka zdravotníctva Zuzana Dolinková ešte v novembri 2023 vyhlásila , že na Slovensku chýba okolo 2-tisíc lekárov. Ide podľa nej o konzervatívny a hrubý odhad, situácia môže byť ešte horšia.\n\nVýrazný nedostatok má Slovensko najmä všeobecných lekárov. Podľa dát Úradu pre dohľad nad zdravotnou starostlivosťou (ÚDZS) chýbalo k začiatku minulého roka spolu 713 všeobecných lekárov z toho 484 lekárov pre dospelých a 229 lekárov pre deti a dorast ( .pdf , s. 77). Podľa dát viac ako 280-tisíc občanov Slovenskej republiky, nemá svojho všeobecného lekára.\n\nPodľa dát Inštitútu zdravotnej politiky z roku 2019 chýbalo na Slovensku 3500 lekárov a približne 2000 ďalších lekárov bolo v dôchodkovom veku.\n\nNa základe údajov Národného centra zdravotníckych informácií (NCZI) na Slovensku v roku 2022 pracovalo vyše 20-tisíc lekárov. V roku 2021 u nás pripadalo na tisíc obyvateľov 3,7 lekára ( .pdf , s. 2), pričom priemer Európskej Únie je 4,1 lekára. Za predpokladu zachovania aktuálnych podmienok a požiadaviek Rady pre rozpočtovú zodpovednosť (RRZ) počíta s miernym rastom lekárov v strednom a dlhodobom horizonte. Ani tento rast však nebude podľa rady stačiť na úplné naplnenie potrieb starnúcej generácie.\n\nEšte alarmujúcejšia je situácia ohľadom zdravotných sestier. Slovenská komora sestier a pôrodných asistentiek (SKSaPA) v tlačovej správe uvádza, že na Slovensku chýba aktuálne vyše 14-tisíc sestier. Ministerstvo zdravotníctva je vo svojich odhadoch konzervatívnejšie a hovorí o deficite minimálne 4-tisíc sestier. Kým na Slovensku v roku 2021 pripadlo na tisíc obyvateľov 5,7 zdravotnej sestry ( .pdf , s. 2), priemer Európskej Únie je 8,4 sestry.\n\nNavyše hrozí, že sa nedostatok sestier bude v nasledujúcich rokoch ešte prehlbovať vzhľadom na ich vysoký priemerný vek. Podľa SKSaPA hrozí, že do roku 2030 prídeme o 20% všetkých sestier.\n\nJedným z hlavných problémov nedostatku sestier je aj ich odchod do zahraničia. Rozhodujúcim dôvodom je podľa SKSaPA predovšetkým nižšia mzda.\n\nPodľa analýzy Národnej banky Slovenska sa dlhodobo neriešené problémy v zdravotníctve vrátane nedostatku sestier a lekárov podpíšu na prehĺbení nenaplnenej zdravotnej starostlivosti na Slovensku ( .pdf , s. 32).",
+        "datum": "2024-10-13",
+        "meno": "Michal Truban",
+        "strana": "PS",
+        "url": "https://demagog.sk/vyrok/49743",
+        "speaker_url": "https://demagog.sk/politik/michal-truban",
+        "similarity": 0.33004101161995897
+      },
+      "error": null
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1304,
+      "candidateCount": 30,
+      "topCandidate": {
+        "id": 18173,
+        "vyrok": "Je tu obrovský priestor spomínaných daňových únikov, Slovensko je druhé najväčšie úniky v celej Európskej únii. To je hovoríme o sume približne miliarda 200, miliarda 300 miliónov eur.",
+        "vyhodnotenie": "Nepravda",
+        "odovodnenie": "Nepodarilo sa nám nájsť štatistiku daňových únikov naprieč Európskou úniou. Podarilo sa nám však nájsť odhady rozmerov tzv. \"čiernej\" alebo tiež \"šedej\" ekonomiky v jednotlivých členských štátoch. Medzi výškou ďaňových únikov a rozmerom \"čiernej\" ekonomiky existuje priama úmera, keďže \"čierna\" ekonomika predstavuje nezdanený produkt. Podľa denníka Washington Post , slovenská \"čierna\" ekonomika v roku 2011 predstavuje zhruba 16% HDP, čo je pod európskym priemerom (19% HDP). Líderom je Bulharsko s 32% HDP. Slovensko je v danom rebríčku spomedzi členov EÚ na 17. priečke.",
+        "datum": "2011-12-11",
+        "meno": "Jozef Kollár",
+        "strana": "SKOK!",
+        "url": "https://demagog.sk/vyrok/vr30592",
+        "speaker_url": "https://demagog.sk/politik/jozef-kollar",
+        "similarity": 0.3862676056338028
+      },
+      "error": null
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1111,
+      "candidateCount": 9,
+      "topCandidate": {
+        "id": 5458,
+        "vyrok": "Váš(balík vlády Ivety Radičovej, pozn.) balík konsolidácie dopadol na hospodársky rast v objeme 0,8% náš to sú konkrétne čísla. Náš je projektový na 0,5%.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "P. Kažimír uvádza správne čísla. Dopad konsolidačného balíka súčasnej vlády je odhadovaný na 0,5 p.b. Minister financií správne uvádza dopad konsolidačných opatrení vlády I. Radičovej. Výrok P. Kažimíra hodnotíme ako pravdivý. Podľa poslednej prognózy IFP z 14. septembra 2012 predpokladá, že v roku 2013, fiškálne opatrenia vlády znížia rast HDP o 0,5 p.b. \"Záporný príspevok konsolidácie k rastu HDP bude sústredený do roku 2013 vo výške 0,5 p.b. (júnový predpoklad bol 0,4 p.b.).\" Prognóza IFP z 15. júna 2012 vychádzala z predbežného konsolidačného balíka a očakávala dopad balíka 0,4 p.b . Dopad konsolidačných opatrení vlády Ivety Radičovej na ekonomický rast je odhadovaný na úrovni 0,8 %. Program stability (.pdf) na roky 2011 až 2014 odhadoval dopad na úrovni 0,5%. Podľa denníka SME bol nakoniec vplyv väčší, pretože Radičovej vláda konsolidovala viac, preto aj vplyv na HDP musí byť väčší. Dátum zverejnenia analýzy: 08.10.2012 Naspäť Nahlásiť chybu",
+        "datum": "2012-10-07",
+        "meno": "Peter Kažimír",
+        "strana": "SMER-SD",
+        "url": "https://demagog.sk/vyrok/vr32376",
+        "speaker_url": "https://demagog.sk/politik/peter-kazimir",
+        "similarity": 0.2616279069767442
+      },
+      "error": null
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "statement": "Pošlú nás na vojnu.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 929,
+      "candidateCount": 30,
+      "topCandidate": {
+        "id": 7333,
+        "vyrok": "...a rozvešajú po Slovensku stovky billboardov a pošlú občanom do pošty letáky s touto informáciou...",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Pravdou tiež je, že táto informácia bola zverejnená na bilboardoch (je to tiež zmienené v oficiálnom liste od Roberta Fica. Informácie z tohoto listu nikto nedementoval).",
+        "datum": "2010-09-19",
+        "meno": "Robert Fico",
+        "strana": "SMER-SD",
+        "url": "https://demagog.sk/vyrok/vr35513",
+        "speaker_url": "https://demagog.sk/politik/robert-fico",
+        "similarity": 0.2574074074074074
+      },
+      "error": null
+    },
+    {
+      "caseId": "oncology-related",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1426,
+      "candidateCount": 25,
+      "topCandidate": {
+        "id": 4369,
+        "vyrok": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Útočník z Vrútok Ivan Č. bol v decembri 2019 právoplatne odsúdený za vyhrážanie sa vlakvedúcej a výpravcovi. Sůd mu vymeral trest 8 mesiacov odňatia slobody s podmienečným odkladom 18 mesiacov skúšobnej doby a prepadnutie nožov, ktoré mal pri sebe. Slovenské súdy pri vymeriavaní rozsudku skúmajú aj to, či páchateľ v minulosti spáchal obdobný skutok. V prípravnom konaní môže vyšetrovateľ iniciovať a prokurátor navrhnúť vyšetrenie duševného stavu, povoliť ho musí sudca. V konaní pred súdom dáva takýto návrh sudca. Obvineného vyšetruje psychiatrický znalec. Ak nestačí ambulantné vyšetrenie, môže súd nariadiť pozorovanie v ústave. Ochranný dohľad nad páchateľom súd ukladá pri obzvlášť závažných zločinoch s nepodmienečným trestom odňatia slobody. Tvrdenie Roman a Mikulca hodnotíme ako pravdivé.",
+        "datum": "2020-07-30",
+        "meno": "Roman Mikulec",
+        "strana": "OĽaNO",
+        "url": "https://demagog.sk/vyrok/45858",
+        "speaker_url": "https://demagog.sk/politik/roman-mikulec",
+        "similarity": 0.23507194244604315
+      },
+      "error": null
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1788,
+      "candidateCount": 30,
+      "topCandidate": {
+        "id": 1096,
+        "vyrok": "Aj nám Európska únia predpovedá, že budeme ekonomickými lídrami na dva roky.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Podľa predpovede Komisie (.pdf) bude mať Slovensko v tomto roku spolu s Poľskom najvyšší rast, v budúcom roku nás má predbehnúť len Estónsko.",
+        "datum": "2010-05-23",
+        "meno": "Robert Kaliňák",
+        "strana": "SMER-SD",
+        "url": "https://demagog.sk/vyrok/vr35901",
+        "speaker_url": "https://demagog.sk/politik/robert-kalinak",
+        "similarity": 0.4046296296296296
+      },
+      "error": null
+    },
+    {
+      "caseId": "mars-new-claim",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 2111,
+      "candidateCount": 4,
+      "topCandidate": {
+        "id": 9204,
+        "vyrok": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Zákon č. 669/2007 Z. z . o jednorazových mimoriadnych opatreniach v príprave niektorých stavieb diaľnic a ciest pre motorové vozidlá § 6 ods. 1 hovorí: \"Náhrada za výkup pozemku alebo stavby je 1, 2 násobok náhrady v peniazoch za ich vyvlastnenie podľa všeobecných predpisov.\" Týždenník TREND píše: \"Protiústavný zákon navyše umožňoval štátu, aby majiteľom pôdy, ktorí boli ústretoví a ochotní pozemok predať, vyplácal navyše bonus 20 percent trhovej ceny z posudku. Majitelia tak dostávali 1,2-násobok ohodnotenia pôdy.\" Potvrdil to aj hovorca Národnej diaľničnej spoločnosti: \"Využíval sa aj inštitút poskytnutia 1,2-násobku ceny a zápisu predkupného práva na pozemky.\"",
+        "datum": "2011-01-30",
+        "meno": "Robert Fico",
+        "strana": "SMER-SD",
+        "url": "https://demagog.sk/vyrok/vr37037",
+        "speaker_url": "https://demagog.sk/politik/robert-fico",
+        "similarity": 0.16986666666666667
+      },
+      "error": null
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1451,
+      "candidateCount": 13,
+      "topCandidate": {
+        "id": 85,
+        "vyrok": "Rozpočet, ktorý schválila predchádzajúca vláda v roku 2011 na rok 2012 sa líši od reality o 500 miliónov eur.",
+        "vyhodnotenie": "Neoveriteľné",
+        "odovodnenie": "Číslo 500 miliónov, ktoré uvádza Robert Fico súhlasí s oficiálnym predpokladom Ministerstva Financií SR v rámci Správy o makroekonomickom vývoji a vývoji verejných financií za prvý polrok 2012 a predikcii vývoja do konca roka . Správa uvádza potrebu ušetriť ďalších 498,2 mil. eur pre udržanie cieľa deficitu na úrovni 4,6 % HDP. S takýmto vyčíslením však nesúhlasia predstavitelia predchádzajúcej vlády Ivety Radičovej, podľa ktorých si súčasná vláda čísla vymyslela, prispôsobila, alebo zvyýraznila. Takýmto spôsobom sa vyjadril napríklad bývalý tajomník ministra financií Ivan Tvaroška, alebo Ivan Štefanec (obaja SDKÚ), viď tu , tu , alebo tu . Nedokážeme nezávisle rozhodnúť o pravdivosti výroky, hodnotíme ho preto ako neoveriteľný. Dátum zverejnenia analýzy: 10.09.2012 Naspäť Nahlásiť chybu",
+        "datum": "2012-09-09",
+        "meno": "Robert Fico",
+        "strana": "SMER-SD",
+        "url": "https://demagog.sk/vyrok/vr32140",
+        "speaker_url": "https://demagog.sk/politik/robert-fico",
+        "similarity": 0.23956043956043957
+      },
+      "error": null
+    },
+    {
+      "caseId": "doctors-growth",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1213,
+      "candidateCount": 30,
+      "topCandidate": {
+        "id": 17474,
+        "vyrok": "Ak hovoríme o nedostatku lekárov, preto sa pýtam, prečo ste nepokračovali v systéme, ktorý som sa ako premiér pokúšal zaviesť, nahradiť zahraničných študentov na fakultách slovenskými. Na a 2 polroka, či na 3, ste to zrušili a teraz s tým prišiel Igor Matovič ako s veľkým objavom, že on ide znovu požiadať, aby prijalo sa viacej Slovákov na naše slovenské fakulty.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Začiatkom roku 2020 sa vláda s vtedajším premiérom Pellegrinim zaviazala , poskytnúť lekárskym vysokým školám dodatočné finančné prostriedky vo výške 2,5 milióna eur. Zdroje mali slúžiť na prijatie zvýšeného počtu študentov. V praxi to znamenalo, že mali lekárske fakulty prijať o 250 slovenských študentov viac ako v predchádzajúce roky. Dodatočné finančné prostriedky mali refundovať stratu príjmov, ktorú spôsobí nižší počet prijatých zahraničných študentov.\n\nLekárske fakulty zareagovali na vyhlásenie Pellegriniho už v roku 2020, keď v rámci vtedajšieho školského roku prijali o 185 študentov viac ako bolo v pláne.\n\nPo februárových voľbách nový premiér záväzky predchádzajúcej vlády nedodržal a neposkytol financie na zvýšenie počtu slovenských študentov medicíny. Univerzity neobdržali príspevok na akademický rok 2020/2021, čo spôsobilo fakultám komplikácie.\n\nV októbri tohto roku vláda prehodnotila súčasný postoj a zhodla sa na tom, že štát bude platiť lekárskym fakultám reálne náklady na štúdium slovenských medikov, aby boli univerzity schopné prijať viac študentov pochádzajúcich zo Slovenska. V akademickom roku 2023/2024 budú môcť lekárske vysoké školy prijať o 500 slovenských študentov viac, pričom financie budú proporcionálne rozdelené medzi všetky lekárske fakulty na Slovensku.\n\nVýrok hodnotíme ako pravdivý.",
+        "datum": null,
+        "meno": "Peter Pellegrini",
+        "strana": "Hlas",
+        "url": "https://demagog.sk/vyrok/48745",
+        "speaker_url": "https://demagog.sk/politik/peter-pellegrini",
+        "similarity": 0.5480430528375734
+      },
+      "error": null
+    },
+    {
+      "caseId": "ukraine-aid",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "retrievalMode": "lexical",
+      "retrievalMs": 1252,
+      "candidateCount": 30,
+      "topCandidate": {
+        "id": 14690,
+        "vyrok": "Blokuje sa nám vyplatenie 300 000 000 za MIGy, ktoré sme poskytli Ukrajine a za ktoré sme mali prisľúbené, že dostaneme ich naspäť 300.000.000 EUR, lebo s tým nesúhlasí Viktor Orbán.",
+        "vyhodnotenie": "Pravda",
+        "odovodnenie": "Slovensko v marci 2023 darovalo Ukrajine trinásť stíhačiek MiG-29 a časť systému protivzdušnej obrany Kub. Za všetky darované zbrane si môžeme nárokovať kompenzácie z Európskeho mierového nástroja. Celkovo boli podľa ministerstva zo strany EÚ uznané náklady na pomoc Ukrajine vo výške 460 miliónov eur, presná suma, ktorú za stíhačky Slovensko dostane však nie je známa. Na vyplatenie peňazí z Európskeho mierového nástroja však stále čakáme, keďže vyplácanie blokuje Maďarsko. Výrok preto hodnotíme ako ešte pravdivý.\n\nV roku 2023 Ukrajine odovzdalo Slovensko spolu trinásť stíhačiek MiG-29, časť systému protivzdušnej obrany Kub a zodpovedajúce náhradné diely a muníciu. Na odovzdaní sa dohodla vláda Eduarda Hegera. Celkovo Slovensko poslalo Ukrajine trinásť balíkov vojenskej pomoci. Minister Naď odhadoval hodnotu stíhačiek MiG-29 na 300 miliónov eur, neskôr už hovoril o 150 miliónoch.\n\nZa všetky darované zbrane si Slovensko môže nárokovať kompenzácie z Európskeho mierového nástroja (EPF). Ide o špeciálny fond, prostredníctvom ktorého Európska únia (EÚ) vojensky pomáha Ukrajine. Fond vznikol v roku 2021 a je zameraný na zvýšenie schopnosti EÚ predchádzať konfliktom, budovať mier a posilňovať medzinárodnú bezpečnosť.\n\nProstriedky z tohto fondu sa vyplácajú v tranžiach. Posledná tranža refundácie prostriedkov je v súčasnosti pozastavená, pretože splátku vo výške 500 miliónov eur už niekoľko mesiacov blokuje Maďarsko.\n\nNajprv maďarská vláda nesúhlasila s tým, aby Európska únia využívala Európsky mierový nástroj „výlučne na podporu Ukrajiny, neskôr vláda Viktora Orbána nepodporila výplatu tranže v celkovej sume 500 miliónov eur pre to, že Ukrajina vedie maďarskú banku OTP na svojom zozname sponzorov vojny. V pondelok 27. mája maďarský minister zahraničia Péter Szijjárto prišiel s novou výhradou, a síce, že Ukrajina diskriminuje maďarské spoločnosti.\n\nPresná suma úhrady, ktorú by Slovensko malo dostať, však ešte nie je známa. „Je to komplikovaný mechanizmus, ktorý sa zároveň prispôsobuje viacerým vstupom. Informácia je v neverejnom, a jej časť aj v utajovanom režime, a preto aktuálne podrobnosti nie je možné zverejniť,“ uviedol rezort v stanovisku pre denník Pravda.\n\nMinister Blanár nedávno informoval , že kompenzácia za darované zbrane nebude vo výške, ktorá bola sľúbená vlani. Čím dlhšie sa na platbu čaká, tým viac hrozí, že jej suma bude nižšia. V každej tranži sa delí suma 500 miliónov a únia postupne prehodnocuje výšku predtým dohodnutých kompenzácií.\n\nCelkovo boli zo strany EÚ uznané náklady na pomoc Ukrajine vo výške 460 miliónov eur. Zo zdrojov EPF bolo Slovensku doposiaľ preplatených 82,1 milióna eur. V nadchádzajúcich fázach sa očakáva 5,5 milióna eur a refundácia pomoci poskytnutej v rámci tzv. muničnej iniciatívy v sume 25,52 milióna eur. Celkovo Slovensko v rámci EPF nahlásilo vojenskú pomoc vo výške 671 miliónov eur.\n\nMaďarsko blokuje aj niekoľko ďalších návrhov súvisiacich s pomocou Ukrajine. Na summite Európskej rady v decembri 2023 sa lídri kvôli Orbánovi nedohodli na balíku finančnej podpory Ukrajiny vo výške 50 miliárd eur, pretože Maďarsko dohodu vetovalo .\n\nRokovania o balíku pre Ukrajinu pokračovali od januára tohto roku. Viktor Orbán avizoval snahu o kompromis s podmienkou , že finančná podpora bude každý rok preskúmavať a znovu jednomyseľne schvaľovať. Možnosť vetovať ukrajinský balík každý rok, by Maďarsku dala ďalšie príležitosti na vyjednanie vlastných požiadaviek.\n\nNa februárovom mimoriadnom zasadnutí sa lídri členských krajín na balíku finančnej pomoci Ukrajine vo výške 50 miliárd jednomyseľne zhodli . Stalo sa tak po tom, čo v denníku Financial Times vyšiel článok, podľa ktorého Brusel chystá kroky, ktoré by tvrdo zasiahli maďarskú ekonomiku, ak by premiér Viktor Orbán zablokoval balík na pomoc Ukrajine.",
+        "datum": "2024-05-12",
+        "meno": "Veronika Cifrová Ostrihoňová",
+        "strana": "PS",
+        "url": "https://demagog.sk/vyrok/49596",
+        "speaker_url": "https://demagog.sk/politik/veronika-cifrova-ostrihonova",
+        "similarity": 0.6865755627009646
+      },
+      "error": null
+    }
+  ],
+  "summary": [
+    {
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "successCount": 10,
+      "errorCount": 0,
+      "scoredCount": 7,
+      "correctCount": 7,
+      "accuracy": 1,
+      "avgTotalMs": 3005,
+      "p50TotalMs": 2962,
+      "p90TotalMs": 3706,
+      "avgClassifyMs": 1603,
+      "p50ClassifyMs": 1717,
+      "p90ClassifyMs": 1918,
+      "statuses": {
+        "RELATED_ONLY": 7,
+        "NEW_CLAIM": 2,
+        "DUPLICATE_FOUND": 1
+      }
+    },
+    {
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "successCount": 10,
+      "errorCount": 0,
+      "scoredCount": 7,
+      "correctCount": 5,
+      "accuracy": 0.7142857142857143,
+      "avgTotalMs": 2621,
+      "p50TotalMs": 2457,
+      "p90TotalMs": 3421,
+      "avgClassifyMs": 1219,
+      "p50ClassifyMs": 1006,
+      "p90ClassifyMs": 2117,
+      "statuses": {
+        "RELATED_ONLY": 7,
+        "DUPLICATE_FOUND": 1,
+        "NEW_CLAIM": 2
+      }
+    },
+    {
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "successCount": 10,
+      "errorCount": 0,
+      "scoredCount": 7,
+      "correctCount": 5,
+      "accuracy": 0.7142857142857143,
+      "avgTotalMs": 2262,
+      "p50TotalMs": 2079,
+      "p90TotalMs": 2546,
+      "avgClassifyMs": 860,
+      "p50ClassifyMs": 724,
+      "p90ClassifyMs": 1120,
+      "statuses": {
+        "RELATED_ONLY": 6,
+        "NEW_CLAIM": 4
+      }
+    },
+    {
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "successCount": 10,
+      "errorCount": 0,
+      "scoredCount": 7,
+      "correctCount": 7,
+      "accuracy": 1,
+      "avgTotalMs": 2500,
+      "p50TotalMs": 2286,
+      "p90TotalMs": 3187,
+      "avgClassifyMs": 1098,
+      "p50ClassifyMs": 1027,
+      "p90ClassifyMs": 2036,
+      "statuses": {
+        "DUPLICATE_FOUND": 8,
+        "NEW_CLAIM": 2
+      }
+    },
+    {
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "successCount": 10,
+      "errorCount": 0,
+      "scoredCount": 7,
+      "correctCount": 7,
+      "accuracy": 1,
+      "avgTotalMs": 3945,
+      "p50TotalMs": 3476,
+      "p90TotalMs": 4648,
+      "avgClassifyMs": 2543,
+      "p50ClassifyMs": 2172,
+      "p90ClassifyMs": 3560,
+      "statuses": {
+        "RELATED_ONLY": 7,
+        "NEW_CLAIM": 2,
+        "DUPLICATE_FOUND": 1
+      }
+    }
+  ],
+  "results": [
+    {
+      "caseId": "known-pediatrics-exact",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 10,
+      "retrievalMs": 1435,
+      "classifyMs": 1168,
+      "totalMs": 2603,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.33004101161995897,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 14656,
+          "classification": "RELATED",
+          "similarity": 0.3270623742454728,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": "2021-12-15",
+          "statement": "Chýba nám 130 lôžok s pľúcnou ventiláciou, a to nie je kvôli tomu, že by ich nenakúpili, nakoniec pamätáme si i výroky pána Krajčího, že sa nakupujú tie pľúcne ventilácie. Je to dôvod je, že nám tu chýbajú zdravotníci."
+        },
+        {
+          "id": 9515,
+          "classification": "RELATED",
+          "similarity": 0.32678571428571423,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2016-10-09",
+          "statement": "Chýbajú nám anesteziológovia, ortopédi, neurológovia a takýto problém máme aj v špecializácií sestier."
+        },
+        {
+          "id": 9745,
+          "classification": "RELATED",
+          "similarity": 0.2201109570041609,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": null,
+          "statement": "A prečo nám tu chýbajú zdravotníci? Lebo táto vláda ako jediná vláda v celej V4 nenavýšila výplaty zdravotným pracovníkom ani o jeden jediný cent, máte tu takú krajinu, ako je napr. Maďarsko, kde boli ich výplaty navyšované niekoľkokrát od januára ich čaká ďalších 20 % na navýšenie a táto vláda skrátka ani jeden jediný cent."
+        },
+        {
+          "id": 14892,
+          "classification": "UNRELATED",
+          "similarity": 0.32533101045296164,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Áno, zároveň s tým, že nám chýbajú pľúcne ventilácie nám chýbajú aj ľudia, ktorých musíme za teraz relatívne krátky čas zaškoliť. Tam ale aj samotný výrobca nám veľmi výrazne v tomto pomôže,aj sme dohodli vlastne v podstate to zaškoľovanie. Nič špeciálne navyše to nebude stáť."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-exact",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 10,
+      "retrievalMs": 1435,
+      "classifyMs": 736,
+      "totalMs": 2171,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.33004101161995897,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 14656,
+          "classification": "RELATED",
+          "similarity": 0.3270623742454728,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": "2021-12-15",
+          "statement": "Chýba nám 130 lôžok s pľúcnou ventiláciou, a to nie je kvôli tomu, že by ich nenakúpili, nakoniec pamätáme si i výroky pána Krajčího, že sa nakupujú tie pľúcne ventilácie. Je to dôvod je, že nám tu chýbajú zdravotníci."
+        },
+        {
+          "id": 9515,
+          "classification": "RELATED",
+          "similarity": 0.32678571428571423,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2016-10-09",
+          "statement": "Chýbajú nám anesteziológovia, ortopédi, neurológovia a takýto problém máme aj v špecializácií sestier."
+        },
+        {
+          "id": 14892,
+          "classification": "RELATED",
+          "similarity": 0.32533101045296164,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Áno, zároveň s tým, že nám chýbajú pľúcne ventilácie nám chýbajú aj ľudia, ktorých musíme za teraz relatívne krátky čas zaškoliť. Tam ale aj samotný výrobca nám veľmi výrazne v tomto pomôže,aj sme dohodli vlastne v podstate to zaškoľovanie. Nič špeciálne navyše to nebude stáť."
+        },
+        {
+          "id": 9745,
+          "classification": "RELATED",
+          "similarity": 0.2201109570041609,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": null,
+          "statement": "A prečo nám tu chýbajú zdravotníci? Lebo táto vláda ako jediná vláda v celej V4 nenavýšila výplaty zdravotným pracovníkom ani o jeden jediný cent, máte tu takú krajinu, ako je napr. Maďarsko, kde boli ich výplaty navyšované niekoľkokrát od januára ich čaká ďalších 20 % na navýšenie a táto vláda skrátka ani jeden jediný cent."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-exact",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 10,
+      "retrievalMs": 1435,
+      "classifyMs": 644,
+      "totalMs": 2079,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.33004101161995897,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 14656,
+          "classification": "RELATED",
+          "similarity": 0.3270623742454728,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": "2021-12-15",
+          "statement": "Chýba nám 130 lôžok s pľúcnou ventiláciou, a to nie je kvôli tomu, že by ich nenakúpili, nakoniec pamätáme si i výroky pána Krajčího, že sa nakupujú tie pľúcne ventilácie. Je to dôvod je, že nám tu chýbajú zdravotníci."
+        },
+        {
+          "id": 9515,
+          "classification": "RELATED",
+          "similarity": 0.32678571428571423,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2016-10-09",
+          "statement": "Chýbajú nám anesteziológovia, ortopédi, neurológovia a takýto problém máme aj v špecializácií sestier."
+        },
+        {
+          "id": 14892,
+          "classification": "RELATED",
+          "similarity": 0.32533101045296164,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Áno, zároveň s tým, že nám chýbajú pľúcne ventilácie nám chýbajú aj ľudia, ktorých musíme za teraz relatívne krátky čas zaškoliť. Tam ale aj samotný výrobca nám veľmi výrazne v tomto pomôže,aj sme dohodli vlastne v podstate to zaškoľovanie. Nič špeciálne navyše to nebude stáť."
+        },
+        {
+          "id": 5311,
+          "classification": "UNRELATED",
+          "similarity": 0.22025586353944562,
+          "speaker": "Miroslav Lajčák",
+          "party": "SMER-SD",
+          "date": "2015-03-22",
+          "statement": "V tomto chcem pripomenúť našu iniciatívu, to je projekt, ktorý sa nazýva Eastring. To je ponuka vybudovať prepojenie plynové zo Slovenska, z Veľkých Kapušian cez Maďarsko alebo Ukrajinu, Rumunsko, Bulharsko až na turecké hranice, ktoré by naozaj veľkým spôsobom preklenulo súčasnú chýbajúcu infraštruktúru a bolo by kľúčovou súčasťou prepojenia severo-južného."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-exact",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 10,
+      "retrievalMs": 1435,
+      "classifyMs": 500,
+      "totalMs": 1935,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "DUPLICATE",
+          "similarity": 0.33004101161995897,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 14656,
+          "classification": "RELATED",
+          "similarity": 0.3270623742454728,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": "2021-12-15",
+          "statement": "Chýba nám 130 lôžok s pľúcnou ventiláciou, a to nie je kvôli tomu, že by ich nenakúpili, nakoniec pamätáme si i výroky pána Krajčího, že sa nakupujú tie pľúcne ventilácie. Je to dôvod je, že nám tu chýbajú zdravotníci."
+        },
+        {
+          "id": 9515,
+          "classification": "RELATED",
+          "similarity": 0.32678571428571423,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2016-10-09",
+          "statement": "Chýbajú nám anesteziológovia, ortopédi, neurológovia a takýto problém máme aj v špecializácií sestier."
+        },
+        {
+          "id": 14892,
+          "classification": "RELATED",
+          "similarity": 0.32533101045296164,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Áno, zároveň s tým, že nám chýbajú pľúcne ventilácie nám chýbajú aj ľudia, ktorých musíme za teraz relatívne krátky čas zaškoliť. Tam ale aj samotný výrobca nám veľmi výrazne v tomto pomôže,aj sme dohodli vlastne v podstate to zaškoľovanie. Nič špeciálne navyše to nebude stáť."
+        },
+        {
+          "id": 5311,
+          "classification": "UNRELATED",
+          "similarity": 0.22025586353944562,
+          "speaker": "Miroslav Lajčák",
+          "party": "SMER-SD",
+          "date": "2015-03-22",
+          "statement": "V tomto chcem pripomenúť našu iniciatívu, to je projekt, ktorý sa nazýva Eastring. To je ponuka vybudovať prepojenie plynové zo Slovenska, z Veľkých Kapušian cez Maďarsko alebo Ukrajinu, Rumunsko, Bulharsko až na turecké hranice, ktoré by naozaj veľkým spôsobom preklenulo súčasnú chýbajúcu infraštruktúru a bolo by kľúčovou súčasťou prepojenia severo-južného."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-exact",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Na severe Slovenska chýbajú asi tri stovky pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 10,
+      "retrievalMs": 1435,
+      "classifyMs": 1893,
+      "totalMs": 3328,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.33004101161995897,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 14656,
+          "classification": "RELATED",
+          "similarity": 0.3270623742454728,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": "2021-12-15",
+          "statement": "Chýba nám 130 lôžok s pľúcnou ventiláciou, a to nie je kvôli tomu, že by ich nenakúpili, nakoniec pamätáme si i výroky pána Krajčího, že sa nakupujú tie pľúcne ventilácie. Je to dôvod je, že nám tu chýbajú zdravotníci."
+        },
+        {
+          "id": 9515,
+          "classification": "RELATED",
+          "similarity": 0.32678571428571423,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2016-10-09",
+          "statement": "Chýbajú nám anesteziológovia, ortopédi, neurológovia a takýto problém máme aj v špecializácií sestier."
+        },
+        {
+          "id": 14892,
+          "classification": "RELATED",
+          "similarity": 0.32533101045296164,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Áno, zároveň s tým, že nám chýbajú pľúcne ventilácie nám chýbajú aj ľudia, ktorých musíme za teraz relatívne krátky čas zaškoliť. Tam ale aj samotný výrobca nám veľmi výrazne v tomto pomôže,aj sme dohodli vlastne v podstate to zaškoľovanie. Nič špeciálne navyše to nebude stáť."
+        },
+        {
+          "id": 9745,
+          "classification": "RELATED",
+          "similarity": 0.2201109570041609,
+          "speaker": "Erik Kaliňák",
+          "party": "SMER-SD",
+          "date": null,
+          "statement": "A prečo nám tu chýbajú zdravotníci? Lebo táto vláda ako jediná vláda v celej V4 nenavýšila výplaty zdravotným pracovníkom ani o jeden jediný cent, máte tu takú krajinu, ako je napr. Maďarsko, kde boli ich výplaty navyšované niekoľkokrát od januára ich čaká ďalších 20 % na navýšenie a táto vláda skrátka ani jeden jediný cent."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1304,
+      "classifyMs": 1838,
+      "totalMs": 3142,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15107,
+          "classification": "RELATED",
+          "similarity": 0.3818027210884354,
+          "speaker": "Milan Majerský",
+          "party": "KDH",
+          "date": "2017-10-25",
+          "statement": "...lekári, ktorých skončí približne tisíc z lekárskych fakúlt na Slovensku (..) idú do zahraničia, na Slovensku ostáva približne 300 lekárov..."
+        },
+        {
+          "id": 17494,
+          "classification": "RELATED",
+          "similarity": 0.38035714285714284,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V minulom roku môžem povedať, že sme takto uhradili približne 178 tisíc jednotlivým obciam, ktoré boli na severe a na juhu Slovenska, či už to boli povodne, prívalové dažde alebo to boli vlastne mimoriadne udalosti čo sa týka sucha."
+        },
+        {
+          "id": 6694,
+          "classification": "RELATED",
+          "similarity": 0.2592307692307692,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2016-02-07",
+          "statement": "...ja som sa, (...), pozrel na štruktúru výberu dane z príjmu právnických osôb na Slovensku podľa regiónov a zistil som, že v regiónoch s nezamestnanosťou nad 20 percent tých regiónov je 10, Rimavská Sobota, Revúca, Kežmarok, Rožňava, Poltár, Sabinov, Veľký Krtíš, Vranov nad Topľou, Sobrance a Trebišov, (...) Tak v týchto regiónoch som bol veľmi prekvapený, sa vyberie na dani z príjmu právnických osôb, počúvajte dobre, približne 50 miliónov eur počas roka, za 12 mesiacov."
+        },
+        {
+          "id": 2700,
+          "classification": "RELATED",
+          "similarity": 0.25754716981132075,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": "2020-05-02",
+          "statement": "Ministerstvo zdravotníctva medzičasom rokuje o uzavretí teda nákupu zo zahraničia. Nejakých približne 200 ventilácií."
+        },
+        {
+          "id": 18173,
+          "classification": "UNRELATED",
+          "similarity": 0.3862676056338028,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2011-12-11",
+          "statement": "Je tu obrovský priestor spomínaných daňových únikov, Slovensko je druhé najväčšie úniky v celej Európskej únii. To je hovoríme o sume približne miliarda 200, miliarda 300 miliónov eur."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1304,
+      "classifyMs": 2117,
+      "totalMs": 3421,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 5636,
+          "classification": "DUPLICATE",
+          "similarity": 0.2542553191489362,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-22",
+          "statement": "Bol som niekoľko rokov, pán redaktor, predsedom väzenskej komisie a poznám všetky väznice na Slovensku. Dobre viete, že sa neeviduje, kto je Róm a kto nie je Róm, toto sa jednoducho nerobí. Ja Vám garantujem, že každý druhý odsúdený alebo vo výkone trestu odňatia slobody, každý druhý vo výkone trestu odňatia slobody je Róm. Ak si zoberieme, že aká je miera populácie ... ak tu máme 10% obyvateľov približne, rómsku populáciu, a týchto 10% nám tvorí polovičku väzenskej populácie, tak to o niečom jako hovorí. Ja takisto uznávam sociálne korene kriminality."
+        },
+        {
+          "id": 10244,
+          "classification": "DUPLICATE",
+          "similarity": 0.2521818181818182,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-22",
+          "statement": "Bol som niekoľko rokov, pán redaktor, predsedom väzenskej komisie a poznám všetky väznice na Slovensku. Dobre viete, že sa neeviduje, kto je Róm a kto nie je Róm, toto sa jednoducho nerobí. Ja Vám garantujem, že každý druhý odsúdený alebo vo výkone trestu odňatia slobody, každý druhý vo výkone trestu odňatia slobody je Róm. Ak si zoberieme, že aká je miera populácie ... ak tu máme 10% obyvateľov približne, rómsku populáciu, a týchto 10% nám tvorí polovičku väzenskej populácie, tak to o niečom jako hovorí. Ja takisto uznávam sociálne korene kriminality."
+        },
+        {
+          "id": 15107,
+          "classification": "RELATED",
+          "similarity": 0.3818027210884354,
+          "speaker": "Milan Majerský",
+          "party": "KDH",
+          "date": "2017-10-25",
+          "statement": "...lekári, ktorých skončí približne tisíc z lekárskych fakúlt na Slovensku (..) idú do zahraničia, na Slovensku ostáva približne 300 lekárov..."
+        },
+        {
+          "id": 7035,
+          "classification": "RELATED",
+          "similarity": 0.25555555555555554,
+          "speaker": "Igor Matovič",
+          "party": "OĽaNO",
+          "date": null,
+          "statement": "Zomierali na Slovensku približne rovnaký počet ľudí ako v Čechách alebo menej ako v Maďarsku, a to hovorím z pohľadu aj počty, keď sa zohľadní počet obyvateľov. Čiže úmrtia sme mali približne rovnaký ako v Čechách, menší ako v Maďarsku a väčšie ako v Poľsku alebo myslím, že Poľsko bolo približne rovnaké ako my."
+        },
+        {
+          "id": 7094,
+          "classification": "RELATED",
+          "similarity": 0.2534188034188034,
+          "speaker": "Ján Richter",
+          "party": "SMER-SD",
+          "date": "2017-01-15",
+          "statement": "Stačí sa pozrieť na štruktúru tých ľudí, ktorí ešte stále ostali v evidencii úradov práce, aké majú vzdelanie, akú majú kvalifikáciu. Z tých približne 250-tisíc ľudí je tam 150-tisíc, ktorí sú absolventi stredných odborných škôl buď s maturitou alebo bez maturity. (...) Áno, my máme aj nejakých 40-tisíc, ktorí majú len základné alebo neukončené základné vzdelanie, ale tých 150-tisíc ľudí je kategória ľudí, s ktorou sa dá pracovať. 27-tisíc vysokoškolákov je stále v evidencii úradov práce."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1304,
+      "classifyMs": 976,
+      "totalMs": 2280,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15107,
+          "classification": "RELATED",
+          "similarity": 0.3818027210884354,
+          "speaker": "Milan Majerský",
+          "party": "KDH",
+          "date": "2017-10-25",
+          "statement": "...lekári, ktorých skončí približne tisíc z lekárskych fakúlt na Slovensku (..) idú do zahraničia, na Slovensku ostáva približne 300 lekárov..."
+        },
+        {
+          "id": 18173,
+          "classification": "UNRELATED",
+          "similarity": 0.3862676056338028,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2011-12-11",
+          "statement": "Je tu obrovský priestor spomínaných daňových únikov, Slovensko je druhé najväčšie úniky v celej Európskej únii. To je hovoríme o sume približne miliarda 200, miliarda 300 miliónov eur."
+        },
+        {
+          "id": 17494,
+          "classification": "UNRELATED",
+          "similarity": 0.38035714285714284,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V minulom roku môžem povedať, že sme takto uhradili približne 178 tisíc jednotlivým obciam, ktoré boli na severe a na juhu Slovenska, či už to boli povodne, prívalové dažde alebo to boli vlastne mimoriadne udalosti čo sa týka sucha."
+        },
+        {
+          "id": 19286,
+          "classification": "UNRELATED",
+          "similarity": 0.2653846153846154,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2015-11-22",
+          "statement": "...tento rok približne rast (hospodársky rast Slovenska, pozn.) na úrovni 3,2 %."
+        },
+        {
+          "id": 4704,
+          "classification": "UNRELATED",
+          "similarity": 0.262,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V súčasnosti ich evidujeme okolo 2470 dobrovoľných hasičských zborov na Slovensku a máme približne 160 tisíc dobrovoľných hasičov a z toho asi 50 tisíc je pripravených k okamžitému zásahu."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1304,
+      "classifyMs": 963,
+      "totalMs": 2267,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15107,
+          "classification": "DUPLICATE",
+          "similarity": 0.3818027210884354,
+          "speaker": "Milan Majerský",
+          "party": "KDH",
+          "date": "2017-10-25",
+          "statement": "...lekári, ktorých skončí približne tisíc z lekárskych fakúlt na Slovensku (..) idú do zahraničia, na Slovensku ostáva približne 300 lekárov..."
+        },
+        {
+          "id": 7094,
+          "classification": "DUPLICATE",
+          "similarity": 0.2534188034188034,
+          "speaker": "Ján Richter",
+          "party": "SMER-SD",
+          "date": "2017-01-15",
+          "statement": "Stačí sa pozrieť na štruktúru tých ľudí, ktorí ešte stále ostali v evidencii úradov práce, aké majú vzdelanie, akú majú kvalifikáciu. Z tých približne 250-tisíc ľudí je tam 150-tisíc, ktorí sú absolventi stredných odborných škôl buď s maturitou alebo bez maturity. (...) Áno, my máme aj nejakých 40-tisíc, ktorí majú len základné alebo neukončené základné vzdelanie, ale tých 150-tisíc ľudí je kategória ľudí, s ktorou sa dá pracovať. 27-tisíc vysokoškolákov je stále v evidencii úradov práce."
+        },
+        {
+          "id": 10244,
+          "classification": "DUPLICATE",
+          "similarity": 0.2521818181818182,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-22",
+          "statement": "Bol som niekoľko rokov, pán redaktor, predsedom väzenskej komisie a poznám všetky väznice na Slovensku. Dobre viete, že sa neeviduje, kto je Róm a kto nie je Róm, toto sa jednoducho nerobí. Ja Vám garantujem, že každý druhý odsúdený alebo vo výkone trestu odňatia slobody, každý druhý vo výkone trestu odňatia slobody je Róm. Ak si zoberieme, že aká je miera populácie ... ak tu máme 10% obyvateľov približne, rómsku populáciu, a týchto 10% nám tvorí polovičku väzenskej populácie, tak to o niečom jako hovorí. Ja takisto uznávam sociálne korene kriminality."
+        },
+        {
+          "id": 18173,
+          "classification": "UNRELATED",
+          "similarity": 0.3862676056338028,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2011-12-11",
+          "statement": "Je tu obrovský priestor spomínaných daňových únikov, Slovensko je druhé najväčšie úniky v celej Európskej únii. To je hovoríme o sume približne miliarda 200, miliarda 300 miliónov eur."
+        },
+        {
+          "id": 17494,
+          "classification": "UNRELATED",
+          "similarity": 0.38035714285714284,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V minulom roku môžem povedať, že sme takto uhradili približne 178 tisíc jednotlivým obciam, ktoré boli na severe a na juhu Slovenska, či už to boli povodne, prívalové dažde alebo to boli vlastne mimoriadne udalosti čo sa týka sucha."
+        }
+      ]
+    },
+    {
+      "caseId": "known-pediatrics-paraphrase",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Na severe Slovenska chýba približne 300 pediatrov.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1304,
+      "classifyMs": 2172,
+      "totalMs": 3476,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15107,
+          "classification": "RELATED",
+          "similarity": 0.3818027210884354,
+          "speaker": "Milan Majerský",
+          "party": "KDH",
+          "date": "2017-10-25",
+          "statement": "...lekári, ktorých skončí približne tisíc z lekárskych fakúlt na Slovensku (..) idú do zahraničia, na Slovensku ostáva približne 300 lekárov..."
+        },
+        {
+          "id": 18173,
+          "classification": "UNRELATED",
+          "similarity": 0.3862676056338028,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2011-12-11",
+          "statement": "Je tu obrovský priestor spomínaných daňových únikov, Slovensko je druhé najväčšie úniky v celej Európskej únii. To je hovoríme o sume približne miliarda 200, miliarda 300 miliónov eur."
+        },
+        {
+          "id": 17494,
+          "classification": "UNRELATED",
+          "similarity": 0.38035714285714284,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V minulom roku môžem povedať, že sme takto uhradili približne 178 tisíc jednotlivým obciam, ktoré boli na severe a na juhu Slovenska, či už to boli povodne, prívalové dažde alebo to boli vlastne mimoriadne udalosti čo sa týka sucha."
+        },
+        {
+          "id": 19286,
+          "classification": "UNRELATED",
+          "similarity": 0.2653846153846154,
+          "speaker": "Jozef Kollár",
+          "party": "SKOK!",
+          "date": "2015-11-22",
+          "statement": "...tento rok približne rast (hospodársky rast Slovenska, pozn.) na úrovni 3,2 %."
+        },
+        {
+          "id": 4704,
+          "classification": "UNRELATED",
+          "similarity": 0.262,
+          "speaker": "Denisa Saková",
+          "party": "Hlas",
+          "date": "2019-01-20",
+          "statement": "V súčasnosti ich evidujeme okolo 2470 dobrovoľných hasičských zborov na Slovensku a máme približne 160 tisíc dobrovoľných hasičov a z toho asi 50 tisíc je pripravených k okamžitému zásahu."
+        }
+      ]
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 9,
+      "retrievalMs": 1111,
+      "classifyMs": 1038,
+      "totalMs": 2149,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 5458,
+          "classification": "RELATED",
+          "similarity": 0.2616279069767442,
+          "speaker": "Peter Kažimír",
+          "party": "SMER-SD",
+          "date": "2012-10-07",
+          "statement": "Váš(balík vlády Ivety Radičovej, pozn.) balík konsolidácie dopadol na hospodársky rast v objeme 0,8% náš to sú konkrétne čísla. Náš je projektový na 0,5%."
+        },
+        {
+          "id": 10819,
+          "classification": "RELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Ladislav Kamenický",
+          "party": "SMER-SD",
+          "date": "2021-09-17",
+          "statement": "Nám rastie veľmi silne zadlženosť a to je potrebné riešiť, treba konsolidovať verejné financie od roku 2022 ako odporúča Rada pre rozpočtovú zodpovednosť."
+        },
+        {
+          "id": 3621,
+          "classification": "RELATED",
+          "similarity": 0.2563492063492063,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-08",
+          "statement": "Po dvoch rokoch náročnej konsolidácie sme na deficite pod 3 percentá..."
+        },
+        {
+          "id": 12565,
+          "classification": "RELATED",
+          "similarity": 0.25526315789473686,
+          "speaker": "Juraj Miškov",
+          "party": "SKOK!",
+          "date": "2013-05-19",
+          "statement": "My sme konsolidovali predovšetkým na strane výdavkov. Dve tretiny šetrenia alebo teda konsolidácie verejných financií bolo uskutočnených na výdavkovej strane, to znamená, že sme okresali verejné výdavky a jedna tretina bola na strane príjmov."
+        },
+        {
+          "id": 5633,
+          "classification": "RELATED",
+          "similarity": 0.2545871559633027,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2024-10-13",
+          "statement": "Pozrite, samospráva v rámci konsolidačného balíku sa nepodieľa v konsolidačnom úsilí nijako. Áno, dopadnú na ne tie dopady, čo sa týka napr. DPH a pod, ale ak sa pozrieme, ako sa k nemu správali predchodcovia a môžme si aj pozrieť lego kocky a pod., ako sa pozerá na samosprávu, tak za predchádzajúce 3 roky alebo teda 3 roky vlád, ktoré tu boli, troch vlád, tak sa na samospráve proste bačovalo, vyberali sa tam peniaze, tu sa priniesla nejaká atómovka alebo nejaká zmena a zaplatila to samospráva."
+        }
+      ]
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 9,
+      "retrievalMs": 1111,
+      "classifyMs": 1028,
+      "totalMs": 2139,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 5458,
+          "classification": "RELATED",
+          "similarity": 0.2616279069767442,
+          "speaker": "Peter Kažimír",
+          "party": "SMER-SD",
+          "date": "2012-10-07",
+          "statement": "Váš(balík vlády Ivety Radičovej, pozn.) balík konsolidácie dopadol na hospodársky rast v objeme 0,8% náš to sú konkrétne čísla. Náš je projektový na 0,5%."
+        },
+        {
+          "id": 10819,
+          "classification": "RELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Ladislav Kamenický",
+          "party": "SMER-SD",
+          "date": "2021-09-17",
+          "statement": "Nám rastie veľmi silne zadlženosť a to je potrebné riešiť, treba konsolidovať verejné financie od roku 2022 ako odporúča Rada pre rozpočtovú zodpovednosť."
+        },
+        {
+          "id": 3621,
+          "classification": "RELATED",
+          "similarity": 0.2563492063492063,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-08",
+          "statement": "Po dvoch rokoch náročnej konsolidácie sme na deficite pod 3 percentá..."
+        },
+        {
+          "id": 12565,
+          "classification": "RELATED",
+          "similarity": 0.25526315789473686,
+          "speaker": "Juraj Miškov",
+          "party": "SKOK!",
+          "date": "2013-05-19",
+          "statement": "My sme konsolidovali predovšetkým na strane výdavkov. Dve tretiny šetrenia alebo teda konsolidácie verejných financií bolo uskutočnených na výdavkovej strane, to znamená, že sme okresali verejné výdavky a jedna tretina bola na strane príjmov."
+        },
+        {
+          "id": 5633,
+          "classification": "RELATED",
+          "similarity": 0.2545871559633027,
+          "speaker": "Tomáš Drucker",
+          "party": "Hlas",
+          "date": "2024-10-13",
+          "statement": "Pozrite, samospráva v rámci konsolidačného balíku sa nepodieľa v konsolidačnom úsilí nijako. Áno, dopadnú na ne tie dopady, čo sa týka napr. DPH a pod, ale ak sa pozrieme, ako sa k nemu správali predchodcovia a môžme si aj pozrieť lego kocky a pod., ako sa pozerá na samosprávu, tak za predchádzajúce 3 roky alebo teda 3 roky vlád, ktoré tu boli, troch vlád, tak sa na samospráve proste bačovalo, vyberali sa tam peniaze, tu sa priniesla nejaká atómovka alebo nejaká zmena a zaplatila to samospráva."
+        }
+      ]
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 9,
+      "retrievalMs": 1111,
+      "classifyMs": 864,
+      "totalMs": 1975,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15126,
+          "classification": "RELATED",
+          "similarity": 0.25272108843537416,
+          "speaker": "Ivan Štefanec",
+          "party": "KDH",
+          "date": "2012-10-07",
+          "statement": "Minulý rok to boli 2 tretiny z konsolidácie."
+        },
+        {
+          "id": 5458,
+          "classification": "UNRELATED",
+          "similarity": 0.2616279069767442,
+          "speaker": "Peter Kažimír",
+          "party": "SMER-SD",
+          "date": "2012-10-07",
+          "statement": "Váš(balík vlády Ivety Radičovej, pozn.) balík konsolidácie dopadol na hospodársky rast v objeme 0,8% náš to sú konkrétne čísla. Náš je projektový na 0,5%."
+        },
+        {
+          "id": 10819,
+          "classification": "UNRELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Ladislav Kamenický",
+          "party": "SMER-SD",
+          "date": "2021-09-17",
+          "statement": "Nám rastie veľmi silne zadlženosť a to je potrebné riešiť, treba konsolidovať verejné financie od roku 2022 ako odporúča Rada pre rozpočtovú zodpovednosť."
+        },
+        {
+          "id": 3621,
+          "classification": "UNRELATED",
+          "similarity": 0.2563492063492063,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-08",
+          "statement": "Po dvoch rokoch náročnej konsolidácie sme na deficite pod 3 percentá..."
+        },
+        {
+          "id": 12565,
+          "classification": "UNRELATED",
+          "similarity": 0.25526315789473686,
+          "speaker": "Juraj Miškov",
+          "party": "SKOK!",
+          "date": "2013-05-19",
+          "statement": "My sme konsolidovali predovšetkým na strane výdavkov. Dve tretiny šetrenia alebo teda konsolidácie verejných financií bolo uskutočnených na výdavkovej strane, to znamená, že sme okresali verejné výdavky a jedna tretina bola na strane príjmov."
+        }
+      ]
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 9,
+      "retrievalMs": 1111,
+      "classifyMs": 607,
+      "totalMs": 1718,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 15126,
+          "classification": "DUPLICATE",
+          "similarity": 0.25272108843537416,
+          "speaker": "Ivan Štefanec",
+          "party": "KDH",
+          "date": "2012-10-07",
+          "statement": "Minulý rok to boli 2 tretiny z konsolidácie."
+        },
+        {
+          "id": 5438,
+          "classification": "DUPLICATE",
+          "similarity": 0.2519672131147541,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-03-06",
+          "statement": "Problém je v tom, že sa prijal nezmyselný konsolidačný balíček a preto môžeme dnes na základe tohto dôkazu, ktorý predložila EÚ konštatovať, že za masívne zdražovanie ku ktorému došlo v januári a februári 2011, môže dominantne, nezmyselný konsolidačný balíček. To znamená zvyšovanie daní predovšetkým, DPH, zvyšovanie spotrebných daní a zvyšovanie cien energií."
+        },
+        {
+          "id": 10819,
+          "classification": "RELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Ladislav Kamenický",
+          "party": "SMER-SD",
+          "date": "2021-09-17",
+          "statement": "Nám rastie veľmi silne zadlženosť a to je potrebné riešiť, treba konsolidovať verejné financie od roku 2022 ako odporúča Rada pre rozpočtovú zodpovednosť."
+        },
+        {
+          "id": 3621,
+          "classification": "RELATED",
+          "similarity": 0.2563492063492063,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-08",
+          "statement": "Po dvoch rokoch náročnej konsolidácie sme na deficite pod 3 percentá..."
+        },
+        {
+          "id": 12565,
+          "classification": "RELATED",
+          "similarity": 0.25526315789473686,
+          "speaker": "Juraj Miškov",
+          "party": "SKOK!",
+          "date": "2013-05-19",
+          "statement": "My sme konsolidovali predovšetkým na strane výdavkov. Dve tretiny šetrenia alebo teda konsolidácie verejných financií bolo uskutočnených na výdavkovej strane, to znamená, že sme okresali verejné výdavky a jedna tretina bola na strane príjmov."
+        }
+      ]
+    },
+    {
+      "caseId": "known-consolidation-paraphrase",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Bežný občan musí znášať 42 percent konsolidácie.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 9,
+      "retrievalMs": 1111,
+      "classifyMs": 1958,
+      "totalMs": 3069,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 12565,
+          "classification": "RELATED",
+          "similarity": 0.25526315789473686,
+          "speaker": "Juraj Miškov",
+          "party": "SKOK!",
+          "date": "2013-05-19",
+          "statement": "My sme konsolidovali predovšetkým na strane výdavkov. Dve tretiny šetrenia alebo teda konsolidácie verejných financií bolo uskutočnených na výdavkovej strane, to znamená, že sme okresali verejné výdavky a jedna tretina bola na strane príjmov."
+        },
+        {
+          "id": 15126,
+          "classification": "RELATED",
+          "similarity": 0.25272108843537416,
+          "speaker": "Ivan Štefanec",
+          "party": "KDH",
+          "date": "2012-10-07",
+          "statement": "Minulý rok to boli 2 tretiny z konsolidácie."
+        },
+        {
+          "id": 5458,
+          "classification": "UNRELATED",
+          "similarity": 0.2616279069767442,
+          "speaker": "Peter Kažimír",
+          "party": "SMER-SD",
+          "date": "2012-10-07",
+          "statement": "Váš(balík vlády Ivety Radičovej, pozn.) balík konsolidácie dopadol na hospodársky rast v objeme 0,8% náš to sú konkrétne čísla. Náš je projektový na 0,5%."
+        },
+        {
+          "id": 10819,
+          "classification": "UNRELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Ladislav Kamenický",
+          "party": "SMER-SD",
+          "date": "2021-09-17",
+          "statement": "Nám rastie veľmi silne zadlženosť a to je potrebné riešiť, treba konsolidovať verejné financie od roku 2022 ako odporúča Rada pre rozpočtovú zodpovednosť."
+        },
+        {
+          "id": 3621,
+          "classification": "UNRELATED",
+          "similarity": 0.2563492063492063,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2014-04-08",
+          "statement": "Po dvoch rokoch náročnej konsolidácie sme na deficite pod 3 percentá..."
+        }
+      ]
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 929,
+      "classifyMs": 1926,
+      "totalMs": 2855,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 7593,
+          "classification": "RELATED",
+          "similarity": 0.2516260162601626,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2022-04-12",
+          "statement": "Od vypuknutia vojny sme ako Európska únia 23 - 24 miliárd poslal Rusku, z ktorých on financuje tú vojnu."
+        },
+        {
+          "id": 15519,
+          "classification": "RELATED",
+          "similarity": 0.25155038759689924,
+          "speaker": "Martin Klus",
+          "party": "SaS",
+          "date": "2018-06-17",
+          "statement": "...nedávno vyhlásil (Donald Trump, pozn.) obchodnú vojnu svojim najbližším spojencom, Kanade a ostatným krajinám združeným v G7, nedávno ešte G8, teda aj krajinám EÚ a teda tým pádom aj nám."
+        },
+        {
+          "id": 13847,
+          "classification": "RELATED",
+          "similarity": 0.25153846153846154,
+          "speaker": "Ľuboš Blaha",
+          "party": "SMER-SD",
+          "date": "2018-04-15",
+          "statement": "...amerického spojenca, Saudskú Arábiu, ktorý len za minulý rok vyvraždil 683 detí v Jemene, kde je humanitárna katastrofa, kde Saudská Arábia vedie jednu neľútostnú vojnu."
+        },
+        {
+          "id": 8474,
+          "classification": "RELATED",
+          "similarity": 0.25150375939849623,
+          "speaker": "Ondrej Dostál",
+          "party": "OKS",
+          "date": null,
+          "statement": "Vy (Eduard Chmelár, pozn.) ste tvrdil, že Putin nie je taký blázon, aby zaútočil na Rusko, ako sa všetci mýlili. Tvrdili ste to 2 dni predtým ako Rusko začalo vojnu."
+        },
+        {
+          "id": 16520,
+          "classification": "RELATED",
+          "similarity": 0.25140845070422535,
+          "speaker": "Richard Sulík",
+          "party": "SaS",
+          "date": "2017-03-26",
+          "statement": "...jeden váš (Kotlebov pozn.) kandidát na poslanca povedal, že Hitler nezačal vojnu."
+        }
+      ]
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 929,
+      "classifyMs": 371,
+      "totalMs": 1300,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": false,
+      "error": null,
+      "matches": [
+        {
+          "id": 7333,
+          "classification": "UNRELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2010-09-19",
+          "statement": "...a rozvešajú po Slovensku stovky billboardov a pošlú občanom do pošty letáky s touto informáciou..."
+        },
+        {
+          "id": 88,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Béla Bugár",
+          "party": "MOST-HÍD",
+          "date": "2010-09-26",
+          "statement": "...to je jedna vec a nikdy sa nenachádzal na Bratislavskom hrade, ale, ale ani toto nás nemusí zaujímať..."
+        },
+        {
+          "id": 7436,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Branislav Ondruš",
+          "party": "Hlas",
+          "date": "2017-05-07",
+          "statement": "U nás sa zisky delia tak, že 42 % zostane zamestnancom a 52 % zamestnávateľom. V Slovinsku 57 % ostane zamestnancom."
+        },
+        {
+          "id": 37,
+          "classification": "UNRELATED",
+          "similarity": 0.2564516129032258,
+          "speaker": "Iveta Radičová",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-05",
+          "statement": "Rodia sa mechanizmy, rodí sa spôsob prípravy štátneho rozpočtu, rodí sa v situácii, keď obce od nás pýtajú 400 miliónov korún, keď v príjmoch nám chýba 645 miliónov eur a tak ďalej."
+        },
+        {
+          "id": 7404,
+          "classification": "UNRELATED",
+          "similarity": 0.25555555555555554,
+          "speaker": "Anton Chromík",
+          "party": "Nestraníci",
+          "date": "2015-01-25",
+          "statement": "Ale podstata je priniesť ju späť a povedať si to, že naozaj je treba podporovať manželstvo, lebo sa v ňom rodí najviac detí a bude to pre nás dobre a pre našu spoločnosť ďalej dobre."
+        }
+      ]
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 929,
+      "classifyMs": 799,
+      "totalMs": 1728,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 8474,
+          "classification": "RELATED",
+          "similarity": 0.25150375939849623,
+          "speaker": "Ondrej Dostál",
+          "party": "OKS",
+          "date": null,
+          "statement": "Vy (Eduard Chmelár, pozn.) ste tvrdil, že Putin nie je taký blázon, aby zaútočil na Rusko, ako sa všetci mýlili. Tvrdili ste to 2 dni predtým ako Rusko začalo vojnu."
+        },
+        {
+          "id": 16520,
+          "classification": "RELATED",
+          "similarity": 0.25140845070422535,
+          "speaker": "Richard Sulík",
+          "party": "SaS",
+          "date": "2017-03-26",
+          "statement": "...jeden váš (Kotlebov pozn.) kandidát na poslanca povedal, že Hitler nezačal vojnu."
+        },
+        {
+          "id": 7333,
+          "classification": "UNRELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2010-09-19",
+          "statement": "...a rozvešajú po Slovensku stovky billboardov a pošlú občanom do pošty letáky s touto informáciou..."
+        },
+        {
+          "id": 88,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Béla Bugár",
+          "party": "MOST-HÍD",
+          "date": "2010-09-26",
+          "statement": "...to je jedna vec a nikdy sa nenachádzal na Bratislavskom hrade, ale, ale ani toto nás nemusí zaujímať..."
+        },
+        {
+          "id": 7436,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Branislav Ondruš",
+          "party": "Hlas",
+          "date": "2017-05-07",
+          "statement": "U nás sa zisky delia tak, že 42 % zostane zamestnancom a 52 % zamestnávateľom. V Slovinsku 57 % ostane zamestnancom."
+        }
+      ]
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 929,
+      "classifyMs": 2258,
+      "totalMs": 3187,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 7593,
+          "classification": "DUPLICATE",
+          "similarity": 0.2516260162601626,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2022-04-12",
+          "statement": "Od vypuknutia vojny sme ako Európska únia 23 - 24 miliárd poslal Rusku, z ktorých on financuje tú vojnu."
+        },
+        {
+          "id": 282,
+          "classification": "DUPLICATE",
+          "similarity": 0.2510928961748634,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2025-04-06",
+          "statement": "Donald Trump ohlásil obchodnú vojnu, ktorú sme tu nemali od tridsiatych rokov."
+        },
+        {
+          "id": 7333,
+          "classification": "UNRELATED",
+          "similarity": 0.2574074074074074,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2010-09-19",
+          "statement": "...a rozvešajú po Slovensku stovky billboardov a pošlú občanom do pošty letáky s touto informáciou..."
+        },
+        {
+          "id": 88,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Béla Bugár",
+          "party": "MOST-HÍD",
+          "date": "2010-09-26",
+          "statement": "...to je jedna vec a nikdy sa nenachádzal na Bratislavskom hrade, ale, ale ani toto nás nemusí zaujímať..."
+        },
+        {
+          "id": 7436,
+          "classification": "UNRELATED",
+          "similarity": 0.25689655172413794,
+          "speaker": "Branislav Ondruš",
+          "party": "Hlas",
+          "date": "2017-05-07",
+          "statement": "U nás sa zisky delia tak, že 42 % zostane zamestnancom a 52 % zamestnávateľom. V Slovinsku 57 % ostane zamestnancom."
+        }
+      ]
+    },
+    {
+      "caseId": "war-claim-user-repro",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Pošlú nás na vojnu.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 929,
+      "classifyMs": 3560,
+      "totalMs": 4489,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 7593,
+          "classification": "RELATED",
+          "similarity": 0.2516260162601626,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2022-04-12",
+          "statement": "Od vypuknutia vojny sme ako Európska únia 23 - 24 miliárd poslal Rusku, z ktorých on financuje tú vojnu."
+        },
+        {
+          "id": 15519,
+          "classification": "RELATED",
+          "similarity": 0.25155038759689924,
+          "speaker": "Martin Klus",
+          "party": "SaS",
+          "date": "2018-06-17",
+          "statement": "...nedávno vyhlásil (Donald Trump, pozn.) obchodnú vojnu svojim najbližším spojencom, Kanade a ostatným krajinám združeným v G7, nedávno ešte G8, teda aj krajinám EÚ a teda tým pádom aj nám."
+        },
+        {
+          "id": 13847,
+          "classification": "RELATED",
+          "similarity": 0.25153846153846154,
+          "speaker": "Ľuboš Blaha",
+          "party": "SMER-SD",
+          "date": "2018-04-15",
+          "statement": "...amerického spojenca, Saudskú Arábiu, ktorý len za minulý rok vyvraždil 683 detí v Jemene, kde je humanitárna katastrofa, kde Saudská Arábia vedie jednu neľútostnú vojnu."
+        },
+        {
+          "id": 8474,
+          "classification": "RELATED",
+          "similarity": 0.25150375939849623,
+          "speaker": "Ondrej Dostál",
+          "party": "OKS",
+          "date": null,
+          "statement": "Vy (Eduard Chmelár, pozn.) ste tvrdil, že Putin nie je taký blázon, aby zaútočil na Rusko, ako sa všetci mýlili. Tvrdili ste to 2 dni predtým ako Rusko začalo vojnu."
+        },
+        {
+          "id": 16520,
+          "classification": "RELATED",
+          "similarity": 0.25140845070422535,
+          "speaker": "Richard Sulík",
+          "party": "SaS",
+          "date": "2017-03-26",
+          "statement": "...jeden váš (Kotlebov pozn.) kandidát na poslanca povedal, že Hitler nezačal vojnu."
+        }
+      ]
+    },
+    {
+      "caseId": "oncology-related",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 25,
+      "retrievalMs": 1426,
+      "classifyMs": 1717,
+      "totalMs": 3143,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 14613,
+          "classification": "RELATED",
+          "similarity": 0.16739130434782612,
+          "speaker": "Andrej Kiska",
+          "party": "Za ľudí",
+          "date": "2020-02-25",
+          "statement": "V Rumunsku preplácajú 60 % (moderných onkologických liekov - pozn.)"
+        },
+        {
+          "id": 2591,
+          "classification": "RELATED",
+          "similarity": 0.15329218106995887,
+          "speaker": "Marek  Krajčí",
+          "party": "OĽaNO",
+          "date": "2017-09-18",
+          "statement": "...a samozrejme to hovorí aj o tom, že prečo napríklad tieto CT MRI vyšetrenia sú také u nás drahé v porovnaní s inými krajinami alebo boli, pretože vlastne ten bodovník je taký starý..."
+        },
+        {
+          "id": 12550,
+          "classification": "RELATED",
+          "similarity": 0.15225988700564974,
+          "speaker": "Andrea Letanovská",
+          "party": "Demokrati",
+          "date": "2020-09-18",
+          "statement": "Vy sa necítite ohrození, nenosíte rúško, ale je to veľmi sebecké, pretože to rúško chráni nielen vás, ale chráni tých ľudí okolo, a to, že by mali nosiť rúško nakazení, to je správne, to by bolo v ideálnom svete, ale my o mnohých ľuďoch nevieme, že sú infikovaní, lebo sa nedali otestovať, sú v inkubačnej dobe atď., nemajú žiadne príznaky, nemali dôvod, aby sa šli otestovať, a práve preto chránime pred týmito ľuďmi tých rizikových pacientov s onkologickými ochoreniami, seniorov, tehotné mamičky a pod."
+        },
+        {
+          "id": 4369,
+          "classification": "UNRELATED",
+          "similarity": 0.23507194244604315,
+          "speaker": "Roman Mikulec",
+          "party": "OĽaNO",
+          "date": "2020-07-30",
+          "statement": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod."
+        },
+        {
+          "id": 4459,
+          "classification": "UNRELATED",
+          "similarity": 0.23426640926640924,
+          "speaker": "Ľubomír Galko",
+          "party": "Demokratická strana",
+          "date": "2018-09-30",
+          "statement": "Veď si pamätáme, ako to bolo na začiatku. Ako sa vtedy terajší predstavitelia vládnej strany Smer, na čele s predsedom Ficom, bránili napríklad medzinárodnému vyšetrovaniu."
+        }
+      ]
+    },
+    {
+      "caseId": "oncology-related",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 25,
+      "retrievalMs": 1426,
+      "classifyMs": 585,
+      "totalMs": 2011,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 14613,
+          "classification": "RELATED",
+          "similarity": 0.16739130434782612,
+          "speaker": "Andrej Kiska",
+          "party": "Za ľudí",
+          "date": "2020-02-25",
+          "statement": "V Rumunsku preplácajú 60 % (moderných onkologických liekov - pozn.)"
+        },
+        {
+          "id": 2591,
+          "classification": "RELATED",
+          "similarity": 0.15329218106995887,
+          "speaker": "Marek  Krajčí",
+          "party": "OĽaNO",
+          "date": "2017-09-18",
+          "statement": "...a samozrejme to hovorí aj o tom, že prečo napríklad tieto CT MRI vyšetrenia sú také u nás drahé v porovnaní s inými krajinami alebo boli, pretože vlastne ten bodovník je taký starý..."
+        },
+        {
+          "id": 12550,
+          "classification": "RELATED",
+          "similarity": 0.15225988700564974,
+          "speaker": "Andrea Letanovská",
+          "party": "Demokrati",
+          "date": "2020-09-18",
+          "statement": "Vy sa necítite ohrození, nenosíte rúško, ale je to veľmi sebecké, pretože to rúško chráni nielen vás, ale chráni tých ľudí okolo, a to, že by mali nosiť rúško nakazení, to je správne, to by bolo v ideálnom svete, ale my o mnohých ľuďoch nevieme, že sú infikovaní, lebo sa nedali otestovať, sú v inkubačnej dobe atď., nemajú žiadne príznaky, nemali dôvod, aby sa šli otestovať, a práve preto chránime pred týmito ľuďmi tých rizikových pacientov s onkologickými ochoreniami, seniorov, tehotné mamičky a pod."
+        },
+        {
+          "id": 4369,
+          "classification": "UNRELATED",
+          "similarity": 0.23507194244604315,
+          "speaker": "Roman Mikulec",
+          "party": "OĽaNO",
+          "date": "2020-07-30",
+          "statement": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod."
+        },
+        {
+          "id": 4459,
+          "classification": "UNRELATED",
+          "similarity": 0.23426640926640924,
+          "speaker": "Ľubomír Galko",
+          "party": "Demokratická strana",
+          "date": "2018-09-30",
+          "statement": "Veď si pamätáme, ako to bolo na začiatku. Ako sa vtedy terajší predstavitelia vládnej strany Smer, na čele s predsedom Ficom, bránili napríklad medzinárodnému vyšetrovaniu."
+        }
+      ]
+    },
+    {
+      "caseId": "oncology-related",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 25,
+      "retrievalMs": 1426,
+      "classifyMs": 1120,
+      "totalMs": 2546,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": false,
+      "error": null,
+      "matches": [
+        {
+          "id": 4369,
+          "classification": "UNRELATED",
+          "similarity": 0.23507194244604315,
+          "speaker": "Roman Mikulec",
+          "party": "OĽaNO",
+          "date": "2020-07-30",
+          "statement": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod."
+        },
+        {
+          "id": 4459,
+          "classification": "UNRELATED",
+          "similarity": 0.23426640926640924,
+          "speaker": "Ľubomír Galko",
+          "party": "Demokratická strana",
+          "date": "2018-09-30",
+          "statement": "Veď si pamätáme, ako to bolo na začiatku. Ako sa vtedy terajší predstavitelia vládnej strany Smer, na čele s predsedom Ficom, bránili napríklad medzinárodnému vyšetrovaniu."
+        },
+        {
+          "id": 3659,
+          "classification": "UNRELATED",
+          "similarity": 0.23081395348837208,
+          "speaker": "Richard Sulík",
+          "party": "SaS",
+          "date": "2020-05-22",
+          "statement": "No to, čo tam (v programovom vyhlásení vlády, pozn.) máme v oblasti hospodárstva, je v prvom rade výrazné zlepšovanie podnikateľského prostredia a pripravujeme, už sme s tým takmer hotoví, veľký balík opatrení, ktorý nebude spôsobovať výpadky v štátnom rozpočte, väčšinou je to zjednodušenie nejakých byrokratických nezmyslov, nejakých regulácií atď."
+        },
+        {
+          "id": 613,
+          "classification": "UNRELATED",
+          "similarity": 0.22872670807453413,
+          "speaker": "Richard Rybníček",
+          "party": "Nestraníci",
+          "date": "2018-10-29",
+          "statement": "Už je pripravený návrh na zmenu územného plánu."
+        },
+        {
+          "id": 6245,
+          "classification": "UNRELATED",
+          "similarity": 0.2276315789473684,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2012-02-26",
+          "statement": "Prečo je dôležité, aby generálny prokurátor bol vymenovaný? Napríklad pre to, že v jednej z káuz bývalej vládnej koalície megakáuz v Nástenkovom tendri, bolo podané obvinenie zo strany ministerstva vnútra a vyšetrovateľov, voči poslancovi súčasnému, za Slovenskú národnú stranu a bývalému ministrovi a prokuratúra to blokuje."
+        }
+      ]
+    },
+    {
+      "caseId": "oncology-related",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 25,
+      "retrievalMs": 1426,
+      "classifyMs": 1108,
+      "totalMs": 2534,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 14613,
+          "classification": "DUPLICATE",
+          "similarity": 0.16739130434782612,
+          "speaker": "Andrej Kiska",
+          "party": "Za ľudí",
+          "date": "2020-02-25",
+          "statement": "V Rumunsku preplácajú 60 % (moderných onkologických liekov - pozn.)"
+        },
+        {
+          "id": 4369,
+          "classification": "UNRELATED",
+          "similarity": 0.23507194244604315,
+          "speaker": "Roman Mikulec",
+          "party": "OĽaNO",
+          "date": "2020-07-30",
+          "statement": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod."
+        },
+        {
+          "id": 4459,
+          "classification": "UNRELATED",
+          "similarity": 0.23426640926640924,
+          "speaker": "Ľubomír Galko",
+          "party": "Demokratická strana",
+          "date": "2018-09-30",
+          "statement": "Veď si pamätáme, ako to bolo na začiatku. Ako sa vtedy terajší predstavitelia vládnej strany Smer, na čele s predsedom Ficom, bránili napríklad medzinárodnému vyšetrovaniu."
+        },
+        {
+          "id": 3659,
+          "classification": "UNRELATED",
+          "similarity": 0.23081395348837208,
+          "speaker": "Richard Sulík",
+          "party": "SaS",
+          "date": "2020-05-22",
+          "statement": "No to, čo tam (v programovom vyhlásení vlády, pozn.) máme v oblasti hospodárstva, je v prvom rade výrazné zlepšovanie podnikateľského prostredia a pripravujeme, už sme s tým takmer hotoví, veľký balík opatrení, ktorý nebude spôsobovať výpadky v štátnom rozpočte, väčšinou je to zjednodušenie nejakých byrokratických nezmyslov, nejakých regulácií atď."
+        },
+        {
+          "id": 613,
+          "classification": "UNRELATED",
+          "similarity": 0.22872670807453413,
+          "speaker": "Richard Rybníček",
+          "party": "Nestraníci",
+          "date": "2018-10-29",
+          "statement": "Už je pripravený návrh na zmenu územného plánu."
+        }
+      ]
+    },
+    {
+      "caseId": "oncology-related",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Kabinet pripravuje plán na výrazné skrátenie čakacích lehôt pri onkologických vyšetreniach.",
+      "expected": "MATCH",
+      "retrievalMode": "lexical",
+      "candidateCount": 25,
+      "retrievalMs": 1426,
+      "classifyMs": 3031,
+      "totalMs": 4457,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 14613,
+          "classification": "RELATED",
+          "similarity": 0.16739130434782612,
+          "speaker": "Andrej Kiska",
+          "party": "Za ľudí",
+          "date": "2020-02-25",
+          "statement": "V Rumunsku preplácajú 60 % (moderných onkologických liekov - pozn.)"
+        },
+        {
+          "id": 2591,
+          "classification": "RELATED",
+          "similarity": 0.15329218106995887,
+          "speaker": "Marek  Krajčí",
+          "party": "OĽaNO",
+          "date": "2017-09-18",
+          "statement": "...a samozrejme to hovorí aj o tom, že prečo napríklad tieto CT MRI vyšetrenia sú také u nás drahé v porovnaní s inými krajinami alebo boli, pretože vlastne ten bodovník je taký starý..."
+        },
+        {
+          "id": 12550,
+          "classification": "RELATED",
+          "similarity": 0.15225988700564974,
+          "speaker": "Andrea Letanovská",
+          "party": "Demokrati",
+          "date": "2020-09-18",
+          "statement": "Vy sa necítite ohrození, nenosíte rúško, ale je to veľmi sebecké, pretože to rúško chráni nielen vás, ale chráni tých ľudí okolo, a to, že by mali nosiť rúško nakazení, to je správne, to by bolo v ideálnom svete, ale my o mnohých ľuďoch nevieme, že sú infikovaní, lebo sa nedali otestovať, sú v inkubačnej dobe atď., nemajú žiadne príznaky, nemali dôvod, aby sa šli otestovať, a práve preto chránime pred týmito ľuďmi tých rizikových pacientov s onkologickými ochoreniami, seniorov, tehotné mamičky a pod."
+        },
+        {
+          "id": 4369,
+          "classification": "UNRELATED",
+          "similarity": 0.23507194244604315,
+          "speaker": "Roman Mikulec",
+          "party": "OĽaNO",
+          "date": "2020-07-30",
+          "statement": "Na tých ľudí sa môže potom pozerať nejakým spôsobom, že už teda majú nejaký delikt za sebou a teda je to otázka, samozrejme, buď nejakého ambulantného skúmania alebo potom možno nejakého nariadeného vyšetrenia, ale to je samozrejme právomoc kompetentných orgánov, ktoré o tomto musia rozhodnúť, či teda samozrejme tam muselo prebehnúť alebo ak prebehlo nejaké expertízne skúmanie, tak či teda ten človek mal patriť pod nejaký dohľad. ...môže to byť aj obsahom toho samotného procesu a toho súdu a môže to, samozrejme, urobiť aj vyšetrovateľ v rámci toho vyšetrovania, ktorý môže nariadiť expertízne skúmanie, či ten daný človek je psychicky po psychickej stránke je nutné s ním robiť nejaké ďalšie úkony a pod."
+        },
+        {
+          "id": 4459,
+          "classification": "UNRELATED",
+          "similarity": 0.23426640926640924,
+          "speaker": "Ľubomír Galko",
+          "party": "Demokratická strana",
+          "date": "2018-09-30",
+          "statement": "Veď si pamätáme, ako to bolo na začiatku. Ako sa vtedy terajší predstavitelia vládnej strany Smer, na čele s predsedom Ficom, bránili napríklad medzinárodnému vyšetrovaniu."
+        }
+      ]
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1788,
+      "classifyMs": 1918,
+      "totalMs": 3706,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 542,
+          "classification": "RELATED",
+          "similarity": 0.3875984251968504,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 11960,
+          "classification": "RELATED",
+          "similarity": 0.3810810810810811,
+          "speaker": "Milan Uhrík",
+          "party": "Republika",
+          "date": "2017-05-16",
+          "statement": "Slovenská národná strana napríklad nehlasovala za to, aby sa v parlamente hrala slovenská hymna a nehlasovali, hlasovali za zrušenie víz pre Kosovo a Turecko, hlasovali za vyslanie slovenských vojakov na ruské hranice, hlasovali za rozšírenie Severoatlantickej aliancie o Čiernu Horu,(...)."
+        },
+        {
+          "id": 7342,
+          "classification": "RELATED",
+          "similarity": 0.29188829787234044,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": null,
+          "statement": "Dnes sa munícia pre Ukrajinu nakupuje cez centrálne európske obstarávanie, a keď ju nevyrobíme my tu a z čoho má Slovensko prácu, príjem a platy ľudia, ktorí robia v tých fabrikách, tak ju vyrobia vo vedľajšej krajine, a tak isto dôjde tam, kde má dôjsť."
+        },
+        {
+          "id": 1096,
+          "classification": "UNRELATED",
+          "similarity": 0.4046296296296296,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2010-05-23",
+          "statement": "Aj nám Európska únia predpovedá, že budeme ekonomickými lídrami na dva roky."
+        },
+        {
+          "id": 14327,
+          "classification": "UNRELATED",
+          "similarity": 0.3884146341463415,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2024-01-14",
+          "statement": "No Európska únia, Európska prokuratúra a Európska komisia hovorí, že preboha, nerobte to. Európska prokuratúra, orgán Európskej únie hovorí, že takéto zníženie trestných sadzieb a zrušenie Špeciálnej prokuratúry oslabí schopnosť Slovenska vyšetrovať podvody s eurofondami a na konci toho celého nám dokonca hrozí, že nám zastaví eurofondy, to nehovoríme my, opozícia, to hovorí Európska prokuratúra, ktorá varuje Fica, že preboha, nerobte to, takže neviem, ako môže ísť o zosúladenie, harmonizáciu s Európskou úniou, keď samotná únia nám hovorí, že toto preboha nerobte."
+        }
+      ]
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1788,
+      "classifyMs": 1252,
+      "totalMs": 3040,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 14327,
+          "classification": "RELATED",
+          "similarity": 0.3884146341463415,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2024-01-14",
+          "statement": "No Európska únia, Európska prokuratúra a Európska komisia hovorí, že preboha, nerobte to. Európska prokuratúra, orgán Európskej únie hovorí, že takéto zníženie trestných sadzieb a zrušenie Špeciálnej prokuratúry oslabí schopnosť Slovenska vyšetrovať podvody s eurofondami a na konci toho celého nám dokonca hrozí, že nám zastaví eurofondy, to nehovoríme my, opozícia, to hovorí Európska prokuratúra, ktorá varuje Fica, že preboha, nerobte to, takže neviem, ako môže ísť o zosúladenie, harmonizáciu s Európskou úniou, keď samotná únia nám hovorí, že toto preboha nerobte."
+        },
+        {
+          "id": 14242,
+          "classification": "RELATED",
+          "similarity": 0.38595890410958905,
+          "speaker": "Iveta Radičová",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-05",
+          "statement": "To čo doteraz bolo urobené bol výrub stromov, zásahy do chránených oblastí, v dôsledku čoho nám Európska banka odmieta dať financie na túto stavbu, v dôsledku čoho nám európska komisia zastavila financovanie ...7 krát bol predložený dodatok alebo časový limit na naplnenie tohto projektu."
+        },
+        {
+          "id": 10822,
+          "classification": "RELATED",
+          "similarity": 0.29910714285714285,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2010-05-30",
+          "statement": "...teda, ak malo Slovensko za prvé 3 mesiace tohto roku hospodársky rast 4,6 %, a to nie je prognóza, to už hovorím o reálnom hospodárskom raste za prvé tri mesiace, ak je perspektíva, ktorú hovorí OECD aj Európska komisia, že budeme mať najvyšší hospodársky rast, absolútne, suverénne najvyšší hospodársky rast v rámci celej Európskej únie, tak je to len a len vďaka obrovským investíciam takéhoto typu."
+        },
+        {
+          "id": 9826,
+          "classification": "RELATED",
+          "similarity": 0.29832317073170733,
+          "speaker": "Ľuboš Blaha",
+          "party": "SMER-SD",
+          "date": "2016-04-10",
+          "statement": "V Európskej komisii, v Európskej únii na západe panuje pocit, že v oblasti migračnej krízy sme my ako Slováci mali ignorovať 80% slovenských občanov, ktorí povedali, že nechceme kvóty. 80-70% sa podľa štatistík uvádza, že nechcú kvóty."
+        },
+        {
+          "id": 8367,
+          "classification": "RELATED",
+          "similarity": 0.2955357142857143,
+          "speaker": "Peter Pčolinský",
+          "party": "SME RODINA",
+          "date": null,
+          "statement": "Čo sa týka riešenia (energetickej situácie, pozn.), ktoré predstavila Európska komisia, pravdou je, že to riešenie nerieši problém na Slovensku. Práve preto, práve preto trochu dlhšie trvá príprava paragrafového znenia, pretože my pripravujeme, samozrejme vlastné riešenie. Ak by sme sa spoliehali na Európsku úniu, ak by sme sa spoliehali na riešenie z Bruselu, tak jednoducho to riešenie pre nás neznamená nič."
+        }
+      ]
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1788,
+      "classifyMs": 549,
+      "totalMs": 2337,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 1096,
+          "classification": "UNRELATED",
+          "similarity": 0.4046296296296296,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2010-05-23",
+          "statement": "Aj nám Európska únia predpovedá, že budeme ekonomickými lídrami na dva roky."
+        },
+        {
+          "id": 14327,
+          "classification": "UNRELATED",
+          "similarity": 0.3884146341463415,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2024-01-14",
+          "statement": "No Európska únia, Európska prokuratúra a Európska komisia hovorí, že preboha, nerobte to. Európska prokuratúra, orgán Európskej únie hovorí, že takéto zníženie trestných sadzieb a zrušenie Špeciálnej prokuratúry oslabí schopnosť Slovenska vyšetrovať podvody s eurofondami a na konci toho celého nám dokonca hrozí, že nám zastaví eurofondy, to nehovoríme my, opozícia, to hovorí Európska prokuratúra, ktorá varuje Fica, že preboha, nerobte to, takže neviem, ako môže ísť o zosúladenie, harmonizáciu s Európskou úniou, keď samotná únia nám hovorí, že toto preboha nerobte."
+        },
+        {
+          "id": 542,
+          "classification": "UNRELATED",
+          "similarity": 0.3875984251968504,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 14242,
+          "classification": "UNRELATED",
+          "similarity": 0.38595890410958905,
+          "speaker": "Iveta Radičová",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-05",
+          "statement": "To čo doteraz bolo urobené bol výrub stromov, zásahy do chránených oblastí, v dôsledku čoho nám Európska banka odmieta dať financie na túto stavbu, v dôsledku čoho nám európska komisia zastavila financovanie ...7 krát bol predložený dodatok alebo časový limit na naplnenie tohto projektu."
+        },
+        {
+          "id": 1827,
+          "classification": "UNRELATED",
+          "similarity": 0.3853225806451613,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2024-09-08",
+          "statement": "Teraz nechcem tu na nikoho nadávať, ale ja sa stotožňujem so slovami maďarského ministra zahraničných vecí, že Európska komisia sa absolútne na všetko vykašlala a nechala to na nás, aby sme my veci riešili individuálne s Ukrajinou, s Ruskom, s Azerbajdžanom a neviem s kým všetkým, aby sme sem dostali aj plyn, aj ropu."
+        }
+      ]
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1788,
+      "classifyMs": 1116,
+      "totalMs": 2904,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 1827,
+          "classification": "DUPLICATE",
+          "similarity": 0.3853225806451613,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2024-09-08",
+          "statement": "Teraz nechcem tu na nikoho nadávať, ale ja sa stotožňujem so slovami maďarského ministra zahraničných vecí, že Európska komisia sa absolútne na všetko vykašlala a nechala to na nás, aby sme my veci riešili individuálne s Ukrajinou, s Ruskom, s Azerbajdžanom a neviem s kým všetkým, aby sme sem dostali aj plyn, aj ropu."
+        },
+        {
+          "id": 1096,
+          "classification": "UNRELATED",
+          "similarity": 0.4046296296296296,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2010-05-23",
+          "statement": "Aj nám Európska únia predpovedá, že budeme ekonomickými lídrami na dva roky."
+        },
+        {
+          "id": 14327,
+          "classification": "UNRELATED",
+          "similarity": 0.3884146341463415,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2024-01-14",
+          "statement": "No Európska únia, Európska prokuratúra a Európska komisia hovorí, že preboha, nerobte to. Európska prokuratúra, orgán Európskej únie hovorí, že takéto zníženie trestných sadzieb a zrušenie Špeciálnej prokuratúry oslabí schopnosť Slovenska vyšetrovať podvody s eurofondami a na konci toho celého nám dokonca hrozí, že nám zastaví eurofondy, to nehovoríme my, opozícia, to hovorí Európska prokuratúra, ktorá varuje Fica, že preboha, nerobte to, takže neviem, ako môže ísť o zosúladenie, harmonizáciu s Európskou úniou, keď samotná únia nám hovorí, že toto preboha nerobte."
+        },
+        {
+          "id": 542,
+          "classification": "UNRELATED",
+          "similarity": 0.3875984251968504,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 14242,
+          "classification": "UNRELATED",
+          "similarity": 0.38595890410958905,
+          "speaker": "Iveta Radičová",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-05",
+          "statement": "To čo doteraz bolo urobené bol výrub stromov, zásahy do chránených oblastí, v dôsledku čoho nám Európska banka odmieta dať financie na túto stavbu, v dôsledku čoho nám európska komisia zastavila financovanie ...7 krát bol predložený dodatok alebo časový limit na naplnenie tohto projektu."
+        }
+      ]
+    },
+    {
+      "caseId": "eu-soldiers-ukraine",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Európska komisia nám prikáže posielať slovenských vojakov na Ukrajinu.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1788,
+      "classifyMs": 4152,
+      "totalMs": 5940,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 1827,
+          "classification": "RELATED",
+          "similarity": 0.3853225806451613,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2024-09-08",
+          "statement": "Teraz nechcem tu na nikoho nadávať, ale ja sa stotožňujem so slovami maďarského ministra zahraničných vecí, že Európska komisia sa absolútne na všetko vykašlala a nechala to na nás, aby sme my veci riešili individuálne s Ukrajinou, s Ruskom, s Azerbajdžanom a neviem s kým všetkým, aby sme sem dostali aj plyn, aj ropu."
+        },
+        {
+          "id": 11960,
+          "classification": "RELATED",
+          "similarity": 0.3810810810810811,
+          "speaker": "Milan Uhrík",
+          "party": "Republika",
+          "date": "2017-05-16",
+          "statement": "Slovenská národná strana napríklad nehlasovala za to, aby sa v parlamente hrala slovenská hymna a nehlasovali, hlasovali za zrušenie víz pre Kosovo a Turecko, hlasovali za vyslanie slovenských vojakov na ruské hranice, hlasovali za rozšírenie Severoatlantickej aliancie o Čiernu Horu,(...)."
+        },
+        {
+          "id": 1096,
+          "classification": "UNRELATED",
+          "similarity": 0.4046296296296296,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2010-05-23",
+          "statement": "Aj nám Európska únia predpovedá, že budeme ekonomickými lídrami na dva roky."
+        },
+        {
+          "id": 14327,
+          "classification": "UNRELATED",
+          "similarity": 0.3884146341463415,
+          "speaker": "Michal Šimečka",
+          "party": "PS",
+          "date": "2024-01-14",
+          "statement": "No Európska únia, Európska prokuratúra a Európska komisia hovorí, že preboha, nerobte to. Európska prokuratúra, orgán Európskej únie hovorí, že takéto zníženie trestných sadzieb a zrušenie Špeciálnej prokuratúry oslabí schopnosť Slovenska vyšetrovať podvody s eurofondami a na konci toho celého nám dokonca hrozí, že nám zastaví eurofondy, to nehovoríme my, opozícia, to hovorí Európska prokuratúra, ktorá varuje Fica, že preboha, nerobte to, takže neviem, ako môže ísť o zosúladenie, harmonizáciu s Európskou úniou, keď samotná únia nám hovorí, že toto preboha nerobte."
+        },
+        {
+          "id": 542,
+          "classification": "UNRELATED",
+          "similarity": 0.3875984251968504,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        }
+      ]
+    },
+    {
+      "caseId": "mars-new-claim",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 4,
+      "retrievalMs": 2111,
+      "classifyMs": 1694,
+      "totalMs": 3805,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 9204,
+          "classification": "UNRELATED",
+          "similarity": 0.16986666666666667,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-01-30",
+          "statement": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,"
+        },
+        {
+          "id": 16128,
+          "classification": "UNRELATED",
+          "similarity": 0.1697674418604651,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-12-12",
+          "statement": "No k tým informáciám. Kto ich mal, pani Puškárová? Pozrite si titulky novín po voľbách, kedy zrazu sa objavili veci, ktoré ministerstvo pod vedením práve pána Počiatka zatajovalo. Nebola zverejnená daňová prognóza, neboli vypracované východiská štátneho rozpočtu napriek tomu, že to zákon vláde prikazuje. Štátny záverečný účet, ktorý vždy býva zverejňovaný v apríli, máji, bol zverejnení dva dni po voľbách."
+        },
+        {
+          "id": 16257,
+          "classification": "UNRELATED",
+          "similarity": 0.16814268142681427,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2016-05-23",
+          "statement": "A teraz sa objavilo opätovne v návrhu Európskej komisie (mechanizmus prerozdeľovania, pozn.), kedy sa už vlastne nevolá tento návrh povinnými kvótami, ale volá sa to vlastne distribučný kľúč, ktorý má v praxi znamenať, že akonáhle v nejakej krajine je väčší počet, ako 50 % očakávaného čísla, ktoré by mali v rámci tohto distribučného kľúču dostať, automaticky bez ohľadu na súhlas týchto krajín, sa tých zvyšných 50 % prerozdelí medzi tie ostatné krajiny, ktoré v tom kľúči sú zastúpené a teda medzi všetky členské krajiny ..."
+        },
+        {
+          "id": 18757,
+          "classification": "UNRELATED",
+          "similarity": 0.16799116997792493,
+          "speaker": "Ján Figeľ",
+          "party": "KDH",
+          "date": "2013-02-24",
+          "statement": "Práve že tam (projekt opravy ciest 1. triedy, pozn.) išlo nielen o asfalt, nielen, samozrejme, keď sú výmoly, keď sú výtlky, tak to súvisí aj s povrchom vozovky. Ale o bezpečnostné prvky, vodorovné, zvislé značenie. O signalizácie, napríklad teploty, to všetko bola súčasť tých projektov, ktoré Slovensko realizovalo v 2010."
+        }
+      ]
+    },
+    {
+      "caseId": "mars-new-claim",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 4,
+      "retrievalMs": 2111,
+      "classifyMs": 761,
+      "totalMs": 2872,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 9204,
+          "classification": "UNRELATED",
+          "similarity": 0.16986666666666667,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-01-30",
+          "statement": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,"
+        },
+        {
+          "id": 16128,
+          "classification": "UNRELATED",
+          "similarity": 0.1697674418604651,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-12-12",
+          "statement": "No k tým informáciám. Kto ich mal, pani Puškárová? Pozrite si titulky novín po voľbách, kedy zrazu sa objavili veci, ktoré ministerstvo pod vedením práve pána Počiatka zatajovalo. Nebola zverejnená daňová prognóza, neboli vypracované východiská štátneho rozpočtu napriek tomu, že to zákon vláde prikazuje. Štátny záverečný účet, ktorý vždy býva zverejňovaný v apríli, máji, bol zverejnení dva dni po voľbách."
+        },
+        {
+          "id": 16257,
+          "classification": "UNRELATED",
+          "similarity": 0.16814268142681427,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2016-05-23",
+          "statement": "A teraz sa objavilo opätovne v návrhu Európskej komisie (mechanizmus prerozdeľovania, pozn.), kedy sa už vlastne nevolá tento návrh povinnými kvótami, ale volá sa to vlastne distribučný kľúč, ktorý má v praxi znamenať, že akonáhle v nejakej krajine je väčší počet, ako 50 % očakávaného čísla, ktoré by mali v rámci tohto distribučného kľúču dostať, automaticky bez ohľadu na súhlas týchto krajín, sa tých zvyšných 50 % prerozdelí medzi tie ostatné krajiny, ktoré v tom kľúči sú zastúpené a teda medzi všetky členské krajiny ..."
+        },
+        {
+          "id": 18757,
+          "classification": "UNRELATED",
+          "similarity": 0.16799116997792493,
+          "speaker": "Ján Figeľ",
+          "party": "KDH",
+          "date": "2013-02-24",
+          "statement": "Práve že tam (projekt opravy ciest 1. triedy, pozn.) išlo nielen o asfalt, nielen, samozrejme, keď sú výmoly, keď sú výtlky, tak to súvisí aj s povrchom vozovky. Ale o bezpečnostné prvky, vodorovné, zvislé značenie. O signalizácie, napríklad teploty, to všetko bola súčasť tých projektov, ktoré Slovensko realizovalo v 2010."
+        }
+      ]
+    },
+    {
+      "caseId": "mars-new-claim",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 4,
+      "retrievalMs": 2111,
+      "classifyMs": 1663,
+      "totalMs": 3774,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 9204,
+          "classification": "UNRELATED",
+          "similarity": 0.16986666666666667,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-01-30",
+          "statement": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,"
+        },
+        {
+          "id": 16128,
+          "classification": "UNRELATED",
+          "similarity": 0.1697674418604651,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-12-12",
+          "statement": "No k tým informáciám. Kto ich mal, pani Puškárová? Pozrite si titulky novín po voľbách, kedy zrazu sa objavili veci, ktoré ministerstvo pod vedením práve pána Počiatka zatajovalo. Nebola zverejnená daňová prognóza, neboli vypracované východiská štátneho rozpočtu napriek tomu, že to zákon vláde prikazuje. Štátny záverečný účet, ktorý vždy býva zverejňovaný v apríli, máji, bol zverejnení dva dni po voľbách."
+        },
+        {
+          "id": 16257,
+          "classification": "UNRELATED",
+          "similarity": 0.16814268142681427,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2016-05-23",
+          "statement": "A teraz sa objavilo opätovne v návrhu Európskej komisie (mechanizmus prerozdeľovania, pozn.), kedy sa už vlastne nevolá tento návrh povinnými kvótami, ale volá sa to vlastne distribučný kľúč, ktorý má v praxi znamenať, že akonáhle v nejakej krajine je väčší počet, ako 50 % očakávaného čísla, ktoré by mali v rámci tohto distribučného kľúču dostať, automaticky bez ohľadu na súhlas týchto krajín, sa tých zvyšných 50 % prerozdelí medzi tie ostatné krajiny, ktoré v tom kľúči sú zastúpené a teda medzi všetky členské krajiny ..."
+        },
+        {
+          "id": 18757,
+          "classification": "UNRELATED",
+          "similarity": 0.16799116997792493,
+          "speaker": "Ján Figeľ",
+          "party": "KDH",
+          "date": "2013-02-24",
+          "statement": "Práve že tam (projekt opravy ciest 1. triedy, pozn.) išlo nielen o asfalt, nielen, samozrejme, keď sú výmoly, keď sú výtlky, tak to súvisí aj s povrchom vozovky. Ale o bezpečnostné prvky, vodorovné, zvislé značenie. O signalizácie, napríklad teploty, to všetko bola súčasť tých projektov, ktoré Slovensko realizovalo v 2010."
+        }
+      ]
+    },
+    {
+      "caseId": "mars-new-claim",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 4,
+      "retrievalMs": 2111,
+      "classifyMs": 329,
+      "totalMs": 2440,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 9204,
+          "classification": "UNRELATED",
+          "similarity": 0.16986666666666667,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-01-30",
+          "statement": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,"
+        },
+        {
+          "id": 16128,
+          "classification": "UNRELATED",
+          "similarity": 0.1697674418604651,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-12-12",
+          "statement": "No k tým informáciám. Kto ich mal, pani Puškárová? Pozrite si titulky novín po voľbách, kedy zrazu sa objavili veci, ktoré ministerstvo pod vedením práve pána Počiatka zatajovalo. Nebola zverejnená daňová prognóza, neboli vypracované východiská štátneho rozpočtu napriek tomu, že to zákon vláde prikazuje. Štátny záverečný účet, ktorý vždy býva zverejňovaný v apríli, máji, bol zverejnení dva dni po voľbách."
+        },
+        {
+          "id": 16257,
+          "classification": "UNRELATED",
+          "similarity": 0.16814268142681427,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2016-05-23",
+          "statement": "A teraz sa objavilo opätovne v návrhu Európskej komisie (mechanizmus prerozdeľovania, pozn.), kedy sa už vlastne nevolá tento návrh povinnými kvótami, ale volá sa to vlastne distribučný kľúč, ktorý má v praxi znamenať, že akonáhle v nejakej krajine je väčší počet, ako 50 % očakávaného čísla, ktoré by mali v rámci tohto distribučného kľúču dostať, automaticky bez ohľadu na súhlas týchto krajín, sa tých zvyšných 50 % prerozdelí medzi tie ostatné krajiny, ktoré v tom kľúči sú zastúpené a teda medzi všetky členské krajiny ..."
+        },
+        {
+          "id": 18757,
+          "classification": "UNRELATED",
+          "similarity": 0.16799116997792493,
+          "speaker": "Ján Figeľ",
+          "party": "KDH",
+          "date": "2013-02-24",
+          "statement": "Práve že tam (projekt opravy ciest 1. triedy, pozn.) išlo nielen o asfalt, nielen, samozrejme, keď sú výmoly, keď sú výtlky, tak to súvisí aj s povrchom vozovky. Ale o bezpečnostné prvky, vodorovné, zvislé značenie. O signalizácie, napríklad teploty, to všetko bola súčasť tých projektov, ktoré Slovensko realizovalo v 2010."
+        }
+      ]
+    },
+    {
+      "caseId": "mars-new-claim",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Na planéte Mars sa objavila tekutá voda pod povrchom krátera Jezero.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 4,
+      "retrievalMs": 2111,
+      "classifyMs": 745,
+      "totalMs": 2856,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 9204,
+          "classification": "UNRELATED",
+          "similarity": 0.16986666666666667,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2011-01-30",
+          "statement": "To mi je naozaj ľúto, čo ste povedali ohľadne toho druhého nálezu, ktorý sa týka vyvlastňovania pozemkov pod diaľnicami alebo veľkými stavbami, že sme dali buldozéristom kľúčik a že sa títo buldozéristi objavili v záhradách. Pán poslanec, treba si aj prečítať nejaké veci pred tým, keď idete do diskusie, takže teraz dobre počúvajte. Zákon, o ktorom sa teraz bavíme a ktorý bol na ústavnom súde povedal, že štát ponúkol najskôr tomu, koho pozemok mal byť vyvlastnený trhovú cenu plus 20 %,"
+        },
+        {
+          "id": 16128,
+          "classification": "UNRELATED",
+          "similarity": 0.1697674418604651,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-12-12",
+          "statement": "No k tým informáciám. Kto ich mal, pani Puškárová? Pozrite si titulky novín po voľbách, kedy zrazu sa objavili veci, ktoré ministerstvo pod vedením práve pána Počiatka zatajovalo. Nebola zverejnená daňová prognóza, neboli vypracované východiská štátneho rozpočtu napriek tomu, že to zákon vláde prikazuje. Štátny záverečný účet, ktorý vždy býva zverejňovaný v apríli, máji, bol zverejnení dva dni po voľbách."
+        },
+        {
+          "id": 16257,
+          "classification": "UNRELATED",
+          "similarity": 0.16814268142681427,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2016-05-23",
+          "statement": "A teraz sa objavilo opätovne v návrhu Európskej komisie (mechanizmus prerozdeľovania, pozn.), kedy sa už vlastne nevolá tento návrh povinnými kvótami, ale volá sa to vlastne distribučný kľúč, ktorý má v praxi znamenať, že akonáhle v nejakej krajine je väčší počet, ako 50 % očakávaného čísla, ktoré by mali v rámci tohto distribučného kľúču dostať, automaticky bez ohľadu na súhlas týchto krajín, sa tých zvyšných 50 % prerozdelí medzi tie ostatné krajiny, ktoré v tom kľúči sú zastúpené a teda medzi všetky členské krajiny ..."
+        },
+        {
+          "id": 18757,
+          "classification": "UNRELATED",
+          "similarity": 0.16799116997792493,
+          "speaker": "Ján Figeľ",
+          "party": "KDH",
+          "date": "2013-02-24",
+          "statement": "Práve že tam (projekt opravy ciest 1. triedy, pozn.) išlo nielen o asfalt, nielen, samozrejme, keď sú výmoly, keď sú výtlky, tak to súvisí aj s povrchom vozovky. Ale o bezpečnostné prvky, vodorovné, zvislé značenie. O signalizácie, napríklad teploty, to všetko bola súčasť tých projektov, ktoré Slovensko realizovalo v 2010."
+        }
+      ]
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 13,
+      "retrievalMs": 1451,
+      "classifyMs": 1258,
+      "totalMs": 2709,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 85,
+          "classification": "UNRELATED",
+          "similarity": 0.23956043956043957,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2012-09-09",
+          "statement": "Rozpočet, ktorý schválila predchádzajúca vláda v roku 2011 na rok 2012 sa líši od reality o 500 miliónov eur."
+        },
+        {
+          "id": 3152,
+          "classification": "UNRELATED",
+          "similarity": 0.23692307692307693,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2023-09-21",
+          "statement": "Veľmi ma mrzí, že som nechal v novej vláde rekonštrukciu Banskej Bystrice za 120 miliónov, schválenú, pripravenú s peniazmi, rekonštrukciu ružinovskej nemocnice v Bratislave za 80 miliónov. Všetko to títo páni zrušili len z trucu, lebo to bola  predchádzajúca vláda, lebo Pellegrini."
+        },
+        {
+          "id": 12224,
+          "classification": "UNRELATED",
+          "similarity": 0.2341880341880342,
+          "speaker": "Ján Počiatek",
+          "party": "SMER-SD",
+          "date": "2013-02-24",
+          "statement": "Vy ste rozbehli projekt Filiálka a zabudol na to, že nikdy tento projekt EÚ neschválila ako taký, čiže nebolo jasné, že ho vôbec bude schopná preplatiť a štúdia uskutočniteľnosti, ktorá sa nakoniec vyhodnotila za vás ukázala, že neufinancovateľný a že to Únia nikdy nepreplatí."
+        },
+        {
+          "id": 2872,
+          "classification": "UNRELATED",
+          "similarity": 0.23321421854429192,
+          "speaker": "Marián Viskupič",
+          "party": "SaS",
+          "date": "2024-09-22",
+          "statement": "Jedny z najhorších financií v Európskej únii boli už na sklonku roku 2019, keď predchádzajúca vláda zrušila vtedy dôchodkový automat a proste vtedy schválila 13. dôchodok."
+        },
+        {
+          "id": 14319,
+          "classification": "UNRELATED",
+          "similarity": 0.20307692307692307,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-12",
+          "statement": "Iný príklad, vláda bývalá schválila aj v parlamente, zvýšila rodičovské príspevky pred voľbami..."
+        }
+      ]
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 13,
+      "retrievalMs": 1451,
+      "classifyMs": 1006,
+      "totalMs": 2457,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": false,
+      "error": null,
+      "matches": [
+        {
+          "id": 14319,
+          "classification": "RELATED",
+          "similarity": 0.20307692307692307,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-12",
+          "statement": "Iný príklad, vláda bývalá schválila aj v parlamente, zvýšila rodičovské príspevky pred voľbami..."
+        },
+        {
+          "id": 7080,
+          "classification": "RELATED",
+          "similarity": 0.19194484760522496,
+          "speaker": "Iveta Radičová",
+          "party": "SDKÚ-DS",
+          "date": "2011-06-26",
+          "statement": "Euroval jedna schválila vláda v júli minulého roka, Národná rada Slovenskej republiky 140 hlasmi v Národnej rade, k tomu bol prijatý zákon, ako sa to bude realizovať."
+        },
+        {
+          "id": 10884,
+          "classification": "RELATED",
+          "similarity": 0.1851981351981352,
+          "speaker": "Miroslav Lajčák",
+          "party": "SMER-SD",
+          "date": "2014-05-04",
+          "statement": "Mimochodom, chcem dať do pozornosti jednu obrovskú prácu, ktorú sme vykonali s mojimi kolegami na ministerstve. Šesť mesiacov sme pracovali na hodnotiacej správe, ktorá je najväčšou takou komplexnou inventúrou toho, čo nám členstvo v Európskej únii dalo. Oslovili sme 60 partnerov, 43 ministerstvá, ale aj cirkvi, akademická oblasť, mimovládne organizácie sa zapojili do tejto práce, ktorú sme začali už v septembri a vlastne ten výsledný produkt, tú správu som predložil na rokovaní vlády v stredu a vláda ju schválila."
+        },
+        {
+          "id": 3396,
+          "classification": "RELATED",
+          "similarity": 0.1832464146023468,
+          "speaker": "Ivan Švejna",
+          "party": "MOST-HÍD",
+          "date": "2012-10-14",
+          "statement": "vláda schválila úľavy, daňové úľavy, čo sú de facto dotácie 10 podnikov vo výške 120 miliónov eur. Je tam napríklad podnik, ktorý proste dostane úľavy, dotáciu vo výške 25 miliónov eur len na udržanie pracovných miest."
+        },
+        {
+          "id": 1758,
+          "classification": "RELATED",
+          "similarity": 0.18003344481605352,
+          "speaker": "Béla Bugár",
+          "party": "MOST-HÍD",
+          "date": "2013-01-13",
+          "statement": "Pán premiér, len na decembrovej schôdzi sme navrhli tri veci, ktoré ste odmietli a teraz napríklad na prvej vláde (rokovaní vlády, pozn.) jeden z tých návrhov ste prijali. A to sú investičné stimuly. My sme navrhli, opozícia, aby stimuly dostávali tí, ktorí vytvárajú pracovné miesta. Odmietli ste to  (na decembrovej schôdzi, pozn.) a teraz vaša vláda to schválila v stredu."
+        }
+      ]
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 13,
+      "retrievalMs": 1451,
+      "classifyMs": 724,
+      "totalMs": 2175,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": false,
+      "error": null,
+      "matches": [
+        {
+          "id": 3396,
+          "classification": "RELATED",
+          "similarity": 0.1832464146023468,
+          "speaker": "Ivan Švejna",
+          "party": "MOST-HÍD",
+          "date": "2012-10-14",
+          "statement": "vláda schválila úľavy, daňové úľavy, čo sú de facto dotácie 10 podnikov vo výške 120 miliónov eur. Je tam napríklad podnik, ktorý proste dostane úľavy, dotáciu vo výške 25 miliónov eur len na udržanie pracovných miest."
+        },
+        {
+          "id": 85,
+          "classification": "UNRELATED",
+          "similarity": 0.23956043956043957,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2012-09-09",
+          "statement": "Rozpočet, ktorý schválila predchádzajúca vláda v roku 2011 na rok 2012 sa líši od reality o 500 miliónov eur."
+        },
+        {
+          "id": 3152,
+          "classification": "UNRELATED",
+          "similarity": 0.23692307692307693,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2023-09-21",
+          "statement": "Veľmi ma mrzí, že som nechal v novej vláde rekonštrukciu Banskej Bystrice za 120 miliónov, schválenú, pripravenú s peniazmi, rekonštrukciu ružinovskej nemocnice v Bratislave za 80 miliónov. Všetko to títo páni zrušili len z trucu, lebo to bola  predchádzajúca vláda, lebo Pellegrini."
+        },
+        {
+          "id": 12224,
+          "classification": "UNRELATED",
+          "similarity": 0.2341880341880342,
+          "speaker": "Ján Počiatek",
+          "party": "SMER-SD",
+          "date": "2013-02-24",
+          "statement": "Vy ste rozbehli projekt Filiálka a zabudol na to, že nikdy tento projekt EÚ neschválila ako taký, čiže nebolo jasné, že ho vôbec bude schopná preplatiť a štúdia uskutočniteľnosti, ktorá sa nakoniec vyhodnotila za vás ukázala, že neufinancovateľný a že to Únia nikdy nepreplatí."
+        },
+        {
+          "id": 2872,
+          "classification": "UNRELATED",
+          "similarity": 0.23321421854429192,
+          "speaker": "Marián Viskupič",
+          "party": "SaS",
+          "date": "2024-09-22",
+          "statement": "Jedny z najhorších financií v Európskej únii boli už na sklonku roku 2019, keď predchádzajúca vláda zrušila vtedy dôchodkový automat a proste vtedy schválila 13. dôchodok."
+        }
+      ]
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 13,
+      "retrievalMs": 1451,
+      "classifyMs": 2036,
+      "totalMs": 3487,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 85,
+          "classification": "UNRELATED",
+          "similarity": 0.23956043956043957,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2012-09-09",
+          "statement": "Rozpočet, ktorý schválila predchádzajúca vláda v roku 2011 na rok 2012 sa líši od reality o 500 miliónov eur."
+        },
+        {
+          "id": 3152,
+          "classification": "UNRELATED",
+          "similarity": 0.23692307692307693,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2023-09-21",
+          "statement": "Veľmi ma mrzí, že som nechal v novej vláde rekonštrukciu Banskej Bystrice za 120 miliónov, schválenú, pripravenú s peniazmi, rekonštrukciu ružinovskej nemocnice v Bratislave za 80 miliónov. Všetko to títo páni zrušili len z trucu, lebo to bola  predchádzajúca vláda, lebo Pellegrini."
+        },
+        {
+          "id": 12224,
+          "classification": "UNRELATED",
+          "similarity": 0.2341880341880342,
+          "speaker": "Ján Počiatek",
+          "party": "SMER-SD",
+          "date": "2013-02-24",
+          "statement": "Vy ste rozbehli projekt Filiálka a zabudol na to, že nikdy tento projekt EÚ neschválila ako taký, čiže nebolo jasné, že ho vôbec bude schopná preplatiť a štúdia uskutočniteľnosti, ktorá sa nakoniec vyhodnotila za vás ukázala, že neufinancovateľný a že to Únia nikdy nepreplatí."
+        },
+        {
+          "id": 2872,
+          "classification": "UNRELATED",
+          "similarity": 0.23321421854429192,
+          "speaker": "Marián Viskupič",
+          "party": "SaS",
+          "date": "2024-09-22",
+          "statement": "Jedny z najhorších financií v Európskej únii boli už na sklonku roku 2019, keď predchádzajúca vláda zrušila vtedy dôchodkový automat a proste vtedy schválila 13. dôchodok."
+        },
+        {
+          "id": 14319,
+          "classification": "UNRELATED",
+          "similarity": 0.20307692307692307,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-12",
+          "statement": "Iný príklad, vláda bývalá schválila aj v parlamente, zvýšila rodičovské príspevky pred voľbami..."
+        }
+      ]
+    },
+    {
+      "caseId": "synthetic-hydrogen-fire-stations",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Vláda schválila, že každý okres dostane do konca roka 2026 jednu novú vodíkovú hasičskú stanicu.",
+      "expected": "NEW_CLAIM",
+      "retrievalMode": "lexical",
+      "candidateCount": 13,
+      "retrievalMs": 1451,
+      "classifyMs": 1336,
+      "totalMs": 2787,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": true,
+      "error": null,
+      "matches": [
+        {
+          "id": 85,
+          "classification": "UNRELATED",
+          "similarity": 0.23956043956043957,
+          "speaker": "Robert Fico",
+          "party": "SMER-SD",
+          "date": "2012-09-09",
+          "statement": "Rozpočet, ktorý schválila predchádzajúca vláda v roku 2011 na rok 2012 sa líši od reality o 500 miliónov eur."
+        },
+        {
+          "id": 3152,
+          "classification": "UNRELATED",
+          "similarity": 0.23692307692307693,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2023-09-21",
+          "statement": "Veľmi ma mrzí, že som nechal v novej vláde rekonštrukciu Banskej Bystrice za 120 miliónov, schválenú, pripravenú s peniazmi, rekonštrukciu ružinovskej nemocnice v Bratislave za 80 miliónov. Všetko to títo páni zrušili len z trucu, lebo to bola  predchádzajúca vláda, lebo Pellegrini."
+        },
+        {
+          "id": 12224,
+          "classification": "UNRELATED",
+          "similarity": 0.2341880341880342,
+          "speaker": "Ján Počiatek",
+          "party": "SMER-SD",
+          "date": "2013-02-24",
+          "statement": "Vy ste rozbehli projekt Filiálka a zabudol na to, že nikdy tento projekt EÚ neschválila ako taký, čiže nebolo jasné, že ho vôbec bude schopná preplatiť a štúdia uskutočniteľnosti, ktorá sa nakoniec vyhodnotila za vás ukázala, že neufinancovateľný a že to Únia nikdy nepreplatí."
+        },
+        {
+          "id": 2872,
+          "classification": "UNRELATED",
+          "similarity": 0.23321421854429192,
+          "speaker": "Marián Viskupič",
+          "party": "SaS",
+          "date": "2024-09-22",
+          "statement": "Jedny z najhorších financií v Európskej únii boli už na sklonku roku 2019, keď predchádzajúca vláda zrušila vtedy dôchodkový automat a proste vtedy schválila 13. dôchodok."
+        },
+        {
+          "id": 14319,
+          "classification": "UNRELATED",
+          "similarity": 0.20307692307692307,
+          "speaker": "Ivan Mikloš",
+          "party": "SDKÚ-DS",
+          "date": "2010-09-12",
+          "statement": "Iný príklad, vláda bývalá schválila aj v parlamente, zvýšila rodičovské príspevky pred voľbami..."
+        }
+      ]
+    },
+    {
+      "caseId": "doctors-growth",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1213,
+      "classifyMs": 1749,
+      "totalMs": 2962,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 17474,
+          "classification": "RELATED",
+          "similarity": 0.5480430528375734,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": null,
+          "statement": "Ak hovoríme o nedostatku lekárov, preto sa pýtam, prečo ste nepokračovali v systéme, ktorý som sa ako premiér pokúšal zaviesť, nahradiť zahraničných študentov na fakultách slovenskými. Na a 2 polroka, či na 3, ste to zrušili a teraz s tým prišiel Igor Matovič ako s veľkým objavom, že on ide znovu požiadať, aby prijalo sa viacej Slovákov na naše slovenské fakulty."
+        },
+        {
+          "id": 8588,
+          "classification": "RELATED",
+          "similarity": 0.5437602627257799,
+          "speaker": "Erik Tomáš",
+          "party": "Hlas",
+          "date": "2019-07-05",
+          "statement": "Napríklad v prípade lekárov je to až jedna tretina lekárov, ktorí vyštudujú tu, idú do zahraničia...Ale opakujem, je tu prvý pozitívny trend, myslím, že už dvojročný, keď sa viac ľudí vracia na Slovensko, ako odchádza."
+        },
+        {
+          "id": 16989,
+          "classification": "RELATED",
+          "similarity": 0.43438538205980065,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2013-04-21",
+          "statement": "Na Slovensku sa všeobecne hovorí, že 350 000 štátnych zamestnancov. To ale nie sú úradníci. Tam máte sestričky, lekárov, učiteľov, hasičov, policajtov. Úradníkov, tých klasických úradníkov je 88 000. Tento zákone rieši len miestnu štátnu správu, kde ich je 18 000."
+        },
+        {
+          "id": 10269,
+          "classification": "RELATED",
+          "similarity": 0.43426248548199764,
+          "speaker": "Richard Raši",
+          "party": "Hlas",
+          "date": "2024-12-08",
+          "statement": "Keby sme neurobili nič, tak musíme vyhlásiť 31. 12. núdzový stav, tak, ako to bolo za vlády premiérky Radičovej s SaS, keď bol minister za KDH Uhliarik, lebo aj KDH to kritizuje a vtedy by to platilo pre celé Slovensko, pre všetkých ľudí, nielen pre lekárov, aj pre ostatných."
+        },
+        {
+          "id": 19240,
+          "classification": "RELATED",
+          "similarity": 0.4339047619047619,
+          "speaker": "Viliam Novotný",
+          "party": "Šanca",
+          "date": "2012-09-23",
+          "statement": "Za oba zákony hlasovali poslanci za stranu Smer, podporovali tieto návrhy, zvyšovanie platov sestier je niečo okolo 22 %, zvyšovanie platov lekárov je niečo okolo 30 %."
+        }
+      ]
+    },
+    {
+      "caseId": "doctors-growth",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1213,
+      "classifyMs": 2453,
+      "totalMs": 3666,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 8588,
+          "classification": "RELATED",
+          "similarity": 0.5437602627257799,
+          "speaker": "Erik Tomáš",
+          "party": "Hlas",
+          "date": "2019-07-05",
+          "statement": "Napríklad v prípade lekárov je to až jedna tretina lekárov, ktorí vyštudujú tu, idú do zahraničia...Ale opakujem, je tu prvý pozitívny trend, myslím, že už dvojročný, keď sa viac ľudí vracia na Slovensko, ako odchádza."
+        },
+        {
+          "id": 19240,
+          "classification": "RELATED",
+          "similarity": 0.4339047619047619,
+          "speaker": "Viliam Novotný",
+          "party": "Šanca",
+          "date": "2012-09-23",
+          "statement": "Za oba zákony hlasovali poslanci za stranu Smer, podporovali tieto návrhy, zvyšovanie platov sestier je niečo okolo 22 %, zvyšovanie platov lekárov je niečo okolo 30 %."
+        },
+        {
+          "id": 11465,
+          "classification": "RELATED",
+          "similarity": 0.43357142857142855,
+          "speaker": "Tibor Mikuš",
+          "party": "Nestraníci",
+          "date": "2017-10-17",
+          "statement": "...priemerný vek lekárov všeobecných je problémom celého Slovenska (...)."
+        },
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.3281271360218728,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 13252,
+          "classification": "RELATED",
+          "similarity": 0.3275824175824176,
+          "speaker": "Peter Chudík",
+          "party": "SMER-SD",
+          "date": "2017-10-25",
+          "statement": "...nemocnice, ktoré sú súčasťou PSK, či už v Starej Ľubovni, podľa INEKA prvá trikrát po sebe, nemocnica vo Svidníku je 4. v poradí...problém odborných lekárov (...) to je situácia najmä pre ministerstvo zdravotníctva..."
+        }
+      ]
+    },
+    {
+      "caseId": "doctors-growth",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1213,
+      "classifyMs": 676,
+      "totalMs": 1889,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 6710,
+          "classification": "RELATED",
+          "similarity": 0.3281271360218728,
+          "speaker": "Michal Truban",
+          "party": "PS",
+          "date": "2024-10-13",
+          "statement": "Nám už teraz chýbajú vysoké stovky, možno tisícky lekárov, hovorí aj sa, že nám chýba 14-tisíc sestier."
+        },
+        {
+          "id": 17474,
+          "classification": "UNRELATED",
+          "similarity": 0.5480430528375734,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": null,
+          "statement": "Ak hovoríme o nedostatku lekárov, preto sa pýtam, prečo ste nepokračovali v systéme, ktorý som sa ako premiér pokúšal zaviesť, nahradiť zahraničných študentov na fakultách slovenskými. Na a 2 polroka, či na 3, ste to zrušili a teraz s tým prišiel Igor Matovič ako s veľkým objavom, že on ide znovu požiadať, aby prijalo sa viacej Slovákov na naše slovenské fakulty."
+        },
+        {
+          "id": 8588,
+          "classification": "UNRELATED",
+          "similarity": 0.5437602627257799,
+          "speaker": "Erik Tomáš",
+          "party": "Hlas",
+          "date": "2019-07-05",
+          "statement": "Napríklad v prípade lekárov je to až jedna tretina lekárov, ktorí vyštudujú tu, idú do zahraničia...Ale opakujem, je tu prvý pozitívny trend, myslím, že už dvojročný, keď sa viac ľudí vracia na Slovensko, ako odchádza."
+        },
+        {
+          "id": 6992,
+          "classification": "UNRELATED",
+          "similarity": 0.43867243867243866,
+          "speaker": "Béla Bugár",
+          "party": "MOST-HÍD",
+          "date": "2015-09-20",
+          "statement": "No jednoznačne, však my sme mali, pani redaktorka, my sme tu mali za dvadsaťdva aj niečo rokov existencie štátu päťdesiatosemtisíc utečencov. Šesťstopäťdesiat z nich dostalo azyl a z toho podľa najnovších čísiel dvadsaťšesť percent tu zostalo, to znamená že každý štvrtý. V roku 2004 sme mali desaťtisíc žiadateľov o azyl, nebol problém."
+        },
+        {
+          "id": 535,
+          "classification": "UNRELATED",
+          "similarity": 0.4352380952380952,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2020-01-19",
+          "statement": "...sme pred niekoľkými týždňami alebo mesiac dozadu v parlamente po sedemdesiatich rokoch prijali nový zákon o financovaní cirkví, kde sú stanovené jasné pravidlá a kľúč, ako sa štátny príspevok rozdeľuje medzi všetky oficiálne registrované cirkvi na Slovensku vzhľadom na ich početnosť a tak ďalej. Sú tam nejaké kľúče a zároveň, že týmto akoby automatickým spôsobom financovania jednotlivých cirkví sme odpojili to každoročné rozhodovanie o rozpočte akoby z rúk politikov preč."
+        }
+      ]
+    },
+    {
+      "caseId": "doctors-growth",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1213,
+      "classifyMs": 1027,
+      "totalMs": 2240,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 8588,
+          "classification": "DUPLICATE",
+          "similarity": 0.5437602627257799,
+          "speaker": "Erik Tomáš",
+          "party": "Hlas",
+          "date": "2019-07-05",
+          "statement": "Napríklad v prípade lekárov je to až jedna tretina lekárov, ktorí vyštudujú tu, idú do zahraničia...Ale opakujem, je tu prvý pozitívny trend, myslím, že už dvojročný, keď sa viac ľudí vracia na Slovensko, ako odchádza."
+        },
+        {
+          "id": 535,
+          "classification": "DUPLICATE",
+          "similarity": 0.4352380952380952,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": "2020-01-19",
+          "statement": "...sme pred niekoľkými týždňami alebo mesiac dozadu v parlamente po sedemdesiatich rokoch prijali nový zákon o financovaní cirkví, kde sú stanovené jasné pravidlá a kľúč, ako sa štátny príspevok rozdeľuje medzi všetky oficiálne registrované cirkvi na Slovensku vzhľadom na ich početnosť a tak ďalej. Sú tam nejaké kľúče a zároveň, že týmto akoby automatickým spôsobom financovania jednotlivých cirkví sme odpojili to každoročné rozhodovanie o rozpočte akoby z rúk politikov preč."
+        },
+        {
+          "id": 19240,
+          "classification": "DUPLICATE",
+          "similarity": 0.4339047619047619,
+          "speaker": "Viliam Novotný",
+          "party": "Šanca",
+          "date": "2012-09-23",
+          "statement": "Za oba zákony hlasovali poslanci za stranu Smer, podporovali tieto návrhy, zvyšovanie platov sestier je niečo okolo 22 %, zvyšovanie platov lekárov je niečo okolo 30 %."
+        },
+        {
+          "id": 11465,
+          "classification": "DUPLICATE",
+          "similarity": 0.43357142857142855,
+          "speaker": "Tibor Mikuš",
+          "party": "Nestraníci",
+          "date": "2017-10-17",
+          "statement": "...priemerný vek lekárov všeobecných je problémom celého Slovenska (...)."
+        },
+        {
+          "id": 646,
+          "classification": "DUPLICATE",
+          "similarity": 0.3414285714285714,
+          "speaker": "Ján Hudacký",
+          "party": "KDH",
+          "date": "2015-06-15",
+          "statement": "Prípadná kríza v automobilovom priemysle by v podstate zasiahla tisícky, desaťtisíce pracovných miest na Slovensku."
+        }
+      ]
+    },
+    {
+      "caseId": "doctors-growth",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Od roku 2020 sa počet lekárov na Slovensku zvýšil o desaťtisíc.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1213,
+      "classifyMs": 3184,
+      "totalMs": 4397,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 17474,
+          "classification": "RELATED",
+          "similarity": 0.5480430528375734,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": null,
+          "statement": "Ak hovoríme o nedostatku lekárov, preto sa pýtam, prečo ste nepokračovali v systéme, ktorý som sa ako premiér pokúšal zaviesť, nahradiť zahraničných študentov na fakultách slovenskými. Na a 2 polroka, či na 3, ste to zrušili a teraz s tým prišiel Igor Matovič ako s veľkým objavom, že on ide znovu požiadať, aby prijalo sa viacej Slovákov na naše slovenské fakulty."
+        },
+        {
+          "id": 8588,
+          "classification": "RELATED",
+          "similarity": 0.5437602627257799,
+          "speaker": "Erik Tomáš",
+          "party": "Hlas",
+          "date": "2019-07-05",
+          "statement": "Napríklad v prípade lekárov je to až jedna tretina lekárov, ktorí vyštudujú tu, idú do zahraničia...Ale opakujem, je tu prvý pozitívny trend, myslím, že už dvojročný, keď sa viac ľudí vracia na Slovensko, ako odchádza."
+        },
+        {
+          "id": 16989,
+          "classification": "RELATED",
+          "similarity": 0.43438538205980065,
+          "speaker": "Robert Kaliňák",
+          "party": "SMER-SD",
+          "date": "2013-04-21",
+          "statement": "Na Slovensku sa všeobecne hovorí, že 350 000 štátnych zamestnancov. To ale nie sú úradníci. Tam máte sestričky, lekárov, učiteľov, hasičov, policajtov. Úradníkov, tých klasických úradníkov je 88 000. Tento zákone rieši len miestnu štátnu správu, kde ich je 18 000."
+        },
+        {
+          "id": 10269,
+          "classification": "RELATED",
+          "similarity": 0.43426248548199764,
+          "speaker": "Richard Raši",
+          "party": "Hlas",
+          "date": "2024-12-08",
+          "statement": "Keby sme neurobili nič, tak musíme vyhlásiť 31. 12. núdzový stav, tak, ako to bolo za vlády premiérky Radičovej s SaS, keď bol minister za KDH Uhliarik, lebo aj KDH to kritizuje a vtedy by to platilo pre celé Slovensko, pre všetkých ľudí, nielen pre lekárov, aj pre ostatných."
+        },
+        {
+          "id": 19240,
+          "classification": "RELATED",
+          "similarity": 0.4339047619047619,
+          "speaker": "Viliam Novotný",
+          "party": "Šanca",
+          "date": "2012-09-23",
+          "statement": "Za oba zákony hlasovali poslanci za stranu Smer, podporovali tieto návrhy, zvyšovanie platov sestier je niečo okolo 22 %, zvyšovanie platov lekárov je niečo okolo 30 %."
+        }
+      ]
+    },
+    {
+      "caseId": "ukraine-aid",
+      "variantId": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.1-flash-lite-preview",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1252,
+      "classifyMs": 1725,
+      "totalMs": 2977,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 17672,
+          "classification": "DUPLICATE",
+          "similarity": 0.6090090090090091,
+          "speaker": "Juraj Blanár",
+          "party": "SMER-SD",
+          "date": "2023-11-18",
+          "statement": "Pretože sme významným spôsobom Ukrajine pomohli tým, že sa tam dalo vyše 700 000 000 vojenskej pomoci z našich skladov ozbrojených síl, kde naše ozbrojené sily ostali úplne holé a my musíme dnes hľadať finančné prostriedky aj na úkor životnej úrovne občanov Slovenskej republiky."
+        },
+        {
+          "id": 14690,
+          "classification": "RELATED",
+          "similarity": 0.6865755627009646,
+          "speaker": "Veronika Cifrová Ostrihoňová",
+          "party": "PS",
+          "date": "2024-05-12",
+          "statement": "Blokuje sa nám vyplatenie 300 000 000 za MIGy, ktoré sme poskytli Ukrajine a za ktoré sme mali prisľúbené, že dostaneme ich naspäť 300.000.000 EUR, lebo s tým nesúhlasí Viktor Orbán."
+        },
+        {
+          "id": 12235,
+          "classification": "RELATED",
+          "similarity": 0.6077669902912622,
+          "speaker": "Tomáš Taraba",
+          "party": "Život - NS",
+          "date": "2024-04-14",
+          "statement": "My, ktorí sme kvôli vášmu Korčokovi prišli o vyslovene celú vojenskú techniku. (...) Nikto tak nepomohol Ukrajine, ako my. My sme rozdali aj stíhačky. To, že dnes Česká republika musí chrániť naše nebo je preto, lebo váš Korčok s Naďom rozdali naše stíhačky. Rozdali všetko. Dneska keby išla akékoľvek raketa alebo lietadlo na Jaslovské Bohunice, Mochovce, nemáme to s čím dať dole."
+        },
+        {
+          "id": 542,
+          "classification": "RELATED",
+          "similarity": 0.5423228346456692,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 2293,
+          "classification": "RELATED",
+          "similarity": 0.5334415584415584,
+          "speaker": "Ivan Korčok",
+          "party": "nominant SaS",
+          "date": "2024-03-18",
+          "statement": "Keď hovoríte, že už nedodávame ani náboj, no a čo to bolo od októbra minulého roku, keď Slovenská republika, to znamená so súhlasom vlády Slovenskej republiky, je vyvezených za 500 miliónov vojenskej techniky. Ešte raz to chcem zopakovať, hovoríte ani náboj, ale s vašimi pečiatkami, so súhlasom vlády Slovenskej republiky naďalej vyvážate zbrane."
+        }
+      ]
+    },
+    {
+      "caseId": "ukraine-aid",
+      "variantId": "groq-llama-4-scout",
+      "provider": "groq",
+      "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1252,
+      "classifyMs": 1879,
+      "totalMs": 3131,
+      "overallStatus": "RELATED_ONLY",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 14690,
+          "classification": "RELATED",
+          "similarity": 0.6865755627009646,
+          "speaker": "Veronika Cifrová Ostrihoňová",
+          "party": "PS",
+          "date": "2024-05-12",
+          "statement": "Blokuje sa nám vyplatenie 300 000 000 za MIGy, ktoré sme poskytli Ukrajine a za ktoré sme mali prisľúbené, že dostaneme ich naspäť 300.000.000 EUR, lebo s tým nesúhlasí Viktor Orbán."
+        },
+        {
+          "id": 17672,
+          "classification": "RELATED",
+          "similarity": 0.6090090090090091,
+          "speaker": "Juraj Blanár",
+          "party": "SMER-SD",
+          "date": "2023-11-18",
+          "statement": "Pretože sme významným spôsobom Ukrajine pomohli tým, že sa tam dalo vyše 700 000 000 vojenskej pomoci z našich skladov ozbrojených síl, kde naše ozbrojené sily ostali úplne holé a my musíme dnes hľadať finančné prostriedky aj na úkor životnej úrovne občanov Slovenskej republiky."
+        },
+        {
+          "id": 542,
+          "classification": "RELATED",
+          "similarity": 0.5423228346456692,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 2293,
+          "classification": "RELATED",
+          "similarity": 0.5334415584415584,
+          "speaker": "Ivan Korčok",
+          "party": "nominant SaS",
+          "date": "2024-03-18",
+          "statement": "Keď hovoríte, že už nedodávame ani náboj, no a čo to bolo od októbra minulého roku, keď Slovenská republika, to znamená so súhlasom vlády Slovenskej republiky, je vyvezených za 500 miliónov vojenskej techniky. Ešte raz to chcem zopakovať, hovoríte ani náboj, ale s vašimi pečiatkami, so súhlasom vlády Slovenskej republiky naďalej vyvážate zbrane."
+        },
+        {
+          "id": 14012,
+          "classification": "RELATED",
+          "similarity": 0.4726415094339622,
+          "speaker": "Andrej Kiska",
+          "party": "Za ľudí",
+          "date": "2014-09-21",
+          "statement": "Slovensko aj reálne pomohlo Ukrajine tým reverzným tokom plynu, investíciou viac ako 10 miliónov eur..."
+        }
+      ]
+    },
+    {
+      "caseId": "ukraine-aid",
+      "variantId": "groq-llama-3.3-70b",
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1252,
+      "classifyMs": 583,
+      "totalMs": 1835,
+      "overallStatus": "NEW_CLAIM",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 14690,
+          "classification": "UNRELATED",
+          "similarity": 0.6865755627009646,
+          "speaker": "Veronika Cifrová Ostrihoňová",
+          "party": "PS",
+          "date": "2024-05-12",
+          "statement": "Blokuje sa nám vyplatenie 300 000 000 za MIGy, ktoré sme poskytli Ukrajine a za ktoré sme mali prisľúbené, že dostaneme ich naspäť 300.000.000 EUR, lebo s tým nesúhlasí Viktor Orbán."
+        },
+        {
+          "id": 17672,
+          "classification": "UNRELATED",
+          "similarity": 0.6090090090090091,
+          "speaker": "Juraj Blanár",
+          "party": "SMER-SD",
+          "date": "2023-11-18",
+          "statement": "Pretože sme významným spôsobom Ukrajine pomohli tým, že sa tam dalo vyše 700 000 000 vojenskej pomoci z našich skladov ozbrojených síl, kde naše ozbrojené sily ostali úplne holé a my musíme dnes hľadať finančné prostriedky aj na úkor životnej úrovne občanov Slovenskej republiky."
+        },
+        {
+          "id": 12235,
+          "classification": "UNRELATED",
+          "similarity": 0.6077669902912622,
+          "speaker": "Tomáš Taraba",
+          "party": "Život - NS",
+          "date": "2024-04-14",
+          "statement": "My, ktorí sme kvôli vášmu Korčokovi prišli o vyslovene celú vojenskú techniku. (...) Nikto tak nepomohol Ukrajine, ako my. My sme rozdali aj stíhačky. To, že dnes Česká republika musí chrániť naše nebo je preto, lebo váš Korčok s Naďom rozdali naše stíhačky. Rozdali všetko. Dneska keby išla akékoľvek raketa alebo lietadlo na Jaslovské Bohunice, Mochovce, nemáme to s čím dať dole."
+        },
+        {
+          "id": 542,
+          "classification": "UNRELATED",
+          "similarity": 0.5423228346456692,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 6362,
+          "classification": "UNRELATED",
+          "similarity": 0.5348280098280097,
+          "speaker": "Milan Uhrík",
+          "party": "Republika",
+          "date": "2022-03-03",
+          "statement": "Slovensko sa narozdiel od neutrálneho postoju Maďarska stalo aktívnou súčastou americko-ruského konfliktu na Ukrajine."
+        }
+      ]
+    },
+    {
+      "caseId": "ukraine-aid",
+      "variantId": "groq-llama-3.1-8b",
+      "provider": "groq",
+      "model": "llama-3.1-8b-instant",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1252,
+      "classifyMs": 1034,
+      "totalMs": 2286,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 17672,
+          "classification": "DUPLICATE",
+          "similarity": 0.6090090090090091,
+          "speaker": "Juraj Blanár",
+          "party": "SMER-SD",
+          "date": "2023-11-18",
+          "statement": "Pretože sme významným spôsobom Ukrajine pomohli tým, že sa tam dalo vyše 700 000 000 vojenskej pomoci z našich skladov ozbrojených síl, kde naše ozbrojené sily ostali úplne holé a my musíme dnes hľadať finančné prostriedky aj na úkor životnej úrovne občanov Slovenskej republiky."
+        },
+        {
+          "id": 656,
+          "classification": "DUPLICATE",
+          "similarity": 0.45699999999999996,
+          "speaker": "Richard Raši",
+          "party": "Hlas",
+          "date": "2025-03-23",
+          "statement": "Potom prišla vláda pána Ódora, ktorý je teraz Progresívne Slovensko, z nula výziev urobili 27 výziev, z nulového, z peňazí, ktoré ponúkli regiónu z nuly 1,3 miliardy, ale bolo len 5 podpísaných zmlúv a bolo 0 eur reálne v regiónoch. Čo im nechávame, 270 výziev a viac ako 9 miliárd eur vo výzvach, ktoré sú možné o ne teraz žiadať. Zároveň z piatich podpísaných zmlúv je viac ako 1400 podpísaných zmlúv, čo znamená, že zakontrahovaných viac ako 4,5 miliardy eur a konečne máme aj prvé čerpania, ktoré je vo výške viac ako 700 miliónov eur a dodávam rovno, že v tomto roku je ešte nevyhnutné vyčerpať 800 miliónov eur, tak, lebo taký záväzok podpísala pani Remišová Európskej komisii."
+        },
+        {
+          "id": 13866,
+          "classification": "DUPLICATE",
+          "similarity": 0.3888888888888889,
+          "speaker": "Jaroslav Naď",
+          "party": "Demokrati",
+          "date": null,
+          "statement": "Pán redaktor, my predsa sa netajíme tým, že dlhodobo hovoríme o tom, že sme pripravení tie MiG-y poslať za predpokladu, že ich Ukrajinci chcú a že dostaneme nejakú formu náhrady za to, či už vo forme finančnej náhrady alebo materiálnej náhrady, alebo kombinácie. A rokujeme o tom pol roka. To nie je o tom, že sa stretli minulý týždeň Volodymyr Zelenskyj a Eduard Heger. Ja túto tému riešim na úrovni ministrov obrany aj v tom ramsteinskom formáte, kde je asi 60 krajín, ktoré pomáhajú vojensky Ukrajine, aj na úrovni ministrov obrany členských krajín NATO, aj na bilaterálnych stretnutiach pán minister zahraničných vecí to rieši, premiér to rieši dlhodobo."
+        },
+        {
+          "id": 7342,
+          "classification": "DUPLICATE",
+          "similarity": 0.38776595744680853,
+          "speaker": "Peter Pellegrini",
+          "party": "Hlas",
+          "date": null,
+          "statement": "Dnes sa munícia pre Ukrajinu nakupuje cez centrálne európske obstarávanie, a keď ju nevyrobíme my tu a z čoho má Slovensko prácu, príjem a platy ľudia, ktorí robia v tých fabrikách, tak ju vyrobia vo vedľajšej krajine, a tak isto dôjde tam, kde má dôjsť."
+        },
+        {
+          "id": 15119,
+          "classification": "DUPLICATE",
+          "similarity": 0.3873076923076923,
+          "speaker": "Ľuboš Blaha",
+          "party": "SMER-SD",
+          "date": null,
+          "statement": "Putin mobilizuje. Ešte väčšie vojská idú na Ukrajinu, v smere proti Ukrajine z Ruska."
+        }
+      ]
+    },
+    {
+      "caseId": "ukraine-aid",
+      "variantId": "groq-gpt-oss-120b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "statement": "Slovensko poslalo Ukrajine vojenskú pomoc za viac ako 700 miliónov eur.",
+      "expected": "EXPLORATORY",
+      "retrievalMode": "lexical",
+      "candidateCount": 30,
+      "retrievalMs": 1252,
+      "classifyMs": 3396,
+      "totalMs": 4648,
+      "overallStatus": "DUPLICATE_FOUND",
+      "matchedExpected": null,
+      "error": null,
+      "matches": [
+        {
+          "id": 17672,
+          "classification": "DUPLICATE",
+          "similarity": 0.6090090090090091,
+          "speaker": "Juraj Blanár",
+          "party": "SMER-SD",
+          "date": "2023-11-18",
+          "statement": "Pretože sme významným spôsobom Ukrajine pomohli tým, že sa tam dalo vyše 700 000 000 vojenskej pomoci z našich skladov ozbrojených síl, kde naše ozbrojené sily ostali úplne holé a my musíme dnes hľadať finančné prostriedky aj na úkor životnej úrovne občanov Slovenskej republiky."
+        },
+        {
+          "id": 14690,
+          "classification": "RELATED",
+          "similarity": 0.6865755627009646,
+          "speaker": "Veronika Cifrová Ostrihoňová",
+          "party": "PS",
+          "date": "2024-05-12",
+          "statement": "Blokuje sa nám vyplatenie 300 000 000 za MIGy, ktoré sme poskytli Ukrajine a za ktoré sme mali prisľúbené, že dostaneme ich naspäť 300.000.000 EUR, lebo s tým nesúhlasí Viktor Orbán."
+        },
+        {
+          "id": 12235,
+          "classification": "RELATED",
+          "similarity": 0.6077669902912622,
+          "speaker": "Tomáš Taraba",
+          "party": "Život - NS",
+          "date": "2024-04-14",
+          "statement": "My, ktorí sme kvôli vášmu Korčokovi prišli o vyslovene celú vojenskú techniku. (...) Nikto tak nepomohol Ukrajine, ako my. My sme rozdali aj stíhačky. To, že dnes Česká republika musí chrániť naše nebo je preto, lebo váš Korčok s Naďom rozdali naše stíhačky. Rozdali všetko. Dneska keby išla akékoľvek raketa alebo lietadlo na Jaslovské Bohunice, Mochovce, nemáme to s čím dať dole."
+        },
+        {
+          "id": 542,
+          "classification": "RELATED",
+          "similarity": 0.5423228346456692,
+          "speaker": "Vladimíra Marcinková",
+          "party": "SaS",
+          "date": "2024-01-28",
+          "statement": "Maďarsko, konkrétne Viktor Orbán je človek, ktorý bojuje, ktorý blokuje mierový balík pomoci, v ktorom aj Slovensku visí 150 miliónov eur, to sú peniaze za vojenskú pomoc, ktorú Slovensko sprostredkovalo Ukrajine."
+        },
+        {
+          "id": 6362,
+          "classification": "RELATED",
+          "similarity": 0.5348280098280097,
+          "speaker": "Milan Uhrík",
+          "party": "Republika",
+          "date": "2022-03-03",
+          "statement": "Slovensko sa narozdiel od neutrálneho postoju Maďarska stalo aktívnou súčastou americko-ruského konfliktu na Ukrajine."
+        }
+      ]
+    }
+  ]
+}
