@@ -313,6 +313,44 @@ describe("useDetect", () => {
     });
   });
 
+  it("returns to idle with timeout error when hidden background detect self-aborts", async () => {
+    vi.mocked(fetch).mockImplementation(
+      (_input, init) =>
+        new Promise<Response>((_, reject) => {
+          const signal = init?.signal;
+
+          if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+
+          signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+
+    const { result } = renderHook(() => useDetect());
+
+    await act(async () => {
+      const detectPromise = result.current.detect("Pošlú nás na vojnu", "thorough");
+      await vi.advanceTimersByTimeAsync(8_000);
+      await detectPromise;
+    });
+
+    expect(result.current.uiState).toBe("verifying_in_background");
+    expect(result.current.verifyingStatement).toBe("Pošlú nás na vojnu");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.uiState).toBe("idle");
+    expect(result.current.verifyingStatement).toBeNull();
+    expect(result.current.error).toBe("Overenie trvá príliš dlho. Skúste analýzu spustiť znova.");
+  });
+
   it("dismisses late match notice", async () => {
     let callCount = 0;
 

@@ -252,7 +252,7 @@ export function useDetect() {
 
       void runDetectRequest(bgStatement, bgMode, hiddenController.signal)
         .then((hiddenResult) => {
-          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
+          if (requestIdRef.current !== bgRequestId) {
             return;
           }
 
@@ -268,7 +268,7 @@ export function useDetect() {
           }
         })
         .catch(() => {
-          if (requestIdRef.current !== bgRequestId || hiddenController.signal.aborted) {
+          if (requestIdRef.current !== bgRequestId) {
             return;
           }
 
