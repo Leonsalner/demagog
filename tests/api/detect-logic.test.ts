@@ -135,11 +135,11 @@ describe("POST /api/detect logic", () => {
         match_count: 60,
       }),
     );
-    expect(getGeminiModel).toHaveBeenCalledWith("pro");
+    expect(getGeminiModel).toHaveBeenCalledWith("lite");
     expect(classifyMatches).toHaveBeenCalledWith(
       "Nova formulacia tvrdenia",
       expect.any(Array),
-      "mock-pro",
+      "mock-lite",
     );
     expect(data.matches).toHaveLength(5);
     expect(data.overall_status).toBe("RELATED_ONLY");
