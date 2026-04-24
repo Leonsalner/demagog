@@ -41,15 +41,29 @@ describe("supabase client split", () => {
     });
   });
 
-  it("creates the admin client with the service key", async () => {
+  it("prefers the publishable key over legacy anon keys", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
-    process.env.SUPABASE_SERVICE_KEY = "service-key";
+    process.env.SUPABASE_PUBLISHABLE_KEY = "publishable-key";
+    process.env.SUPABASE_ANON_KEY = "legacy-anon-key";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "legacy-public-anon-key";
+
+    const { supabasePublic } = await import("@/lib/supabase");
+
+    expect(supabasePublic()).toEqual({
+      url: "https://example.supabase.co",
+      key: "publishable-key",
+    });
+  });
+
+  it("creates the admin client with the secret key", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SECRET_KEY = "secret-key";
 
     const { supabaseAdmin } = await import("@/lib/supabase");
 
     expect(supabaseAdmin()).toEqual({
       url: "https://example.supabase.co",
-      key: "service-key",
+      key: "secret-key",
     });
   });
 
@@ -61,6 +75,7 @@ describe("supabase client split", () => {
 
     expect(getSupabasePublicConfigError()).toContain("SUPABASE_ANON_KEY");
     expect(getSupabasePublicConfigError()).toContain("SUPABASE_PUBLISHABLE_KEY");
+    expect(getSupabaseAdminConfigError()).toContain("SUPABASE_SECRET_KEY");
     expect(getSupabaseAdminConfigError()).toContain("SUPABASE_SERVICE_KEY");
   });
 });

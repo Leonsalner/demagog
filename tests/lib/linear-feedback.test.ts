@@ -117,6 +117,12 @@ describe("linear-feedback", () => {
       signal: expect.any(AbortSignal),
     });
 
+    const sentRequests = fetchMock.mock.calls.map(([, init]) => init);
+    for (const init of sentRequests) {
+      expect(JSON.stringify(init?.headers)).toContain("linear-api-key");
+      expect(String(init?.body)).not.toContain("linear-api-key");
+    }
+
     const [, upsertRequestInit] = fetchMock.mock.calls[0];
     const upsertRequestBody = JSON.parse(String(upsertRequestInit?.body));
 
@@ -134,7 +140,7 @@ describe("linear-feedback", () => {
     expect(requestBody.variables.input.attachmentUrl).toBe("https://demagog.sk/add");
   });
 
-  it("surfaces GraphQL errors from the Linear response body", async () => {
+  it("does not expose GraphQL errors from the Linear response body", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -155,7 +161,22 @@ describe("linear-feedback", () => {
 
     await expect(submitLinearFeedbackCustomerRequest(feedbackPayload)).rejects.toEqual(
       expect.objectContaining<Partial<LinearFeedbackError>>({
-        message: "Issue not found",
+        message: "Linear rejected the feedback request",
+        status: 502,
+      }),
+    );
+  });
+
+  it("does not expose upstream HTTP error bodies", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("upstream failure with provider internals", {
+        status: 401,
+      }),
+    );
+
+    await expect(submitLinearFeedbackCustomerRequest(feedbackPayload)).rejects.toEqual(
+      expect.objectContaining<Partial<LinearFeedbackError>>({
+        message: "Linear request failed with status 401",
         status: 502,
       }),
     );

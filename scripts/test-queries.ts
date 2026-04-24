@@ -45,6 +45,13 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    getEnv("SUPABASE_SERVICE_KEY");
+}
+
 async function countRows(supabase: SupabaseClientAny, table: "vyroky" | "clanky"): Promise<number> {
   const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
   if (error) {
@@ -181,9 +188,7 @@ async function runDuplicateSimulation(
 async function main(): Promise<void> {
   const supabase = createClient<any>(
     process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? getEnv("SUPABASE_URL"),
-    process.env.SUPABASE_SERVICE_KEY ??
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      getEnv("SUPABASE_SERVICE_KEY"),
+    getSupabaseServiceKey(),
   );
   const jinaApiKey = getEnv("JINA_API_KEY");
   const failures: string[] = [];

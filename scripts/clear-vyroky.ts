@@ -22,6 +22,10 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SECRET_KEY || getEnv("SUPABASE_SERVICE_KEY");
+}
+
 function requireConfirmFlag(): void {
   const args = process.argv.slice(2);
   if (!args.includes("--confirm")) {
@@ -69,7 +73,7 @@ async function main(): Promise<void> {
 
   const supabase = createClient<any>(
     getEnv("SUPABASE_URL"),
-    getEnv("SUPABASE_SERVICE_KEY"),
+    getSupabaseServiceKey(),
   );
 
   const before = await countVyroky(supabase);

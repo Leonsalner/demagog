@@ -128,6 +128,10 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SECRET_KEY || getEnv("SUPABASE_SERVICE_KEY");
+}
+
 function requireFile(filePath: string): void {
   if (!existsSync(filePath)) {
     throw new Error(`Missing required input file: ${filePath}`);
@@ -642,7 +646,7 @@ async function main(): Promise<void> {
 
   const supabase = options.dryRun
     ? null
-    : createClient<any>(getEnv("SUPABASE_URL"), getEnv("SUPABASE_SERVICE_KEY"));
+    : createClient<any>(getEnv("SUPABASE_URL"), getSupabaseServiceKey());
 
   if (options.dryRun) {
     console.log("import-data: running in --dry-run mode. Skipping truncate and database writes.");

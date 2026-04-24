@@ -176,6 +176,10 @@ function getEnv(name: string): string {
   return value;
 }
 
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SECRET_KEY?.trim() || getEnv("SUPABASE_SERVICE_KEY");
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1038,7 +1042,7 @@ async function main(): Promise<void> {
 
   const supabase = createClient<any>(
     getEnv("SUPABASE_URL"),
-    getEnv("SUPABASE_SERVICE_KEY"),
+    getSupabaseServiceKey(),
   );
 
   if (args.truncate) {
