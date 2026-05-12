@@ -46,3 +46,6 @@ next-env.d.ts
 # local HF dataset snapshots
 data/demagogsk_*.jsonl
 data/hf-demagogsk/
+
+# local agent plans
+/plans/
